@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, ILike } from 'typeorm';
 import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/entities/user.entity';
@@ -33,6 +33,13 @@ import {
 } from '../entities/cache-key.entity';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { CustomerLoginDto } from '../dto/customer-login.dto';
+import { AdminLoginDto } from '../dto/admin-login.dto';
+import { CustomerRegisterDto } from '../dto/customer-register.dto';
+import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
+import { Role } from '../entities/role.entity';
+import { AdminRegisterDto } from '../dto/admin-register.dto';
+import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 
 @Injectable()
 export class AuthService {
@@ -45,6 +52,12 @@ export class AuthService {
     private userActivityLogRepository: Repository<UserActivityLog>,
     @InjectRepository(CacheKey)
     private cacheKeyRepository: Repository<CacheKey>,
+    @InjectRepository(CustomerProfile)
+    private customerProfileRepository: Repository<CustomerProfile>,
+    @InjectRepository(AdminProfile)
+    private adminProfileRepository: Repository<AdminProfile>,
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private twoFactorService: TwoFactorService,
@@ -65,11 +78,17 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    if (!(await bcrypt.compare(plainPassword, user.password))) {
+
+    if (user.isBanned || user.isActive === false) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    if (!(await bcrypt.compare(plainPassword, user.passwordHash || ''))) {
       throw new UnauthorizedException('Invalid password');
     }
-    const { password, ...result } = user;
-    void password;
+
+    const { passwordHash, ...result } = user;
+    void passwordHash;
     return result;
   }
 
@@ -118,6 +137,233 @@ export class AuthService {
     return this.completeLogin(fullUser, request);
   }
 
+  async registerCustomer(
+    customerRegisterDto: CustomerRegisterDto,
+    request: Request,
+  ) {
+    const existingByPhone = await this.userRepository.findOne({
+      where: { phone: customerRegisterDto.phone },
+    });
+
+    if (existingByPhone) {
+      throw new BadRequestException('Phone number is already registered');
+    }
+
+    if (customerRegisterDto.email) {
+      const existingByEmail = await this.userRepository.findOne({
+        where: { email: customerRegisterDto.email },
+      });
+      if (existingByEmail) {
+        throw new BadRequestException('Email is already registered');
+      }
+    }
+
+    const customerRole = await this.roleRepository.findOne({
+      where: [{ name: 'customer' }, { name: ILike('customer') }],
+    });
+
+    const fullName =
+      customerRegisterDto.fullName ||
+      [customerRegisterDto.firstName, customerRegisterDto.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    const user = this.userRepository.create({
+      email: customerRegisterDto.email,
+      phone: customerRegisterDto.phone,
+      password: customerRegisterDto.password,
+      firstName: customerRegisterDto.firstName,
+      lastName: customerRegisterDto.lastName,
+      fullName: fullName || customerRegisterDto.phone,
+      roleType: 'customer',
+      roleId: customerRole?.id,
+      authProvider: 'local',
+      isActive: true,
+      mfaChannel: 'email',
+    });
+
+    const savedUser = await this.userRepository.save(user);
+
+    const profile = this.customerProfileRepository.create({
+      userId: savedUser.id,
+    });
+    await this.customerProfileRepository.save(profile);
+
+    return this.completeLogin(savedUser, request);
+  }
+
+  async registerAdmin(adminRegisterDto: AdminRegisterDto, request: Request) {
+    const existingByEmail = await this.userRepository.findOne({
+      where: { email: adminRegisterDto.email },
+    });
+
+    if (existingByEmail) {
+      throw new BadRequestException('Email is already registered');
+    }
+
+    if (adminRegisterDto.phone) {
+      const existingByPhone = await this.userRepository.findOne({
+        where: { phone: adminRegisterDto.phone },
+      });
+      if (existingByPhone) {
+        throw new BadRequestException('Phone number is already registered');
+      }
+    }
+
+    const adminRole = await this.roleRepository.findOne({
+      where: [{ name: 'admin' }, { name: ILike('admin') }],
+    });
+
+    const fullName =
+      adminRegisterDto.fullName ||
+      [adminRegisterDto.firstName, adminRegisterDto.lastName]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+
+    const user = this.userRepository.create({
+      email: adminRegisterDto.email,
+      phone: adminRegisterDto.phone,
+      password: adminRegisterDto.password,
+      firstName: adminRegisterDto.firstName,
+      lastName: adminRegisterDto.lastName,
+      fullName: fullName || adminRegisterDto.email,
+      roleType: 'admin',
+      roleId: adminRole?.id,
+      authProvider: 'local',
+      isActive: true,
+      mfaChannel: 'email',
+    });
+
+    const savedUser = await this.userRepository.save(user);
+
+    const profile = this.adminProfileRepository.create({
+      userId: savedUser.id,
+    });
+    await this.adminProfileRepository.save(profile);
+
+    return this.completeLogin(savedUser, request);
+  }
+
+  async loginCustomer(
+    customerLoginDto: CustomerLoginDto,
+    request: Request,
+  ) {
+    const user = await this.userRepository.findOne({
+      where: [
+        { email: customerLoginDto.identifier },
+        { phone: customerLoginDto.identifier },
+      ],
+      relations: [
+        'role',
+        'role.rolePermissions',
+        'role.rolePermissions.permission',
+      ],
+    });
+
+    const isCustomer =
+      user?.roleType === 'customer' ||
+      user?.role?.name?.toLowerCase() === 'customer';
+
+    if (!user || !isCustomer) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.isBanned || user.isActive === false) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      customerLoginDto.password,
+      user.passwordHash || '',
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const is2FAEnabled = await this.twoFactorService.isTwoFactorEnabled(
+      user.id,
+    );
+
+    if (is2FAEnabled) {
+      await this.twoFactorService.sendVerificationCode(user.id);
+
+      return {
+        requiresTwoFactor: true,
+        userId: user.id,
+        message: 'Two-factor authentication code sent to your email',
+      };
+    }
+
+    return this.completeLogin(user, request);
+  }
+
+  async loginAdmin(adminLoginDto: AdminLoginDto, request: Request) {
+    const user = await this.userRepository.findOne({
+      where: { email: adminLoginDto.email },
+      relations: [
+        'role',
+        'role.rolePermissions',
+        'role.rolePermissions.permission',
+      ],
+    });
+
+    const isAdmin =
+      user?.roleType === 'admin' || user?.role?.name?.toLowerCase() === 'admin';
+
+    if (!user || !isAdmin) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    if (user.isBanned || user.isActive === false) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
+    const isPasswordValid = await bcrypt.compare(
+      adminLoginDto.password,
+      user.passwordHash || '',
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const is2FAEnabled = await this.twoFactorService.isTwoFactorEnabled(
+      user.id,
+    );
+
+    if (!is2FAEnabled) {
+      await this.twoFactorService.sendVerificationCode(user.id);
+      return {
+        requiresTwoFactor: true,
+        userId: user.id,
+        message: 'Two-factor authentication code sent to your email',
+      };
+    }
+
+    if (!adminLoginDto.twoFactorCode) {
+      await this.twoFactorService.sendVerificationCode(user.id);
+      return {
+        requiresTwoFactor: true,
+        userId: user.id,
+        message: 'Two-factor authentication code sent to your email',
+      };
+    }
+
+    const isValidCode = await this.twoFactorService.validateLoginCode(
+      user.id,
+      adminLoginDto.twoFactorCode,
+    );
+
+    if (!isValidCode) {
+      throw new UnauthorizedException('Invalid or expired verification code');
+    }
+
+    return this.completeLogin(user, request);
+  }
+
   async verifyTwoFactorAndLogin(
     userId: string,
     code: string,
@@ -146,6 +392,10 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    if (user.isBanned || user.isActive === false) {
+      throw new UnauthorizedException('Account is disabled');
+    }
+
     // Complete the login process
     return this.completeLogin(user, request);
   }
@@ -154,7 +404,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       userId: user.id,
-      roleId: user.role.id,
+      roleId: user.role?.id ?? user.roleId ?? '',
     };
 
     const accessToken = this.jwtService.sign(payload);
@@ -346,8 +596,8 @@ export class AuthService {
     });
     await this.userActivityLogRepository.save(userActivityLog);
 
-    const { password, ...result } = updatedUser;
-    void password;
+    const { passwordHash, ...result } = updatedUser;
+    void passwordHash;
     return result;
   }
 
@@ -367,7 +617,7 @@ export class AuthService {
     // Verify current password
     const isCurrentPasswordValid = await bcrypt.compare(
       changePasswordDto.currentPassword,
-      user.password,
+      user.passwordHash || '',
     );
 
     if (!isCurrentPasswordValid) {

@@ -66,16 +66,14 @@ export class ActivityLogInterceptor implements NestInterceptor {
   ): Promise<void> {
     try {
       const requestWithUser = request as unknown as RequestWithUser;
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
+
       const { device, browser, os } = parseUserAgent(request);
 
       const resourceId = logOptions.getResourceId
         ? logOptions.getResourceId(result, request)
-        : // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-          request?.params?.id;
+        : request?.params?.id;
 
       await this.activityLogService.create({
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         userId: requestWithUser?.user.id,
         action: logOptions.action,
         description: logOptions.description,
@@ -89,7 +87,7 @@ export class ActivityLogInterceptor implements NestInterceptor {
         metadata: {
           method: request.method,
           url: request.url,
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           body: request.method !== 'GET' ? request.body : undefined,
         },
       });

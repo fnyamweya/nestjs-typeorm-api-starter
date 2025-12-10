@@ -17,10 +17,22 @@ import { UploadFileDto } from '../dto/upload-file.dto';
 import { S3ClientUtils } from '../utils/s3-client.utils';
 import { ResponseUtil } from '../utils/response.util';
 import { randomUUID } from 'crypto';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiCreatedResponse,
+  ApiBadRequestResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
 @Controller('api/common')
 @UseGuards(JwtAuthGuard)
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
+@ApiTags('Common Uploads')
+@ApiBearerAuth('access-token')
 export class CommonUploadController {
   constructor(private readonly s3: S3ClientUtils) {}
 
@@ -36,6 +48,29 @@ export class CommonUploadController {
       },
     }),
   )
+  @ApiOperation({ summary: 'Upload a single file to object storage' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description:
+      'Multipart request containing file and optional upload metadata',
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        folder: { type: 'string', example: 'avatars' },
+        filenameOverride: { type: 'string', example: 'profile-picture.png' },
+        generateSignedUrl: { type: 'boolean', example: true },
+      },
+      required: ['file'],
+    },
+  })
+  @ApiCreatedResponse({ description: 'File uploaded successfully' })
+  @ApiBadRequestResponse({
+    description: 'Invalid file payload or validation failed',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
   async upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadFileDto,
@@ -94,6 +129,31 @@ export class CommonUploadController {
       },
     }),
   )
+  @ApiOperation({ summary: 'Upload multiple files to object storage' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description:
+      'Multipart request containing files array and optional upload metadata',
+    schema: {
+      type: 'object',
+      properties: {
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+        folder: { type: 'string', example: 'documents' },
+        generateSignedUrl: { type: 'boolean', example: false },
+      },
+      required: ['files'],
+    },
+  })
+  @ApiCreatedResponse({ description: 'Files uploaded successfully' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or uploads unsuccessful',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
   async uploadMany(
     @UploadedFiles() files: Express.Multer.File[],
     @Body() dto: UploadFileDto,

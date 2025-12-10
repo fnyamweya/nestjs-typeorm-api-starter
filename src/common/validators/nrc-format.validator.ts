@@ -1,18 +1,14 @@
-import {
-  registerDecorator,
-  ValidationOptions,
-  ValidationArguments,
-} from 'class-validator';
+import { registerDecorator, ValidationOptions } from 'class-validator';
 
 export function IsValidNRC(validationOptions?: ValidationOptions) {
-  return function (object: Object, propertyName: string) {
+  return function (object: object, propertyName: string) {
     registerDecorator({
       name: 'isValidNRC',
       target: object.constructor,
       propertyName,
       options: validationOptions,
       validator: {
-        validate(value: any, args: ValidationArguments) {
+        validate(value: any) {
           if (typeof value !== 'string') return false;
 
           // NRC patterns for English and Myanmar
@@ -25,7 +21,7 @@ export function IsValidNRC(validationOptions?: ValidationOptions) {
           return pattern.en.test(value) || pattern.mm.test(value);
         },
 
-        defaultMessage(args: ValidationArguments) {
+        defaultMessage() {
           return (
             'Invalid NRC format. ' +
             'Expected English format: 12/ABCDEF(N)123456 or ' +

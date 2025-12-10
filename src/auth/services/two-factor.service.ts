@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { User } from 'src/user/entities/user.entity';
 import * as crypto from 'crypto';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
+import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 import {
   CacheKey,
   CacheKeyService,
@@ -27,45 +28,42 @@ export class TwoFactorService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
     private emailServiceUtils: EmailServiceUtils,
+    private smsServiceUtils: SmsServiceUtils,
     private configService: ConfigService,
   ) {}
 
-  async enableTwoFactor(userId: string, email: string): Promise<void> {
+  async enableTwoFactor(
+    userId: string,
+    email: string | undefined,
+    channel: 'email' | 'sms' = 'email',
+  ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
-    if (user.email !== email) {
-      throw new BadRequestException('Email does not match user account');
+    const targetChannel = channel || 'email';
+
+    if (targetChannel === 'email') {
+      const targetEmail = email || user.email;
+      if (!targetEmail) {
+        throw new BadRequestException('Email is required for email-based MFA');
+      }
+      if (email && user.email !== email) {
+        user.email = email;
+        await this.userRepository.save(user);
+      }
+    } else {
+      if (!user.phone) {
+        throw new BadRequestException('Phone number is required for SMS-based MFA');
+      }
     }
 
-    // Generate verification code
-    const code = this.generateVerificationCode();
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    user.mfaChannel = targetChannel;
+    await this.userRepository.save(user);
 
-    // Create cache key record
-    const cacheKey = this.cacheKeyRepository.create({
-      userId,
-      service: CacheKeyService.TWO_FACTOR,
-      code,
-      expiresAt,
-      status: CacheKeyStatus.PENDING,
-      attempts: 0,
-      maxAttempts: 3,
-    });
-    await this.cacheKeyRepository.save(cacheKey);
-
-    // Send verification email
-    await this.emailServiceUtils.sendTwoFactorCode({
-      email,
-      code,
-      userName: user.fullName || user.email,
-      fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
-      expiresIn: 10,
-    });
-
-    this.logger.log(`2FA verification code sent to user ${userId}`);
+    await this.sendVerificationCode(userId, targetChannel);
+    this.logger.log(`2FA verification code sent to user ${userId} via ${targetChannel}`);
   }
 
   async verifyTwoFactor(userId: string, code: string): Promise<boolean> {
@@ -128,7 +126,7 @@ export class TwoFactorService {
     if (!password) {
       throw new BadRequestException('Password is required to disable 2FA');
     }
-    if (!(await bcrypt.compare(password, user.password))) {
+    if (!(await bcrypt.compare(password, user.passwordHash || ''))) {
       throw new UnauthorizedException('Password does not match');
     }
 
@@ -143,37 +141,54 @@ export class TwoFactorService {
     );
 
     // Update user's 2FA status
-    await this.userRepository.update(userId, { twoFactorEnabled: false });
+    await this.userRepository.update(userId, {
+      twoFactorEnabled: false,
+      mfaChannel: 'email',
+    });
 
     this.logger.log(`2FA disabled for user ${userId}`);
   }
 
-  async sendVerificationCode(userId: string): Promise<void> {
+  async sendVerificationCode(
+    userId: string,
+    channelOverride?: 'email' | 'sms',
+  ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
-    // Check if there's an active 2FA setup
-    const existing = await this.cacheKeyRepository.findOne({
+    const channel = channelOverride || (user.mfaChannel as 'email' | 'sms') || 'email';
+
+    if (user.mfaChannel !== channel) {
+      user.mfaChannel = channel;
+      await this.userRepository.save(user);
+    }
+
+    if (channel === 'sms' && !user.phone) {
+      throw new BadRequestException('Phone number is required for SMS-based MFA');
+    }
+
+    if (channel === 'email' && !user.email) {
+      throw new BadRequestException('Email is required for email-based MFA');
+    }
+
+    const existingPending = await this.cacheKeyRepository.findOne({
       where: {
         userId,
         service: CacheKeyService.TWO_FACTOR,
-        status: CacheKeyStatus.VERIFIED,
+        status: CacheKeyStatus.PENDING,
       },
     });
 
-    if (existing) {
-      throw new BadRequestException(
-        'Two-factor verification code is already sent',
-      );
+    if (existingPending) {
+      existingPending.status = CacheKeyStatus.EXPIRED;
+      await this.cacheKeyRepository.save(existingPending);
     }
 
-    // Generate new verification code
     const code = this.generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    // Create new verification record
     const cacheKey = this.cacheKeyRepository.create({
       userId,
       service: CacheKeyService.TWO_FACTOR,
@@ -186,16 +201,23 @@ export class TwoFactorService {
 
     await this.cacheKeyRepository.save(cacheKey);
 
-    // Send verification email
-    await this.emailServiceUtils.sendTwoFactorCode({
-      code,
-      email: user.email,
-      userName: user.fullName || user.email,
-      fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
-      expiresIn: 10,
-    });
+    if (channel === 'sms') {
+      await this.smsServiceUtils.sendTwoFactorCodeSMS({
+        to: user.phone,
+        code,
+        expiresIn: 10,
+      });
+    } else {
+      await this.emailServiceUtils.sendTwoFactorCode({
+        code,
+        email: user.email,
+        userName: user.fullName || user.email,
+        fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
+        expiresIn: 10,
+      });
+    }
 
-    this.logger.log(`2FA verification code sent to user ${userId}`);
+    this.logger.log(`2FA verification code sent to user ${userId} via ${channel}`);
   }
 
   async validateLoginCode(userId: string, code: string): Promise<boolean> {
@@ -212,44 +234,25 @@ export class TwoFactorService {
       return false;
     }
 
-    // Check if code has expired
     if (new Date() > cacheKey.expiresAt) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);
       return false;
     }
 
-    // Check if max attempts reached
     if (cacheKey.attempts >= cacheKey.maxAttempts) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);
       return false;
     }
 
-    // Check if code has expired
-    if (new Date() > cacheKey.expiresAt) {
-      cacheKey.status = CacheKeyStatus.EXPIRED;
-      await this.cacheKeyRepository.save(cacheKey);
-      return false;
-    }
-
-    // Check if max attempts reached
-    if (cacheKey.attempts >= cacheKey.maxAttempts) {
-      cacheKey.status = CacheKeyStatus.EXPIRED;
-      await this.cacheKeyRepository.save(cacheKey);
-      return false;
-    }
-
-    // Increment attempts
     cacheKey.attempts += 1;
 
-    // Verify code
     if (cacheKey.code !== code) {
       await this.cacheKeyRepository.save(cacheKey);
       return false;
     }
 
-    // Mark as used
     cacheKey.status = CacheKeyStatus.USED;
     await this.cacheKeyRepository.save(cacheKey);
 

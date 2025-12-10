@@ -41,6 +41,16 @@ export class AuthSeeder {
         description: 'Super Administrator role with full access',
         modules: moduleAccess,
       },
+      {
+        name: 'Admin',
+        description: 'Administrator role with full access',
+        modules: moduleAccess,
+      },
+      {
+        name: 'Customer',
+        description: 'Customer role with limited access',
+        modules: {},
+      },
     ];
   }
 

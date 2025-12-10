@@ -15,6 +15,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 - **Activity Logging** - Comprehensive user activity tracking and audit trails
 - **File Upload Support** - AWS S3 integration for file storage
 - **Email Service** - SMTP configuration for transactional emails
+- **Redis-Powered Queues** - BullMQ + Redis pipeline for background jobs and domain events
 - **Global Exception Handling** - Centralized error handling and logging
 - **Request/Response Interceptors** - Standardized API responses
 - **Validation & Serialization** - Built-in data validation and transformation
@@ -28,6 +29,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 
 - Node.js (v18 or higher)
 - PostgreSQL database
+- Redis server (for BullMQ queues)
 - AWS S3 account (for file uploads)
 - SMTP server (for email services)
 
@@ -86,6 +88,14 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 
     # Email Configuration
     EMAIL_FROM_NAME="qtech-apis"
+
+    # Redis / Queue Configuration
+    REDIS_HOST=127.0.0.1
+    REDIS_PORT=6379
+    REDIS_USERNAME=
+    REDIS_PASSWORD=
+    REDIS_DB=0
+    REDIS_TLS=false
    ```
 
 4. **Database Setup**
@@ -129,6 +139,7 @@ src/
 │   ├── interceptors/    # Response interceptors
 │   ├── interfaces/      # Common interfaces
 │   └── utils/           # Utility functions (S3, email, response)
+├── queue/               # BullMQ + Redis queue and event bus layer
 ├── setting/             # Application settings module
 │   ├── controllers/     # Settings controllers
 │   ├── dto/            # Settings DTOs
@@ -288,6 +299,55 @@ await this.emailServiceUtils.sendTwoFactorCode({...});
 // Send forgot password reset code
 await this.emailServiceUtils.sendForgotPasswordResetCode({...});
 ```
+
+## 📮 Message Queues & Event Bus
+
+BullMQ + Redis power background jobs and domain events. Configure the Redis variables in `.env`, then inject the provided services anywhere in the app (the `QueueModule` is global).
+
+### Dispatch background work
+
+```typescript
+@Injectable()
+export class SmsQueueProducer {
+  constructor(private readonly queueService: QueueService) {}
+
+  async enqueue(payload: SendSmsPayload) {
+    await this.queueService.addJob('sms-delivery', 'send-sms', payload, {
+      attempts: 5,
+      backoff: { type: 'exponential', delay: 2000 },
+    });
+  }
+}
+```
+
+### Event-driven flows
+
+```typescript
+@Injectable()
+export class UserEventsListener implements OnApplicationBootstrap {
+  constructor(
+    private readonly eventBus: EventBusService,
+    private readonly queueService: QueueService,
+  ) {}
+
+  async onApplicationBootstrap() {
+    await this.eventBus.subscribe('user.created', (payload: { userId: string }) =>
+      this.handleUserCreated(payload),
+    );
+  }
+
+  private async handleUserCreated(payload: { userId: string }) {
+    await this.queueService.addJob('notifications', 'welcome-email', payload);
+  }
+}
+
+// Somewhere in your domain logic
+await this.eventBus.emit('user.created', { userId: user.id });
+```
+
+- `QueueService` exposes `addJob`, `getQueue`, `createWorker`, and `getQueueEvents` helpers.
+- `EventBusService` routes domain events through the shared `domain-events` queue and lets you register handlers programmatically.
+- Both services automatically handle connection reuse, retries, and graceful shutdown.
 
 ## 📝 API Documentation
 

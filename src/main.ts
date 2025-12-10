@@ -1,5 +1,9 @@
 import { NestFactory, Reflector } from '@nestjs/core';
-import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import {
+  ClassSerializerInterceptor,
+  ValidationPipe,
+  VersioningType,
+} from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
@@ -33,6 +37,13 @@ async function bootstrap() {
 
   app.enableCors(corsOptions);
 
+  // Global API prefix and URI versioning
+  app.setGlobalPrefix('api');
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
+
   // Enable global validation
   app.useGlobalPipes(
     new ValidationPipe({
@@ -48,7 +59,10 @@ async function bootstrap() {
   // Apply global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
 
-  if (process.env.NODE_ENV !== 'production') {
+  const swaggerEnabled =
+    process.env.SWAGGER_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+
+  if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()
       .setTitle(process.env.APP_NAME ?? 'qtech-apis')
       .setDescription('REST API documentation')
@@ -69,7 +83,8 @@ async function bootstrap() {
       deepScanRoutes: true,
     });
 
-    SwaggerModule.setup('api/docs', app, document, {
+    SwaggerModule.setup('docs', app, document, {
+      useGlobalPrefix: true,
       swaggerOptions: {
         persistAuthorization: true,
       },

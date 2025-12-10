@@ -5,11 +5,12 @@ import { SettingService } from './services/setting.service';
 import { Setting } from './entities/setting.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { SettingSeeder } from './seeders/setting.seeder';
+import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Setting]), ActivityLogModule],
   controllers: [SettingController],
-  providers: [SettingService, SettingSeeder],
-  exports: [SettingService],
+  providers: [SettingService, SettingSeeder, SmsServiceUtils],
+  exports: [SettingService, SmsServiceUtils],
 })
 export class SettingModule {}

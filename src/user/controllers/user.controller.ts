@@ -26,10 +26,27 @@ import { ResponseUtil } from 'src/common/utils/response.util';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+  ApiOkResponse,
+  ApiCreatedResponse,
+  ApiNotFoundResponse,
+  ApiBadRequestResponse,
+  ApiForbiddenResponse,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
-@Controller('api/users')
+@Controller('users')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('Users')
+@ApiBearerAuth('access-token')
 export class UserController {
   constructor(private readonly userService: UserService) {}
 
@@ -45,6 +62,37 @@ export class UserController {
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
   })
+  @ApiOperation({ summary: 'Create a new user account' })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Payload for creating a user including optional profile image',
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'jane.doe@example.com' },
+        fullName: { type: 'string', example: 'Jane Doe' },
+        password: { type: 'string', example: 'Str0ngP@ssw0rd' },
+        phone: { type: 'string', example: '+14155551234' },
+        roleId: {
+          type: 'string',
+          format: 'uuid',
+          example: '2d931510-d99f-494a-8c67-87feb05e1594',
+        },
+        profileImage: { type: 'string', format: 'binary' },
+      },
+      required: ['email', 'fullName', 'password'],
+    },
+  })
+  @ApiCreatedResponse({ description: 'User created successfully' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or invalid file upload',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to create users',
+  })
   async create(
     @Body() createUserDto: CreateUserDto,
     @UploadedFiles()
@@ -59,6 +107,44 @@ export class UserController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Retrieve a paginated list of users' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Page size (default 10)',
+  })
+  @ApiQuery({
+    name: 'getAll',
+    required: false,
+    type: Boolean,
+    description: 'Return all users without pagination when true',
+  })
+  @ApiQuery({
+    name: 'search',
+    required: false,
+    type: String,
+    description: 'Search by name, email, or phone',
+  })
+  @ApiQuery({
+    name: 'isBanned',
+    required: false,
+    type: Boolean,
+    description: 'Filter by banned status',
+  })
+  @ApiOkResponse({ description: 'Users retrieved successfully' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read users',
+  })
   async findAll(@Query() filters: FilterUserDto) {
     const result = await this.userService.findAll(filters);
 
@@ -79,6 +165,16 @@ export class UserController {
   }
 
   @Get('/:id')
+  @ApiOperation({ summary: 'Retrieve a user by identifier' })
+  @ApiParam({ name: 'id', description: 'User identifier', type: String })
+  @ApiOkResponse({ description: 'User retrieved successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read users',
+  })
   async findOne(@Param('id') id: string) {
     const user = await this.userService.findOne(id);
     return ResponseUtil.success(
@@ -98,6 +194,38 @@ export class UserController {
     description: 'User updated successfully',
     resourceType: 'user',
     getResourceId: (result: User) => result.id?.toString(),
+  })
+  @ApiOperation({ summary: 'Update an existing user' })
+  @ApiParam({ name: 'id', description: 'User identifier', type: String })
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Payload for updating a user including optional profile image',
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'jane.doe@example.com' },
+        fullName: { type: 'string', example: 'Jane Doe' },
+        password: { type: 'string', example: 'Str0ngP@ssw0rd' },
+        phone: { type: 'string', example: '+14155551234' },
+        roleId: {
+          type: 'string',
+          format: 'uuid',
+          example: '2d931510-d99f-494a-8c67-87feb05e1594',
+        },
+        profileImage: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'User updated successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or invalid file upload',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to update users',
   })
   async update(
     @Param('id') id: string,
@@ -123,6 +251,16 @@ export class UserController {
     description: 'User deleted successfully',
     resourceType: 'user',
     getResourceId: (params: { id: string }) => params.id,
+  })
+  @ApiOperation({ summary: 'Delete a user by identifier' })
+  @ApiParam({ name: 'id', description: 'User identifier', type: String })
+  @ApiOkResponse({ description: 'User deleted successfully' })
+  @ApiNotFoundResponse({ description: 'User not found' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to delete users',
   })
   async remove(@Param('id') id: string) {
     const result = await this.userService.remove(id);

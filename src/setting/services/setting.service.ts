@@ -5,6 +5,8 @@ import { plainToClass } from 'class-transformer';
 import { Setting } from '../entities/setting.entity';
 import { CreateSMTPDto } from '../dto/create-smtp-setting.dto';
 import { SMTPResponseDto } from '../dto/smtp-response.dto';
+import { CreateSMSSettingDto } from '../dto/create-sms-setting.dto';
+import { SMSResponseDto } from '../dto/sms-response.dto';
 
 @Injectable()
 export class SettingService {
@@ -83,5 +85,62 @@ export class SettingService {
   private getSettingValue(settings: Setting[], key: string): string {
     const setting = settings.find((s) => s.key === key);
     return setting?.value || '';
+  }
+
+  async createSMSSettings(
+    createSMSSettingDto: CreateSMSSettingDto,
+  ): Promise<SMSResponseDto> {
+    const smsSettings = [
+      { key: 'sms_provider', value: createSMSSettingDto.provider },
+      { key: 'sms_at_api_key', value: createSMSSettingDto.apiKey },
+      { key: 'sms_at_username', value: createSMSSettingDto.username },
+      { key: 'sms_sender_id', value: createSMSSettingDto.senderId || '' },
+      { key: 'sms_enabled', value: createSMSSettingDto.smsEnabled.toString() },
+    ];
+
+    for (const setting of smsSettings) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: setting.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = setting.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(setting);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    return this.getSMSSettings();
+  }
+
+  async getSMSSettings(): Promise<SMSResponseDto> {
+    const smsKeys = [
+      'sms_provider',
+      'sms_at_api_key',
+      'sms_at_username',
+      'sms_sender_id',
+      'sms_enabled',
+    ];
+
+    const settings = await this.settingRepository.find({
+      where: smsKeys.map((key) => ({ key })),
+    });
+
+    if (settings.length === 0) {
+      throw new NotFoundException('SMS settings not found');
+    }
+
+    const smsData = {
+      provider: this.getSettingValue(settings, 'sms_provider') || 'africastalking',
+      username: this.getSettingValue(settings, 'sms_at_username'),
+      senderId: this.getSettingValue(settings, 'sms_sender_id'),
+      smsEnabled: this.getSettingValue(settings, 'sms_enabled') === 'true',
+      createdAt: settings[0]?.createdAt,
+      updatedAt: settings[0]?.updatedAt,
+    };
+
+    return plainToClass(SMSResponseDto, smsData);
   }
 }

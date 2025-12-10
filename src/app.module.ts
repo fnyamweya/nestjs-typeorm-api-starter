@@ -11,6 +11,7 @@ import { ActivityLogInterceptor } from './activity-log/interceptors/activity-log
 import { SettingModule } from './setting/setting.module';
 import { CommonModule } from './common/common.module';
 import dataSource from './data-source';
+import { QueueModule } from './queue/queue.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import dataSource from './data-source';
     UserModule,
     ActivityLogModule,
     SettingModule,
+    QueueModule,
   ],
   controllers: [AppController],
   providers: [

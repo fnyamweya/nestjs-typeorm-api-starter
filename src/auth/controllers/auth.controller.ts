@@ -32,8 +32,25 @@ import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { ForgotPasswordSendOTPDto } from '../dto/forgot-password-send-otp.dto';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { CustomerLoginDto } from '../dto/customer-login.dto';
+import { AdminLoginDto } from '../dto/admin-login.dto';
+import { CustomerRegisterDto } from '../dto/customer-register.dto';
+import { AdminRegisterDto } from '../dto/admin-register.dto';
+import {
+  ApiBadRequestResponse,
+    ApiCreatedResponse,
+  ApiBearerAuth,
+  ApiBody,
+  ApiConsumes,
+  ApiForbiddenResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+  ApiUnauthorizedResponse,
+} from '@nestjs/swagger';
 
-@Controller('api/auth')
+@Controller('auth')
+@ApiTags('Authentication')
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -43,13 +60,86 @@ export class AuthController {
 
   @Post('login')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Authenticate a user and obtain access tokens' })
+  @ApiOkResponse({ description: 'Login successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto, @Req() request: Request) {
     const result = await this.authService.login(loginDto, request);
     return ResponseUtil.success(result, 'Login successful');
   }
 
+  @Post('customer/login')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Customer login with email or phone and password',
+  })
+  @ApiOkResponse({ description: 'Customer login successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  async loginCustomer(
+    @Body() customerLoginDto: CustomerLoginDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.loginCustomer(
+      customerLoginDto,
+      request,
+    );
+    return ResponseUtil.success(result, 'Customer login successful');
+  }
+
+  @Post('customer/register')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Customer self-registration' })
+  @ApiCreatedResponse({ description: 'Customer registered successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  async registerCustomer(
+    @Body() customerRegisterDto: CustomerRegisterDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.registerCustomer(
+      customerRegisterDto,
+      request,
+    );
+    return ResponseUtil.created(result, 'Customer registered successfully');
+  }
+
+  @Post('admin/login')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Admin login with MFA' })
+  @ApiOkResponse({ description: 'Admin login successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
+  async loginAdmin(
+    @Body() adminLoginDto: AdminLoginDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.loginAdmin(adminLoginDto, request);
+    return ResponseUtil.success(result, 'Admin login successful');
+  }
+
+  @Post('admin/register')
+  @HttpCode(201)
+  @ApiOperation({ summary: 'Admin self-registration' })
+  @ApiCreatedResponse({ description: 'Admin registered successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  async registerAdmin(
+    @Body() adminRegisterDto: AdminRegisterDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.registerAdmin(
+      adminRegisterDto,
+      request,
+    );
+    return ResponseUtil.created(result, 'Admin registered successfully');
+  }
+
   @Post('refresh')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
+  @ApiOkResponse({ description: 'Token refreshed successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid refresh token' })
   async refresh(@Body() refreshTokenDto: RefreshTokenDto) {
     const result = await this.authService.refreshAccessToken(
       refreshTokenDto.refreshToken,
@@ -66,6 +156,16 @@ export class AuthController {
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
   })
+  @ApiOperation({ summary: 'Log out the authenticated user' })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({ description: 'Logout successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to perform this action',
+  })
   async logout(@Body() refreshTokenDto: RefreshTokenDto) {
     await this.authService.logout(refreshTokenDto.refreshToken);
     return ResponseUtil.success(null, 'Logout successful');
@@ -73,6 +173,15 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
+  @ApiOperation({ summary: 'Retrieve the authenticated user profile' })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({ description: 'Profile retrieved successfully' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to access this resource',
+  })
   async getProfile(@CurrentUser() user: AuthenticatedUser) {
     if (
       user.profileImageUrl &&
@@ -89,6 +198,39 @@ export class AuthController {
   @Patch('profile')
   @UseInterceptors(AnyFilesInterceptor())
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Update profile details and optionally upload a profile image',
+  })
+  @ApiBearerAuth('access-token')
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    description: 'Profile update payload including optional profile image file',
+    schema: {
+      type: 'object',
+      properties: {
+        email: { type: 'string', example: 'jane.doe@example.com' },
+        fullName: { type: 'string', example: 'Jane Doe' },
+        password: { type: 'string', example: 'Str0ngP@ssw0rd' },
+        phone: { type: 'string', example: '+14155551234' },
+        roleId: {
+          type: 'string',
+          format: 'uuid',
+          example: '2d931510-d99f-494a-8c67-87feb05e1594',
+        },
+        profileImage: { type: 'string', format: 'binary' },
+      },
+    },
+  })
+  @ApiOkResponse({ description: 'Profile updated successfully' })
+  @ApiBadRequestResponse({
+    description: 'Validation failed or invalid file upload',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to update the profile',
+  })
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFiles()
@@ -112,6 +254,16 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Patch('change-password')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Change the authenticated user password' })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({ description: 'Password changed successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to change the password',
+  })
   async changePassword(
     @CurrentUser() user: AuthenticatedUser,
     @Body() changePasswordDto: ChangePasswordDto,
@@ -128,6 +280,15 @@ export class AuthController {
   @UseInterceptors(FileInterceptor('profileImage'))
   @Delete('profile')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Delete the authenticated user profile image' })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({ description: 'Profile deleted successfully' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to delete the profile',
+  })
   async deleteProfile(
     @CurrentUser() user: AuthenticatedUser,
     @Req() request: Request,
@@ -138,6 +299,14 @@ export class AuthController {
 
   @Post('verify-2fa')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Verify a two-factor authentication code and sign in the user',
+  })
+  @ApiOkResponse({ description: 'Two-factor authentication successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired verification code',
+  })
   async verifyTwoFactor(
     @Body() verifyTwoFactorDto: VerifyTwoFactorDto,
     @Req() request: Request,
@@ -152,6 +321,16 @@ export class AuthController {
 
   @Post('enable-2fa-verify')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Verify a two-factor authentication code to enable 2FA',
+  })
+  @ApiOkResponse({
+    description: 'Two-factor authentication enable verification succeeded',
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired verification code',
+  })
   async enableTwoFactorVerify(@Body() verifyTwoFactorDto: VerifyTwoFactorDto) {
     const result = await this.twoFactorService.verifyTwoFactor(
       verifyTwoFactorDto.userId,
@@ -172,6 +351,20 @@ export class AuthController {
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
   })
+  @ApiOperation({
+    summary: 'Send a verification code to enable two-factor authentication',
+  })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({
+    description: 'Two-factor authentication enable verification code sent',
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to enable two-factor authentication',
+  })
   async enableTwoFactor(
     @CurrentUser() user: AuthenticatedUser,
     @Body() enableTwoFactorDto: EnableTwoFactorDto,
@@ -179,10 +372,11 @@ export class AuthController {
     await this.twoFactorService.enableTwoFactor(
       user.id,
       enableTwoFactorDto.email,
+      enableTwoFactorDto.channel,
     );
     return ResponseUtil.success(
       null,
-      'Two-factor authentication enable verification code sent to email',
+      `Two-factor authentication verification code sent via ${enableTwoFactorDto.channel}`,
     );
   }
 
@@ -194,6 +388,19 @@ export class AuthController {
     description: 'Two-factor authentication disabled',
     resourceType: 'user',
     getResourceId: (result: AuthenticatedUser) => result.id?.toString(),
+  })
+  @ApiOperation({
+    summary: 'Disable two-factor authentication for the authenticated user',
+  })
+  @ApiBearerAuth('access-token')
+  @ApiOkResponse({ description: 'Two-factor authentication disabled' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description:
+      'Insufficient permissions to disable two-factor authentication',
   })
   async disableTwoFactor(
     @CurrentUser() user: AuthenticatedUser,
@@ -208,6 +415,11 @@ export class AuthController {
 
   @Post('otp/send/forgot-password')
   @HttpCode(200)
+  @ApiOperation({
+    summary: 'Send a password reset verification code to the user email',
+  })
+  @ApiOkResponse({ description: 'Forgot password OTP sent successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
   async forgotPasswordOTPSend(
     @Body() forgotPasswordSendOtpDto: ForgotPasswordSendOTPDto,
     @Req() request: Request,
@@ -224,6 +436,12 @@ export class AuthController {
 
   @Post('otp/verify/forgot-password')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Verify the password reset OTP code' })
+  @ApiOkResponse({ description: 'Password reset code verified successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Invalid or expired verification code',
+  })
   async passwordResetOTPVerify(
     @Body() verifyPasswordResetOTPCodeDto: VerifyPasswordResetOTPCodeDto,
   ) {
@@ -238,6 +456,10 @@ export class AuthController {
 
   @Post('reset-password')
   @HttpCode(200)
+  @ApiOperation({ summary: 'Reset the user password using a verified token' })
+  @ApiOkResponse({ description: 'Password reset successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid or expired reset token' })
   async resetPassword(
     @Body() resetPasswordDto: ResetPasswordDto,
     @Req() request: Request,

@@ -22,6 +22,9 @@ import { UserActivityLog } from 'src/activity-log/entities/user-activity-log.ent
 import { Setting } from 'src/setting/entities/setting.entity';
 import { AuthSeeder } from './seeders/auth.seeder';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
+import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
+import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
+import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 
 @Module({
   imports: [
@@ -34,6 +37,8 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
       UserActivityLog,
       CacheKey,
       Setting,
+      CustomerProfile,
+      AdminProfile,
     ]),
     PassportModule,
     JwtModule.registerAsync({
@@ -52,6 +57,7 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
     RoleService,
     TwoFactorService,
     EmailServiceUtils,
+    SmsServiceUtils,
     JwtStrategy,
     JwtAuthGuard,
     PermissionsGuard,

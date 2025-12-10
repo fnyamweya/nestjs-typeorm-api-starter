@@ -22,9 +22,25 @@ import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { ApiResponse } from 'src/common/interfaces/api-response.interface';
 import { ResponseUtil } from 'src/common/utils/response.util';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiForbiddenResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiTags,
+  ApiUnauthorizedResponse,
+  ApiBadRequestResponse,
+} from '@nestjs/swagger';
 
-@Controller('api/roles')
+@Controller('roles')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@ApiTags('Roles')
+@ApiBearerAuth('access-token')
 export class RoleController {
   constructor(private readonly roleService: RoleService) {}
 
@@ -32,6 +48,34 @@ export class RoleController {
   @RequirePermissions({
     module: PermissionModule.ROLES,
     permission: 'read',
+  })
+  @ApiOperation({
+    summary: 'Retrieve a list of roles with optional pagination',
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Page size (default 10)',
+  })
+  @ApiQuery({
+    name: 'getAll',
+    required: false,
+    type: Boolean,
+    description: 'Return all roles without pagination',
+  })
+  @ApiOkResponse({ description: 'Roles retrieved successfully' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read roles',
   })
   async findAll(
     @Query('page') page: number = 1,
@@ -58,6 +102,14 @@ export class RoleController {
     module: PermissionModule.PERMISSIONS,
     permission: 'read',
   })
+  @ApiOperation({ summary: 'Retrieve all available permissions' })
+  @ApiOkResponse({ description: 'Permissions retrieved successfully' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read permissions',
+  })
   async findAllPermissions() {
     const permissions = await this.roleService.findAllPermissions();
 
@@ -71,6 +123,16 @@ export class RoleController {
   @RequirePermissions({
     module: PermissionModule.ROLES,
     permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve role details by identifier' })
+  @ApiParam({ name: 'id', description: 'Role identifier', type: String })
+  @ApiOkResponse({ description: 'Role retrieved successfully' })
+  @ApiNotFoundResponse({ description: 'Role not found' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read roles',
   })
   async findOne(@Param('id') id: string): Promise<ApiResponse<Role>> {
     const role = await this.roleService.findOne(id);
@@ -93,6 +155,16 @@ export class RoleController {
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),
   })
+  @ApiOperation({ summary: 'Create a new role' })
+  @ApiBody({ type: CreateRoleDto })
+  @ApiCreatedResponse({ description: 'Role created successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to create roles',
+  })
   async create(
     @Body() createRoleDto: CreateRoleDto,
   ): Promise<ApiResponse<Role | null>> {
@@ -114,6 +186,18 @@ export class RoleController {
     description: 'Role updated successfully',
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),
+  })
+  @ApiOperation({ summary: 'Update an existing role' })
+  @ApiParam({ name: 'id', description: 'Role identifier', type: String })
+  @ApiBody({ type: UpdateRoleDto })
+  @ApiOkResponse({ description: 'Role updated successfully' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiNotFoundResponse({ description: 'Role not found' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to update roles',
   })
   async update(
     @Param('id') id: string,
@@ -138,6 +222,16 @@ export class RoleController {
     description: 'Role deleted successfully',
     resourceType: 'role',
     getResourceId: (result: Role) => result.id?.toString(),
+  })
+  @ApiOperation({ summary: 'Delete a role by identifier' })
+  @ApiParam({ name: 'id', description: 'Role identifier', type: String })
+  @ApiOkResponse({ description: 'Role deleted successfully' })
+  @ApiNotFoundResponse({ description: 'Role not found' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to delete roles',
   })
   async remove(@Param('id') id: string): Promise<ApiResponse<null>> {
     const deleted = await this.roleService.remove(id);
