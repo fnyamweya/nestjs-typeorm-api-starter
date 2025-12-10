@@ -56,7 +56,7 @@ export class UserService {
         key: profileImage.originalname,
         body: profileImage.buffer,
         contentType: profileImage.mimetype,
-        path: 'profile-images/',
+        path: 'profile-images',
       });
 
       profileImageKey = key || '';
@@ -191,7 +191,7 @@ export class UserService {
           key: `${profileImage.originalname}-${new Date().getTime()}`,
           body: profileImage.buffer,
           contentType: profileImage.mimetype,
-          path: 'userProfile',
+          path: 'profile-images',
         });
 
       profileImageKey = profileImageUploadedKey || '';
