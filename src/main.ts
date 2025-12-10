@@ -1,5 +1,6 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ClassSerializerInterceptor, ValidationPipe } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WinstonModule } from 'nest-winston';
@@ -46,6 +47,34 @@ async function bootstrap() {
 
   // Apply global exception filter
   app.useGlobalFilters(new HttpExceptionFilter());
+
+  if (process.env.NODE_ENV !== 'production') {
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle(process.env.APP_NAME ?? 'qtech-apis')
+      .setDescription('REST API documentation')
+      .setVersion(process.env.npm_package_version ?? '1.0.0')
+      .addBearerAuth(
+        {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          name: 'Authorization',
+          in: 'header',
+        },
+        'access-token',
+      )
+      .build();
+
+    const document = SwaggerModule.createDocument(app, swaggerConfig, {
+      deepScanRoutes: true,
+    });
+
+    SwaggerModule.setup('api/docs', app, document, {
+      swaggerOptions: {
+        persistAuthorization: true,
+      },
+    });
+  }
 
   await app.listen(process.env.PORT ?? 3000);
   console.log(`Application is running on port ${process.env.PORT ?? 3000}`);

@@ -1,4 +1,4 @@
-# NestJS TypeORM Template
+# qtech-apis
 
 A comprehensive, production-ready NestJS template with TypeORM, featuring authentication, authorization, activity logging, file uploads, email services, and a powerful CLI for rapid development.
 
@@ -37,7 +37,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 
    ```bash
    git clone <repository-url>
-   cd nestjs-typeorm-api-starter
+  cd qtech-apis
    ```
 
 2. **Install dependencies**
@@ -58,7 +58,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 
    ```env
     # App Config
-    APP_NAME=Nestjs-Typeorm-Postgres
+    APP_NAME=qtech-apis
     PORT=8090
 
     # Auth Config
@@ -85,7 +85,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
     AWS_BUCKET_NAME=<AWS_BUCKET_NAME>
 
     # Email Configuration
-    EMAIL_FROM_NAME="NestJS TypeORM API Starter"
+    EMAIL_FROM_NAME="qtech-apis"
    ```
 
 4. **Database Setup**

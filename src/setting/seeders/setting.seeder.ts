@@ -38,7 +38,7 @@ export class SettingSeeder {
       },
       {
         key: 'smtp_from_name',
-        value: 'NestJS TypeORM API Starter',
+        value: 'qtech-apis',
       },
       {
         key: 'smtp_enabled',
