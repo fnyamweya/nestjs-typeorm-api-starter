@@ -20,6 +20,7 @@ import { Request } from 'express';
 import { LogActivity } from 'src/activity-log/decorators/log-activity.decorator';
 import { ActivityAction } from 'src/activity-log/entities/user-activity-log.entity';
 import { AnyFilesInterceptor, FileInterceptor } from '@nestjs/platform-express';
+import { AuthGuard } from '@nestjs/passport';
 import { LoginDto } from '../dto/login.dto';
 import { RefreshTokenDto } from '../dto/refresh-token.dto';
 import { UpdateProfileDto } from '../dto/update-profile.dto';
@@ -36,6 +37,7 @@ import { CustomerLoginDto } from '../dto/customer-login.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { CustomerRegisterDto } from '../dto/customer-register.dto';
 import { AdminRegisterDto } from '../dto/admin-register.dto';
+import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
 import {
   ApiBadRequestResponse,
     ApiCreatedResponse,
@@ -45,9 +47,15 @@ import {
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiExcludeEndpoint,
   ApiTags,
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
+import { RequireRoles } from '../decorators/roles.decorator';
+import { RolesGuard } from '../guards/roles.guard';
+import { CreateAdminInviteDto } from '../dto/create-admin-invite.dto';
+import { AcceptAdminInviteDto } from '../dto/accept-admin-invite.dto';
+import { DeclineAdminInviteDto } from '../dto/decline-admin-invite.dto';
 
 @Controller('auth')
 @ApiTags('Authentication')
@@ -134,6 +142,102 @@ export class AuthController {
     return ResponseUtil.created(result, 'Admin registered successfully');
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @RequireRoles('Super Admin')
+  @Post('admin/invite')
+  @HttpCode(201)
+  @ApiBearerAuth('access-token')
+  @ApiOperation({ summary: 'Invite a new admin user (Super Admin only)' })
+  @ApiCreatedResponse({ description: 'Invitation created and email sent' })
+  @ApiForbiddenResponse({ description: 'Insufficient role' })
+  async inviteAdmin(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() createAdminInviteDto: CreateAdminInviteDto,
+  ) {
+    const result = await this.authService.createAdminInvite(
+      createAdminInviteDto,
+      user,
+    );
+    return ResponseUtil.created(result, 'Admin invitation sent');
+  }
+
+  @Post('admin/invite/accept')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Accept an admin invitation and set password' })
+  @ApiOkResponse({ description: 'Invitation accepted and account activated' })
+  @ApiBadRequestResponse({ description: 'Invalid or expired invitation' })
+  async acceptAdminInvite(
+    @Body() acceptAdminInviteDto: AcceptAdminInviteDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.acceptAdminInvite(
+      acceptAdminInviteDto,
+      request,
+    );
+    return ResponseUtil.success(result, 'Admin invitation accepted');
+  }
+
+  @Post('admin/invite/decline')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Decline an admin invitation' })
+  @ApiOkResponse({ description: 'Invitation declined' })
+  @ApiBadRequestResponse({ description: 'Invalid or expired invitation' })
+  async declineAdminInvite(@Body() declineAdminInviteDto: DeclineAdminInviteDto) {
+    const result = await this.authService.declineAdminInvite(
+      declineAdminInviteDto,
+    );
+    return ResponseUtil.success(result, 'Admin invitation declined');
+  }
+
+  @Get('admin/google')
+  @UseGuards(AuthGuard('admin-google'))
+  @ApiOperation({ summary: 'Initiate Google OAuth 2.0 login for admins' })
+  @ApiOkResponse({ description: 'Redirecting to Google OAuth 2.0' })
+  async googleAdminAuth() {
+    return ResponseUtil.success(
+      null,
+      'Redirecting to Google OAuth 2.0 for authentication',
+    );
+  }
+
+  @Get('admin/google/callback')
+  @UseGuards(AuthGuard('admin-google'))
+  @ApiOperation({ summary: 'Google OAuth 2.0 callback for admin login' })
+  @ApiOkResponse({ description: 'Admin login via Google successful' })
+  async googleAdminCallback(@Req() request: Request) {
+    const profile = request.user as OAuthAdminProfile;
+    const result = await this.authService.loginAdminWithOAuth(
+      profile,
+      request,
+    );
+    return ResponseUtil.success(result, 'Admin login via Google successful');
+  }
+
+  @Get('admin/apple')
+  @UseGuards(AuthGuard('admin-apple'))
+  @ApiOperation({ summary: 'Initiate Sign in with Apple for admins' })
+  @ApiOkResponse({ description: 'Redirecting to Apple login' })
+  async appleAdminAuth() {
+    return ResponseUtil.success(
+      null,
+      'Redirecting to Apple for authentication',
+    );
+  }
+
+  @Post('admin/apple/callback')
+  @UseGuards(AuthGuard('admin-apple'))
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Apple callback handler for admin login' })
+  @ApiOkResponse({ description: 'Admin login via Apple successful' })
+  async appleAdminCallback(@Req() request: Request) {
+    const profile = request.user as OAuthAdminProfile;
+    const result = await this.authService.loginAdminWithOAuth(
+      profile,
+      request,
+    );
+    return ResponseUtil.success(result, 'Admin login via Apple successful');
+  }
+
   @Post('refresh')
   @HttpCode(200)
   @ApiOperation({ summary: 'Exchange a refresh token for a new access token' })
@@ -209,7 +313,8 @@ export class AuthController {
       type: 'object',
       properties: {
         email: { type: 'string', example: 'jane.doe@example.com' },
-        fullName: { type: 'string', example: 'Jane Doe' },
+        firstName: { type: 'string', example: 'Jane' },
+        lastName: { type: 'string', example: 'Doe' },
         password: { type: 'string', example: 'Str0ngP@ssw0rd' },
         phone: { type: 'string', example: '+14155551234' },
         roleId: {
@@ -297,6 +402,7 @@ export class AuthController {
     return ResponseUtil.success(null, 'Profile deleted successfully');
   }
 
+  @ApiExcludeEndpoint()
   @Post('verify-2fa')
   @HttpCode(200)
   @ApiOperation({
@@ -319,6 +425,7 @@ export class AuthController {
     return ResponseUtil.success(result, 'Two-factor authentication successful');
   }
 
+  @ApiExcludeEndpoint()
   @Post('enable-2fa-verify')
   @HttpCode(200)
   @ApiOperation({
@@ -342,6 +449,7 @@ export class AuthController {
     );
   }
 
+  @ApiExcludeEndpoint()
   @UseGuards(JwtAuthGuard)
   @Post('enable-2fa')
   @HttpCode(200)
@@ -380,6 +488,7 @@ export class AuthController {
     );
   }
 
+  @ApiExcludeEndpoint()
   @UseGuards(JwtAuthGuard)
   @Post('disable-2fa')
   @HttpCode(200)

@@ -7,11 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, ILike } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
-import { JwtPayload } from '../interfaces/user.interface';
+import { JwtPayload, AuthenticatedUser } from '../interfaces/user.interface';
 import {
   ActivityAction,
   UserActivityLog,
@@ -40,6 +39,14 @@ import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 import { Role } from '../entities/role.entity';
 import { AdminRegisterDto } from '../dto/admin-register.dto';
 import { AdminProfile } from 'src/user/entities/admin-profile.entity';
+import { verifyPassword } from 'src/common/utils/password.util';
+import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
+import { UserAuthProvider } from '../entities/user-auth-provider.entity';
+import { AdminInvite, AdminInviteStatus } from '../entities/admin-invite.entity';
+import { CreateAdminInviteDto } from '../dto/create-admin-invite.dto';
+import { AcceptAdminInviteDto } from '../dto/accept-admin-invite.dto';
+import { DeclineAdminInviteDto } from '../dto/decline-admin-invite.dto';
+import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 
 @Injectable()
 export class AuthService {
@@ -58,12 +65,28 @@ export class AuthService {
     private adminProfileRepository: Repository<AdminProfile>,
     @InjectRepository(Role)
     private roleRepository: Repository<Role>,
+    @InjectRepository(UserAuthProvider)
+    private userAuthProviderRepository: Repository<UserAuthProvider>,
+    @InjectRepository(AdminInvite)
+    private adminInviteRepository: Repository<AdminInvite>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private twoFactorService: TwoFactorService,
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
   ) {}
+
+  private async ensureAdminProfile(userId: string) {
+    const existingProfile = await this.adminProfileRepository.findOne({
+      where: { userId },
+    });
+
+    if (!existingProfile) {
+      await this.adminProfileRepository.save(
+        this.adminProfileRepository.create({ userId }),
+      );
+    }
+  }
 
   async validateUser(email: string, plainPassword: string) {
     const user = await this.userRepository.findOne({
@@ -83,7 +106,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is disabled');
     }
 
-    if (!(await bcrypt.compare(plainPassword, user.passwordHash || ''))) {
+    if (!(await this.verifyUserPassword(user, plainPassword))) {
       throw new UnauthorizedException('Invalid password');
     }
 
@@ -162,28 +185,33 @@ export class AuthService {
       where: [{ name: 'customer' }, { name: ILike('customer') }],
     });
 
-    const fullName =
-      customerRegisterDto.fullName ||
-      [customerRegisterDto.firstName, customerRegisterDto.lastName]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
+    if (!customerRole) {
+      throw new BadRequestException('Customer role is not configured');
+    }
 
     const user = this.userRepository.create({
       email: customerRegisterDto.email,
       phone: customerRegisterDto.phone,
-      password: customerRegisterDto.password,
       firstName: customerRegisterDto.firstName,
       lastName: customerRegisterDto.lastName,
-      fullName: fullName || customerRegisterDto.phone,
-      roleType: 'customer',
-      roleId: customerRole?.id,
-      authProvider: 'local',
+      roleId: customerRole.id,
+      authProvider: AuthProviderType.LOCAL,
       isActive: true,
-      mfaChannel: 'email',
+      status: UserStatus.ACTIVE,
+      mfaChannel: MfaChannel.EMAIL,
+      twoFactorEnabled: false,
     });
+    user.passwordHash = customerRegisterDto.password;
 
     const savedUser = await this.userRepository.save(user);
+
+    await this.userAuthProviderRepository.save(
+      this.userAuthProviderRepository.create({
+        userId: savedUser.id,
+        provider: 'local',
+        providerId: savedUser.id,
+      }),
+    );
 
     const profile = this.customerProfileRepository.create({
       userId: savedUser.id,
@@ -215,35 +243,177 @@ export class AuthService {
       where: [{ name: 'admin' }, { name: ILike('admin') }],
     });
 
-    const fullName =
-      adminRegisterDto.fullName ||
-      [adminRegisterDto.firstName, adminRegisterDto.lastName]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
+    if (!adminRole) {
+      throw new BadRequestException('Admin role is not configured');
+    }
+
+    const user = this.buildAdminUserEntity(adminRegisterDto, adminRole);
+    const savedUser = await this.userRepository.save(user);
+
+    await this.userAuthProviderRepository.save(
+      this.userAuthProviderRepository.create({
+        userId: savedUser.id,
+        provider: 'local',
+        providerId: savedUser.id,
+      }),
+    );
+
+    await this.ensureAdminProfile(savedUser.id);
+
+    return this.completeLogin(savedUser, request);
+  }
+
+  async createAdminInvite(
+    createAdminInviteDto: CreateAdminInviteDto,
+    inviter: AuthenticatedUser,
+  ) {
+    const email = createAdminInviteDto.email.trim().toLowerCase();
+
+    const existingUser = await this.userRepository.findOne({ where: { email } });
+    if (existingUser) {
+      throw new BadRequestException('A user with this email already exists');
+    }
+
+    const pendingInvite = await this.adminInviteRepository.findOne({
+      where: { email, status: AdminInviteStatus.PENDING },
+    });
+
+    if (pendingInvite) {
+      pendingInvite.status = AdminInviteStatus.EXPIRED;
+      await this.adminInviteRepository.save(pendingInvite);
+    }
+
+    const adminRole = await this.roleRepository.findOne({
+      where: [{ name: 'admin' }, { name: ILike('admin') }],
+    });
+
+    const roleId = createAdminInviteDto.roleId || adminRole?.id;
+    const expiresInDays = parseInt(
+      this.configService.get<string>('ADMIN_INVITE_EXPIRY_DAYS', '7'),
+      10,
+    );
+    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+
+    const invite = this.adminInviteRepository.create({
+      email,
+      firstName: createAdminInviteDto.firstName,
+      lastName: createAdminInviteDto.lastName,
+      invitedBy: inviter.id,
+      roleId,
+      token: crypto.randomUUID(),
+      status: AdminInviteStatus.PENDING,
+      expiresAt,
+    });
+
+    const savedInvite = await this.adminInviteRepository.save(invite);
+    const baseLink = this.configService.get<string>(
+      'ADMIN_INVITE_URL',
+      'https://example.com/admin/invite',
+    );
+    const inviteLink = `${baseLink}?token=${savedInvite.token}`;
+
+    await this.emailServiceUtils.sendAdminInviteEmail({
+      email,
+      inviteLink,
+      invitedBy: inviter.email || 'Super Admin',
+      inviteeName: invite.firstName,
+    });
+
+    return {
+      token: savedInvite.token,
+      expiresAt: savedInvite.expiresAt,
+    };
+  }
+
+  async acceptAdminInvite(
+    acceptAdminInviteDto: AcceptAdminInviteDto,
+    request: Request,
+  ) {
+    const invite = await this.adminInviteRepository.findOne({
+      where: { token: acceptAdminInviteDto.token },
+    });
+
+    if (!invite) {
+      throw new BadRequestException('Invitation not found');
+    }
+
+    if (invite.status !== AdminInviteStatus.PENDING) {
+      throw new BadRequestException('Invitation is no longer valid');
+    }
+
+    if (new Date() > invite.expiresAt) {
+      invite.status = AdminInviteStatus.EXPIRED;
+      await this.adminInviteRepository.save(invite);
+      throw new BadRequestException('Invitation has expired');
+    }
+
+    const existingUser = await this.userRepository.findOne({
+      where: { email: invite.email },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('A user with this email already exists');
+    }
+
+    const roleId =
+      acceptAdminInviteDto.roleId || invite.roleId ||
+      (
+        await this.roleRepository.findOne({
+          where: [{ name: 'admin' }, { name: ILike('admin') }],
+        })
+      )?.id;
 
     const user = this.userRepository.create({
-      email: adminRegisterDto.email,
-      phone: adminRegisterDto.phone,
-      password: adminRegisterDto.password,
-      firstName: adminRegisterDto.firstName,
-      lastName: adminRegisterDto.lastName,
-      fullName: fullName || adminRegisterDto.email,
-      roleType: 'admin',
-      roleId: adminRole?.id,
-      authProvider: 'local',
+      email: invite.email,
+      phone: acceptAdminInviteDto.phone?.trim() || `admin-${crypto.randomUUID()}`,
+      firstName: invite.firstName,
+      lastName: invite.lastName,
+      roleId,
+      authProvider: AuthProviderType.LOCAL,
       isActive: true,
-      mfaChannel: 'email',
+      status: UserStatus.ACTIVE,
+      mfaChannel: MfaChannel.EMAIL,
+      twoFactorEnabled: false,
     });
+    user.password = acceptAdminInviteDto.password;
 
     const savedUser = await this.userRepository.save(user);
 
-    const profile = this.adminProfileRepository.create({
-      userId: savedUser.id,
-    });
-    await this.adminProfileRepository.save(profile);
+    await this.userAuthProviderRepository.save(
+      this.userAuthProviderRepository.create({
+        userId: savedUser.id,
+        provider: 'local',
+        providerId: savedUser.id,
+      }),
+    );
+
+    await this.ensureAdminProfile(savedUser.id);
+
+    invite.status = AdminInviteStatus.ACCEPTED;
+    invite.acceptedAt = new Date();
+    await this.adminInviteRepository.save(invite);
 
     return this.completeLogin(savedUser, request);
+  }
+
+  async declineAdminInvite(declineAdminInviteDto: DeclineAdminInviteDto) {
+    const invite = await this.adminInviteRepository.findOne({
+      where: { token: declineAdminInviteDto.token },
+    });
+
+    if (!invite) {
+      throw new BadRequestException('Invitation not found');
+    }
+
+    if (invite.status !== AdminInviteStatus.PENDING) {
+      throw new BadRequestException('Invitation is no longer valid');
+    }
+
+    invite.status = AdminInviteStatus.DECLINED;
+    invite.declinedAt = new Date();
+    await this.adminInviteRepository.save(invite);
+
+    return { declined: true };
   }
 
   async loginCustomer(
@@ -262,9 +432,7 @@ export class AuthService {
       ],
     });
 
-    const isCustomer =
-      user?.roleType === 'customer' ||
-      user?.role?.name?.toLowerCase() === 'customer';
+    const isCustomer = user?.role?.name?.toLowerCase() === 'customer';
 
     if (!user || !isCustomer) {
       throw new UnauthorizedException('Invalid credentials');
@@ -274,12 +442,9 @@ export class AuthService {
       throw new UnauthorizedException('Account is disabled');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      customerLoginDto.password,
-      user.passwordHash || '',
-    );
-
-    if (!isPasswordValid) {
+    if (
+      !(await this.verifyUserPassword(user, customerLoginDto.password))
+    ) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -310,10 +475,11 @@ export class AuthService {
       ],
     });
 
-    const isAdmin =
-      user?.roleType === 'admin' || user?.role?.name?.toLowerCase() === 'admin';
+    const isAdminOrSuper =
+      user?.role?.name?.toLowerCase() === 'admin' ||
+      user?.role?.name?.toLowerCase() === 'super admin';
 
-    if (!user || !isAdmin) {
+    if (!user || !isAdminOrSuper) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -321,12 +487,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is disabled');
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      adminLoginDto.password,
-      user.passwordHash || '',
-    );
-
-    if (!isPasswordValid) {
+    if (!(await this.verifyUserPassword(user, adminLoginDto.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -361,7 +522,142 @@ export class AuthService {
       throw new UnauthorizedException('Invalid or expired verification code');
     }
 
+    await this.ensureAdminProfile(user.id);
+
     return this.completeLogin(user, request);
+  }
+
+  async loginAdminWithOAuth(
+    oauthProfile: OAuthAdminProfile,
+    request: Request,
+  ) {
+    if (!oauthProfile?.email) {
+      throw new UnauthorizedException(
+        'OAuth provider did not supply an email address',
+      );
+    }
+
+    const normalizedEmail = oauthProfile.email.toLowerCase();
+
+    const relations: string[] = [
+      'role',
+      'role.rolePermissions',
+      'role.rolePermissions.permission',
+    ];
+
+    const linkedByProvider = await this.userAuthProviderRepository.findOne({
+      where: {
+        provider: oauthProfile.provider,
+        providerId: oauthProfile.providerId,
+      },
+      relations: ['user', 'user.role', 'user.role.rolePermissions', 'user.role.rolePermissions.permission'],
+    });
+
+    let user: User | undefined;
+
+    if (linkedByProvider?.user) {
+      user = linkedByProvider.user;
+    } else {
+      user =
+        (await this.userRepository.findOne({
+          where: { email: normalizedEmail },
+          relations,
+        })) || undefined;
+    }
+
+    const adminRole = await this.roleRepository.findOne({
+      where: [{ name: 'admin' }, { name: ILike('admin') }],
+    });
+
+    if (!adminRole) {
+      throw new BadRequestException('Admin role is not configured');
+    }
+
+    const ensureAdminProfile = async (userId: string) => {
+      const existingProfile = await this.adminProfileRepository.findOne({
+        where: { userId },
+      });
+
+      if (!existingProfile) {
+        const profile = this.adminProfileRepository.create({ userId });
+        await this.adminProfileRepository.save(profile);
+      }
+    };
+    const provider =
+      oauthProfile.provider === 'apple'
+        ? AuthProviderType.APPLE
+        : AuthProviderType.GOOGLE;
+
+    if (!user) {
+      const generatedPhone = `oauth-${oauthProfile.provider}-${oauthProfile.providerId}`;
+
+      user = this.userRepository.create({
+        email: normalizedEmail,
+        phone: generatedPhone,
+        firstName: oauthProfile.firstName,
+        lastName: oauthProfile.lastName,
+        roleId: adminRole.id,
+        authProvider: provider,
+        isActive: true,
+        status: UserStatus.ACTIVE,
+        mfaChannel: MfaChannel.EMAIL,
+      });
+
+      user = await this.userRepository.save(user);
+      await this.userAuthProviderRepository.save(
+        this.userAuthProviderRepository.create({
+          userId: user.id,
+          provider,
+          providerId: oauthProfile.providerId,
+        }),
+      );
+      await ensureAdminProfile(user.id);
+    } else {
+      const isAdmin =
+        user.role?.name?.toLowerCase() === 'admin' || user.roleId === adminRole.id;
+
+      if (!isAdmin) {
+        throw new UnauthorizedException('Account is not authorized as admin');
+      }
+
+      if (user.isBanned || user.isActive === false) {
+        throw new UnauthorizedException('Account is disabled');
+      }
+
+      user.authProvider = provider;
+      user.firstName = user.firstName || oauthProfile.firstName;
+      user.lastName = user.lastName || oauthProfile.lastName;
+
+      await this.userRepository.save(user);
+      const existingLink = await this.userAuthProviderRepository.findOne({
+        where: {
+          provider: oauthProfile.provider,
+          providerId: oauthProfile.providerId,
+        },
+      });
+
+      if (!existingLink) {
+        await this.userAuthProviderRepository.save(
+          this.userAuthProviderRepository.create({
+            userId: user.id,
+            provider: oauthProfile.provider,
+            providerId: oauthProfile.providerId,
+          }),
+        );
+      }
+      await ensureAdminProfile(user.id);
+    }
+
+    const hydratedUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      relations,
+    });
+
+    if (!hydratedUser) {
+      throw new UnauthorizedException('Unable to load admin account');
+    }
+
+    return this.completeLogin(hydratedUser, request);
   }
 
   async verifyTwoFactorAndLogin(
@@ -615,12 +911,9 @@ export class AuthService {
     }
 
     // Verify current password
-    const isCurrentPasswordValid = await bcrypt.compare(
-      changePasswordDto.currentPassword,
-      user.passwordHash || '',
-    );
-
-    if (!isCurrentPasswordValid) {
+    if (
+      !(await this.verifyUserPassword(user, changePasswordDto.currentPassword))
+    ) {
       throw new BadRequestException('Current password is incorrect');
     }
 
@@ -722,10 +1015,15 @@ export class AuthService {
     await this.cacheKeyRepository.save(cacheKey);
 
     // Send Forgot password reset code
+    const displayName =
+      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+      user.email ||
+      user.phone;
+
     await this.emailServiceUtils.sendForgotPasswordResetCode({
       code,
       email: user.email,
-      userName: user.fullName,
+      userName: displayName,
       fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
       expiresIn: 10,
     });
@@ -835,7 +1133,36 @@ export class AuthService {
     await this.userActivityLogRepository.save(userActivityLog);
   }
 
+  private buildAdminUserEntity(
+    adminRegisterDto: AdminRegisterDto,
+    adminRole?: Role | null,
+  ): User {
+    const phone = adminRegisterDto.phone?.trim() || `admin-${crypto.randomUUID()}`;
+    const normalizedEmail = adminRegisterDto.email.trim().toLowerCase();
+
+    const user = this.userRepository.create({
+      email: normalizedEmail,
+      phone,
+      firstName: adminRegisterDto.firstName,
+      lastName: adminRegisterDto.lastName,
+      roleId: adminRole?.id,
+      authProvider: AuthProviderType.LOCAL,
+      isActive: true,
+      status: UserStatus.ACTIVE,
+      mfaChannel: MfaChannel.EMAIL,
+      twoFactorEnabled: false,
+    });
+
+    // Use the entity setter so lifecycle hooks hash before persisting
+    user.password = adminRegisterDto.password;
+    return user;
+  }
+
   private generateVerificationCode(): string {
     return crypto.randomInt(100000, 999999).toString();
+  }
+
+  private async verifyUserPassword(user: User, plainPassword: string) {
+    return verifyPassword(user.passwordHash, plainPassword);
   }
 }

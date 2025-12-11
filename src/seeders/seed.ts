@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { AuthSeeder } from '../auth/seeders/auth.seeder';
 import { SettingSeeder } from '../setting/seeders/setting.seeder';
+import { CatalogSeeder } from '../catalog/seeders/catalog.seeder';
 
 async function runSeeders() {
   console.log('🌱 Starting database seeding...');
@@ -12,6 +13,7 @@ async function runSeeders() {
     // Get seeder instances
     const authSeeder = app.get(AuthSeeder);
     const settingSeeder = app.get(SettingSeeder);
+    const catalogSeeder = app.get(CatalogSeeder);
 
     // Run seeders in order
     console.log(
@@ -23,6 +25,10 @@ async function runSeeders() {
     console.log('⚙️ Seeding application settings...');
     await settingSeeder.seed();
     console.log('✅ Settings seeding completed');
+
+    console.log('🗂️ Seeding catalog data...');
+    await catalogSeeder.seed();
+    console.log('✅ Catalog seeding completed');
 
     console.log('🎉 All seeders completed successfully!');
   } catch (error) {

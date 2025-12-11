@@ -70,7 +70,8 @@ export class UserController {
       type: 'object',
       properties: {
         email: { type: 'string', example: 'jane.doe@example.com' },
-        fullName: { type: 'string', example: 'Jane Doe' },
+        firstName: { type: 'string', example: 'Jane' },
+        lastName: { type: 'string', example: 'Doe' },
         password: { type: 'string', example: 'Str0ngP@ssw0rd' },
         phone: { type: 'string', example: '+14155551234' },
         roleId: {
@@ -80,7 +81,7 @@ export class UserController {
         },
         profileImage: { type: 'string', format: 'binary' },
       },
-      required: ['email', 'fullName', 'password'],
+      required: ['email', 'password'],
     },
   })
   @ApiCreatedResponse({ description: 'User created successfully' })
@@ -204,7 +205,8 @@ export class UserController {
       type: 'object',
       properties: {
         email: { type: 'string', example: 'jane.doe@example.com' },
-        fullName: { type: 'string', example: 'Jane Doe' },
+        firstName: { type: 'string', example: 'Jane' },
+        lastName: { type: 'string', example: 'Doe' },
         password: { type: 'string', example: 'Str0ngP@ssw0rd' },
         phone: { type: 'string', example: '+14155551234' },
         roleId: {

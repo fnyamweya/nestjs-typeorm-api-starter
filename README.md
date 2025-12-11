@@ -11,6 +11,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 - **JWT Authentication** - Secure authentication with access and refresh tokens
 - **Role-Based Access Control (RBAC)** - Flexible permission system with roles and permissions
 - **Two-Factor Authentication (2FA)** - Enhanced security with TOTP support
+- **Admin OAuth (Google & Apple)** - Social login flows dedicated to platform administrators
 - **Forgot Password** - Secure password reset with email verification
 - **Activity Logging** - Comprehensive user activity tracking and audit trails
 - **File Upload Support** - AWS S3 integration for file storage
@@ -30,6 +31,7 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
 - Node.js (v18 or higher)
 - PostgreSQL database
 - Redis server (for BullMQ queues)
+- Google & Apple developer credentials (for admin OAuth flows)
 - AWS S3 account (for file uploads)
 - SMTP server (for email services)
 
@@ -62,9 +64,14 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
     # App Config
     APP_NAME=qtech-apis
     PORT=8090
+    SWAGGER_ENABLED=true
 
-    # Auth Config
-    AUTH_PASSWORD_SALT_ROUNDS=10
+    # Password Hashing (Argon2id)
+    ARGON2_MEMORY_COST=19456
+    ARGON2_TIME_COST=3
+    ARGON2_PARALLELISM=1
+    ARGON2_HASH_LENGTH=32
+    ARGON2_SALT_LENGTH=16
 
     # Database Configuration
     DB_HOST=localhost
@@ -96,6 +103,17 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
     REDIS_PASSWORD=
     REDIS_DB=0
     REDIS_TLS=false
+
+    # OAuth Providers (Admin)
+    APP_URL=http://localhost:8090
+    GOOGLE_CLIENT_ID=
+    GOOGLE_CLIENT_SECRET=
+    GOOGLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/google/callback
+    APPLE_CLIENT_ID=
+    APPLE_TEAM_ID=
+    APPLE_KEY_ID=
+    APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
+    APPLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/apple/callback
    ```
 
 4. **Database Setup**
@@ -194,6 +212,7 @@ npm run make:module product --path=src/ecommerce
 - Access tokens (1 day default)
 - Refresh tokens (7 days default)
 - Automatic token refresh
+- Argon2id password hashing for all accounts
 
 ### Role-Based Access Control
 
@@ -208,6 +227,13 @@ npm run make:module product --path=src/ecommerce
 ### Two-Factor Authentication
 
 - Email OTP-based 2FA (default)
+
+### Admin OAuth Providers
+
+- `GET /api/auth/admin/google` → Redirects to Google, callback issues JWTs
+- `GET /api/auth/admin/google/callback` → Completes Google OAuth login
+- `GET /api/auth/admin/apple` & `POST /api/auth/admin/apple/callback` → Sign in with Apple support
+- Auto-provisions admins (using Google/Apple email) and stores tokens just like password logins
 
 ## 📊 Activity Logging
 
@@ -350,6 +376,15 @@ await this.eventBus.emit('user.created', { userId: user.id });
 - Both services automatically handle connection reuse, retries, and graceful shutdown.
 
 ## 📝 API Documentation
+
+### Swagger & OpenAPI
+
+- Swagger UI automatically mounts at `http://localhost:8090/api/docs` when `SWAGGER_ENABLED=true` (default outside production)
+- Title and version pull from `APP_NAME` and `npm_package_version`, so keep those values current for accurate docs metadata
+- JWT bearer auth is already wired—authorize once via the green "Authorize" button to test secured routes against your dev API
+- To disable docs in production, set `NODE_ENV=production` and leave `SWAGGER_ENABLED` unset or `false`
+
+### Standardized Responses
 
 The template includes standardized API responses:
 

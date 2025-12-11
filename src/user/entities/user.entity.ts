@@ -1,6 +1,5 @@
 import { Exclude } from 'class-transformer';
 import { RefreshToken } from 'src/auth/entities/refresh-token.entity';
-import { v4 as uuidv4 } from 'uuid';
 import {
   Entity,
   Column,
@@ -9,22 +8,28 @@ import {
   OneToMany,
   BeforeUpdate,
   BeforeInsert,
-  PrimaryColumn,
+  PrimaryGeneratedColumn,
   Index,
   ManyToOne,
   JoinColumn,
   OneToOne,
 } from 'typeorm';
-import * as bcrypt from 'bcryptjs';
+import {
+  hashPassword as hashWithArgon,
+  isArgon2Hash,
+} from 'src/common/utils/password.util';
 import { Role } from 'src/auth/entities/role.entity';
 import { CacheKey } from 'src/auth/entities/cache-key.entity';
+import { UserAuthProvider } from 'src/auth/entities/user-auth-provider.entity';
 import { CustomerProfile } from './customer-profile.entity';
 import { AdminProfile } from './admin-profile.entity';
+import { AuthProviderType, MfaChannel, UserStatus } from '../enums';
 
 @Entity('users')
-@Index(['email', 'fullName', 'phone'])
+@Index(['email', 'phone'])
+@Index('idx_users_status', ['status'])
 export class User {
-  @PrimaryColumn('uuid')
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ name: 'first_name', nullable: true })
@@ -35,9 +40,6 @@ export class User {
 
   @Column({ unique: true, nullable: true })
   email: string;
-
-  @Column({ nullable: true })
-  fullName: string;
 
   @Column({ nullable: false, unique: true })
   phone: string;
@@ -58,16 +60,21 @@ export class User {
   @Column({
     name: 'auth_provider',
     type: 'varchar',
-    default: 'local',
+    length: 32,
+    default: AuthProviderType.LOCAL,
   })
-  authProvider: 'local' | 'google' | 'saml' | 'github' | string;
+  authProvider: AuthProviderType;
 
   @Column({
-    name: 'role_type',
+    name: 'status',
     type: 'varchar',
-    default: 'customer',
+    length: 32,
+    default: UserStatus.ACTIVE,
   })
-  roleType: 'customer' | 'admin' | 'support' | 'vendor' | string;
+  status: UserStatus;
+
+  @Column({ name: 'status_reason', type: 'text', nullable: true })
+  statusReason?: string;
 
   @CreateDateColumn()
   createdAt: Date;
@@ -78,24 +85,52 @@ export class User {
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt: Date;
 
+  @Column({
+    name: 'last_password_changed_at',
+    type: 'timestamp',
+    nullable: true,
+  })
+  lastPasswordChangedAt?: Date;
+
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
-  @Column({ name: 'mfa_channel', type: 'varchar', default: 'email' })
-  mfaChannel: 'email' | 'sms' | string;
+  @Column({
+    name: 'mfa_channel',
+    type: 'varchar',
+    length: 16,
+    default: MfaChannel.EMAIL,
+  })
+  mfaChannel: MfaChannel;
 
-  @Column({ nullable: true })
+  @Column({
+    name: 'role_id',
+    type: 'uuid',
+    nullable: true,
+  })
   roleId: string;
 
-  @ManyToOne(() => Role, (role) => role.users, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'roleId' })
+  @ManyToOne(() => Role, (role) => role.users, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'role_id' })
   role: Role;
+
+  @Column({
+    name: 'profile_preferences',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
+  profilePreferences: Record<string, unknown>;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
 
   @OneToMany(() => CacheKey, (cacheKey) => cacheKey.user)
   cacheKeys: CacheKey[];
+
+  @OneToMany(() => UserAuthProvider, (provider) => provider.user, {
+    cascade: true,
+  })
+  authProviders: UserAuthProvider[];
 
   @OneToOne(() => CustomerProfile, (profile: CustomerProfile) => profile.user, {
     cascade: true,
@@ -109,21 +144,13 @@ export class User {
 
   @BeforeInsert()
   @BeforeUpdate()
-  generateUUID() {
-    if (!this.id) {
-      this.id = uuidv4();
-    }
-  }
-
-  @BeforeInsert()
   async hashPassword() {
     // Only hash when a plaintext password was provided
-    if (this.passwordHash && !this.passwordHash.startsWith('$2')) {
-      const hashedPassword = await bcrypt.hash(
-        this.passwordHash,
-        Number(process.env.AUTH_PASSWORD_SALT_ROUNDS),
-      );
-      this.passwordHash = hashedPassword;
+    if (
+      this.passwordHash &&
+      !isArgon2Hash(this.passwordHash)
+    ) {
+      this.passwordHash = await hashWithArgon(this.passwordHash);
     }
   }
 

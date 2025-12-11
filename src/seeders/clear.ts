@@ -9,41 +9,28 @@ async function clearDatabase() {
   const dataSource = app.get(DataSource);
 
   try {
-    const truncateMode = true;
+    console.log('🗑️ Truncating all tables...');
 
-    if (truncateMode) {
-      console.log('🗑️ Truncating all tables...');
+    // Get all table names
+    const tables: Array<{ tablename: string }> = await dataSource.query(`
+      SELECT tablename FROM pg_tables 
+      WHERE schemaname = 'public' 
+      AND tablename NOT LIKE 'pg_%' 
+      AND tablename != 'information_schema'
+    `);
 
-      // Get all table names
-      const tables = await dataSource.query(`
-        SELECT tablename FROM pg_tables 
-        WHERE schemaname = 'public' 
-        AND tablename NOT LIKE 'pg_%' 
-        AND tablename != 'information_schema'
-      `);
-
-      // Disable foreign key checks temporarily
-      await dataSource.query('SET session_replication_role = replica;');
-
-      // Truncate all tables
-      for (const table of tables) {
-        await dataSource.query(`TRUNCATE TABLE "${table.tablename}" CASCADE;`);
-        console.log(`✅ Truncated table: ${table.tablename}`);
-      }
-
-      // Re-enable foreign key checks
-      await dataSource.query('SET session_replication_role = DEFAULT;');
-
-      console.log('🎉 All tables truncated successfully!');
-    } else {
-      console.log('🗑️ Dropping and recreating database schema...');
-
-      // Drop all tables and recreate schema
-      await dataSource.dropDatabase();
-      await dataSource.synchronize();
-
-      console.log('🎉 Database schema recreated successfully!');
+    if (!tables.length) {
+      console.log('ℹ️ No tables found to truncate.');
+      return;
     }
+
+    // Use TRUNCATE ... CASCADE to safely clear tables without superuser privileges
+    const tableList = tables
+      .map((t) => `"${t.tablename}"`)
+      .join(', ');
+
+    await dataSource.query(`TRUNCATE TABLE ${tableList} CASCADE;`);
+    console.log('🎉 All tables truncated successfully!');
   } catch (error) {
     console.error('❌ Database cleanup failed:', error);
     process.exit(1);

@@ -15,8 +15,9 @@ import {
   CacheKeyService,
   CacheKeyStatus,
 } from '../entities/cache-key.entity';
-import * as bcrypt from 'bcryptjs';
 import { ConfigService } from '@nestjs/config';
+import { verifyPassword } from 'src/common/utils/password.util';
+import { MfaChannel } from 'src/user/enums';
 
 @Injectable()
 export class TwoFactorService {
@@ -35,16 +36,16 @@ export class TwoFactorService {
   async enableTwoFactor(
     userId: string,
     email: string | undefined,
-    channel: 'email' | 'sms' = 'email',
+    channel: MfaChannel = MfaChannel.EMAIL,
   ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
-    const targetChannel = channel || 'email';
+    const targetChannel = channel || MfaChannel.EMAIL;
 
-    if (targetChannel === 'email') {
+    if (targetChannel === MfaChannel.EMAIL) {
       const targetEmail = email || user.email;
       if (!targetEmail) {
         throw new BadRequestException('Email is required for email-based MFA');
@@ -126,7 +127,8 @@ export class TwoFactorService {
     if (!password) {
       throw new BadRequestException('Password is required to disable 2FA');
     }
-    if (!(await bcrypt.compare(password, user.passwordHash || ''))) {
+
+    if (!(await this.verifyUserPassword(user, password))) {
       throw new UnauthorizedException('Password does not match');
     }
 
@@ -143,7 +145,7 @@ export class TwoFactorService {
     // Update user's 2FA status
     await this.userRepository.update(userId, {
       twoFactorEnabled: false,
-      mfaChannel: 'email',
+      mfaChannel: MfaChannel.EMAIL,
     });
 
     this.logger.log(`2FA disabled for user ${userId}`);
@@ -151,25 +153,25 @@ export class TwoFactorService {
 
   async sendVerificationCode(
     userId: string,
-    channelOverride?: 'email' | 'sms',
+    channelOverride?: MfaChannel,
   ): Promise<void> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     if (!user) {
       throw new BadRequestException('User not found');
     }
 
-    const channel = channelOverride || (user.mfaChannel as 'email' | 'sms') || 'email';
+    const channel = channelOverride || user.mfaChannel || MfaChannel.EMAIL;
 
     if (user.mfaChannel !== channel) {
       user.mfaChannel = channel;
       await this.userRepository.save(user);
     }
 
-    if (channel === 'sms' && !user.phone) {
+    if (channel === MfaChannel.SMS && !user.phone) {
       throw new BadRequestException('Phone number is required for SMS-based MFA');
     }
 
-    if (channel === 'email' && !user.email) {
+    if (channel === MfaChannel.EMAIL && !user.email) {
       throw new BadRequestException('Email is required for email-based MFA');
     }
 
@@ -201,17 +203,22 @@ export class TwoFactorService {
 
     await this.cacheKeyRepository.save(cacheKey);
 
-    if (channel === 'sms') {
+    if (channel === MfaChannel.SMS) {
       await this.smsServiceUtils.sendTwoFactorCodeSMS({
         to: user.phone,
         code,
         expiresIn: 10,
       });
     } else {
+      const displayName =
+        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
+        user.email ||
+        user.phone;
+
       await this.emailServiceUtils.sendTwoFactorCode({
         code,
         email: user.email,
-        userName: user.fullName || user.email,
+        userName: displayName,
         fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
         expiresIn: 10,
       });
@@ -262,6 +269,10 @@ export class TwoFactorService {
   async isTwoFactorEnabled(userId: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { id: userId } });
     return user?.twoFactorEnabled || false;
+  }
+
+  private async verifyUserPassword(user: User, plainPassword: string) {
+    return verifyPassword(user.passwordHash, plainPassword);
   }
 
   private generateVerificationCode(): string {

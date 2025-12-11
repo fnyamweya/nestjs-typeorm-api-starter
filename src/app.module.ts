@@ -12,6 +12,7 @@ import { SettingModule } from './setting/setting.module';
 import { CommonModule } from './common/common.module';
 import dataSource from './data-source';
 import { QueueModule } from './queue/queue.module';
+import { CatalogModule } from './catalog/catalog.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { QueueModule } from './queue/queue.module';
     ActivityLogModule,
     SettingModule,
     QueueModule,
+    CatalogModule,
   ],
   controllers: [AppController],
   providers: [

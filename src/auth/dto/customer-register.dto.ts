@@ -34,8 +34,4 @@ export class CustomerRegisterDto {
   @IsString({ message: 'Last name must be a string' })
   lastName?: string;
 
-  @ApiPropertyOptional({ description: 'Full name', example: 'Jane Doe' })
-  @IsOptional()
-  @IsString({ message: 'Full name must be a string' })
-  fullName?: string;
 }

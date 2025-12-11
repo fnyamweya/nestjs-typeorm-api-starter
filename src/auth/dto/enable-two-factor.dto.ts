@@ -1,27 +1,22 @@
-import {
-  IsEmail,
-  IsIn,
-  IsNotEmpty,
-  IsOptional,
-  ValidateIf,
-} from 'class-validator';
+import { IsEmail, IsEnum, IsOptional, ValidateIf } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { MfaChannel } from 'src/user/enums';
 
 export class EnableTwoFactorDto {
   @ApiProperty({
     description: 'Preferred MFA channel',
-    example: 'email',
-    enum: ['email', 'sms'],
-    default: 'email',
+    example: MfaChannel.EMAIL,
+    enum: MfaChannel,
+    default: MfaChannel.EMAIL,
   })
-  @IsIn(['email', 'sms'])
-  channel: 'email' | 'sms' = 'email';
+  @IsEnum(MfaChannel)
+  channel: MfaChannel = MfaChannel.EMAIL;
 
   @ApiPropertyOptional({
     description: 'Email to which the verification code should be sent (required when channel=email)',
     example: 'jane.doe@example.com',
   })
-  @ValidateIf((dto) => dto.channel === 'email')
+  @ValidateIf((dto) => dto.channel === MfaChannel.EMAIL)
   @IsEmail({}, { message: 'Please provide a valid email address' })
   @IsOptional()
   email?: string;

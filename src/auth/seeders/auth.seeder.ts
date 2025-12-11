@@ -2,9 +2,14 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
-import { Permission, PermissionType } from '../entities/permission.entity';
+import {
+  Permission,
+  PermissionModule,
+  PermissionType,
+} from '../entities/permission.entity';
 import { RolePermission } from '../entities/role-permission.entity';
 import { User } from 'src/user/entities/user.entity';
+import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 
 interface RoleConfig {
   name: string;
@@ -12,6 +17,7 @@ interface RoleConfig {
   modules: {
     [module: string]: PermissionType[];
   };
+  parentName?: string;
 }
 
 @Injectable()
@@ -51,22 +57,20 @@ export class AuthSeeder {
         description: 'Customer role with limited access',
         modules: {},
       },
+      {
+        name: 'Basic Customer',
+        description: 'Basic customer role (inherits Customer permissions)',
+        modules: {},
+        parentName: 'Customer',
+      },
     ];
   }
 
   async seed() {
     // Create all modules' permissions first
-    const allModules = [
-      'Users',
-      'Roles',
-      'Permissions',
-      'Activity Logs',
-      'Settings',
-      'Reporting',
-      'Products',
-      'Banners',
-      'Site Configs',
-    ];
+    const allModules = Object.values(PermissionModule).filter(
+      (value) => typeof value === 'string',
+    ) as string[];
 
     const roleConfigs = this.getRoleConfigurations(allModules);
     const createdRoles: Role[] = [];
@@ -77,7 +81,8 @@ export class AuthSeeder {
     }
 
     // Create roles and assign permissions dynamically
-    for (const roleConfig of roleConfigs) {
+    // First pass: create parent roles (those without parentName)
+    for (const roleConfig of roleConfigs.filter((r) => !r.parentName)) {
       const role = await this.createRole(
         roleConfig.name,
         roleConfig.description,
@@ -91,16 +96,52 @@ export class AuthSeeder {
       );
     }
 
+    // Second pass: create child roles with parents wired up
+    for (const roleConfig of roleConfigs.filter((r) => r.parentName)) {
+      const parent = createdRoles.find((r) => r.name === roleConfig.parentName);
+      const role = await this.createRole(
+        roleConfig.name,
+        roleConfig.description,
+        parent,
+      );
+      createdRoles.push(role);
+
+      await this.assignPermissionsToRoleFromConfig(
+        role,
+        roleConfig.modules,
+        modulePermissions,
+      );
+    }
+
     // Super Admin user
     const superAdminRole = createdRoles.find((r) => r.name === 'Super Admin');
+    const adminRole = createdRoles.find((r) => r.name === 'Admin');
     await this.createSuperAdmin(superAdminRole!);
+    if (adminRole) {
+      await this.createAdmin(adminRole);
+    }
   }
 
-  private async createRole(name: string, description: string): Promise<Role> {
-    const existingRole = await this.roleRepository.findOne({ where: { name } });
-    if (existingRole) return existingRole;
+  private async createRole(
+    name: string,
+    description: string,
+    parent?: Role,
+  ): Promise<Role> {
+    const existingRole = await this.roleRepository.findOne({
+      where: { name },
+      relations: ['parent'],
+    });
+
+    if (existingRole) {
+      if (parent && (!existingRole.parent || existingRole.parent.id !== parent.id)) {
+        existingRole.parent = parent;
+        return this.roleRepository.save(existingRole);
+      }
+      return existingRole;
+    }
+
     return this.roleRepository.save(
-      this.roleRepository.create({ name, description }),
+      this.roleRepository.create({ name, description, parent }),
     );
   }
 
@@ -162,10 +203,36 @@ export class AuthSeeder {
       await this.userRepository.save(
         this.userRepository.create({
           email,
-          fullName: 'Super Admin',
+          firstName: 'Super',
+          lastName: 'Admin',
           phone: '+95912345678',
           roleId: role.id,
-          password: 'passwordD123!@#',
+          passwordHash: 'passwordD123!@#',
+          authProvider: AuthProviderType.LOCAL,
+          isActive: true,
+          status: UserStatus.ACTIVE,
+          mfaChannel: MfaChannel.EMAIL,
+        }),
+      );
+    }
+  }
+
+  private async createAdmin(role: Role): Promise<void> {
+    const email = 'admin@example.com';
+    const existing = await this.userRepository.findOne({ where: { email } });
+    if (!existing) {
+      await this.userRepository.save(
+        this.userRepository.create({
+          email,
+          firstName: 'Default',
+          lastName: 'Admin',
+          phone: '+14155550100',
+          roleId: role.id,
+          passwordHash: 'AdminP@ss123',
+          authProvider: AuthProviderType.LOCAL,
+          isActive: true,
+          status: UserStatus.ACTIVE,
+          mfaChannel: MfaChannel.EMAIL,
         }),
       );
     }

@@ -12,7 +12,10 @@ import { Permission } from './entities/permission.entity';
 import { RolePermission } from './entities/role-permission.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { CacheKey } from './entities/cache-key.entity';
+import { UserAuthProvider } from './entities/user-auth-provider.entity';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
+import { AdminAppleStrategy } from './strategies/admin-apple.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
@@ -25,6 +28,7 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 import { AdminProfile } from 'src/user/entities/admin-profile.entity';
+import { AdminInvite } from './entities/admin-invite.entity';
 
 @Module({
   imports: [
@@ -36,6 +40,8 @@ import { AdminProfile } from 'src/user/entities/admin-profile.entity';
       RefreshToken,
       UserActivityLog,
       CacheKey,
+      UserAuthProvider,
+      AdminInvite,
       Setting,
       CustomerProfile,
       AdminProfile,
@@ -59,6 +65,8 @@ import { AdminProfile } from 'src/user/entities/admin-profile.entity';
     EmailServiceUtils,
     SmsServiceUtils,
     JwtStrategy,
+    AdminGoogleStrategy,
+    AdminAppleStrategy,
     JwtAuthGuard,
     PermissionsGuard,
     RolesGuard,

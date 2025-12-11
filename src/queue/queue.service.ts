@@ -12,6 +12,10 @@ import {
 } from 'bullmq';
 import { RedisOptions } from 'ioredis';
 
+type QueueConfig = Omit<QueueOptions, 'connection'>;
+type WorkerConfig = Omit<WorkerOptions, 'connection'>;
+type QueueEventsConfig = Omit<QueueEventsOptions, 'connection'>;
+
 @Injectable()
 export class QueueService implements OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
@@ -55,10 +59,9 @@ export class QueueService implements OnModuleDestroy {
     return options;
   }
 
-  getQueue(name: string, options: QueueOptions = {}): Queue {
+  getQueue(name: string, options: QueueConfig = {}): Queue {
     if (!this.queues.has(name)) {
       const queue = new Queue(name, {
-        connection: this.redisOptions,
         defaultJobOptions: {
           removeOnComplete: true,
           attempts: 3,
@@ -68,6 +71,7 @@ export class QueueService implements OnModuleDestroy {
           },
         },
         ...options,
+        connection: this.redisOptions,
       });
 
       this.queues.set(name, queue);
@@ -90,7 +94,7 @@ export class QueueService implements OnModuleDestroy {
   createWorker<T = any, R = any>(
     name: string,
     processor: Processor<T, R>,
-    options: WorkerOptions = {},
+    options: WorkerConfig = {},
   ): Worker<T, R> {
     const worker = new Worker<T, R>(name, processor, {
       connection: this.redisOptions,
@@ -111,7 +115,7 @@ export class QueueService implements OnModuleDestroy {
 
   async getQueueEvents(
     name: string,
-    options: QueueEventsOptions = {},
+    options: QueueEventsConfig = {},
   ): Promise<QueueEvents> {
     if (!this.queueEvents.has(name)) {
       const events = new QueueEvents(name, {

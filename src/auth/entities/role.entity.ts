@@ -7,11 +7,15 @@ import {
   PrimaryColumn,
   BeforeInsert,
   BeforeUpdate,
+  ManyToOne,
+  JoinColumn,
 } from 'typeorm';
+import { Tree, TreeChildren, TreeParent } from 'typeorm';
 import { v4 as uuidv4 } from 'uuid';
 import { RolePermission } from './role-permission.entity';
 import { User } from 'src/user/entities/user.entity';
 
+@Tree('closure-table')
 @Entity('roles')
 export class Role {
   @PrimaryColumn('uuid')
@@ -22,6 +26,13 @@ export class Role {
 
   @Column({ nullable: true })
   description: string;
+
+  @TreeParent({ onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'parent_id' })
+  parent?: Role;
+
+  @TreeChildren()
+  children?: Role[];
 
   @OneToMany(() => User, (user) => user.role)
   users: User[];

@@ -15,6 +15,17 @@ async function bootstrap() {
     logger: WinstonModule.createLogger(winstonConfig),
   });
 
+  // Lightweight root handler so GET / returns a helpful response
+  const httpAdapter = app.getHttpAdapter();
+  httpAdapter.get('/', (_req, res) => {
+    res.json({
+      status: 'ok',
+      message: 'API running',
+      docs: '/api/docs',
+      health: '/api/v1',
+    });
+  });
+
   // Environment-based CORS configuration
   const corsOptions = {
     origin: [

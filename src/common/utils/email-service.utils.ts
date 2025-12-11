@@ -104,6 +104,80 @@ export class EmailServiceUtils {
     }
   }
 
+  async sendAdminInviteEmail({
+    email,
+    inviteLink,
+    invitedBy,
+    inviteeName,
+  }: {
+    email: string;
+    inviteLink: string;
+    invitedBy: string;
+    inviteeName?: string;
+  }): Promise<void> {
+    try {
+      const transporter = await this.getTransporter();
+      const smtpSettings = await this.getSMTPSettings();
+
+      const mailOptions = {
+        from: `"${smtpSettings.smtpFromName}" <${smtpSettings.smtpFromEmail}>`,
+        to: email,
+        subject: `You are invited to join as an admin`,
+        html: this.getAdminInviteTemplate({
+          inviteLink,
+          invitedBy,
+          inviteeName,
+        }),
+      };
+
+      await transporter.sendMail(mailOptions);
+      this.logger.log(`Admin invite sent to ${email}`);
+    } catch (error) {
+      this.logger.error(`Failed to send admin invite to ${email}:`, error);
+      throw new Error('Failed to send admin invite email');
+    }
+  }
+
+  private getAdminInviteTemplate({
+    inviteLink,
+    invitedBy,
+    inviteeName,
+  }: {
+    inviteLink: string;
+    invitedBy: string;
+    inviteeName?: string;
+  }): string {
+    const greetingName = inviteeName || 'there';
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Admin Invitation</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 640px; margin: 0 auto; padding: 24px; }
+          .card { background: #f9f9f9; border-radius: 10px; padding: 24px; border: 1px solid #e5e7eb; }
+          .btn { display: inline-block; padding: 12px 18px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; }
+          .muted { color: #555; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="card">
+            <h2>Hello ${greetingName},</h2>
+            <p>You have been invited by <strong>${invitedBy}</strong> to join the admin console.</p>
+            <p>Please click the button below to accept the invitation and set your password:</p>
+            <p><a class="btn" href="${inviteLink}" target="_blank" rel="noopener noreferrer">Accept Invitation</a></p>
+            <p class="muted">If you did not expect this invitation, you can safely ignore this email or decline it in the app.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
   private getTwoFactorEmailTemplate({
     code,
     userName,

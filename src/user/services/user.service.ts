@@ -4,14 +4,14 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { FindManyOptions, Like, Repository } from 'typeorm';
+import { FindManyOptions, ILike, Repository } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { CreateUserDto } from '../dto/create-user.dto';
 import { FilterUserDto } from '../dto/filter-user.dto';
 import { UpdateUserDto } from '../dto/update-user.dto';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { Role } from 'src/auth/entities/role.entity';
-import * as bcrypt from 'bcryptjs';
+import { hashPassword as hashWithArgon } from 'src/common/utils/password.util';
 
 @Injectable()
 export class UserService {
@@ -84,8 +84,10 @@ export class UserService {
 
     if (filter.search) {
       findOptions.where = [
-        { fullName: Like(`%${filter.search}%`) },
-        { email: Like(`%${filter.search}%`) },
+        { firstName: ILike(`%${filter.search}%`) },
+        { lastName: ILike(`%${filter.search}%`) },
+        { email: ILike(`%${filter.search}%`) },
+        { phone: ILike(`%${filter.search}%`) },
       ];
     }
 
@@ -209,11 +211,7 @@ export class UserService {
     }
 
     if (updateUserDto.password) {
-      const hashedPassword = await bcrypt.hash(
-        updateUserDto.password,
-        Number(process.env.AUTH_PASSWORD_SALT_ROUNDS),
-      );
-      updatedUser.password = hashedPassword;
+      updatedUser.password = await hashWithArgon(updateUserDto.password);
     }
 
     return await this.userRepository.save(updatedUser);
