@@ -4,11 +4,14 @@ import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { WinstonModule } from 'nest-winston';
 import { winstonConfig } from './common/config/logger.config';
+import helmet from 'helmet';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
   });
+
+  app.use(helmet());
 
   // Environment-based CORS configuration
   const corsOptions = {
@@ -16,8 +19,6 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://localhost:5173',
       'http://localhost:5174',
-      'https://junemobile-admin.shwecode.xyz',
-      'https://junemobile.shwecode.xyz',
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: [
