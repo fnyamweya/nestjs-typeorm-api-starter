@@ -8,8 +8,8 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { PriceList } from 'src/catalog/entities/price-list.entity';
-import { Currency } from 'src/catalog/entities/currency.entity';
+import { PriceList } from '../../catalog/entities/price-list.entity';
+import { Currency } from '../../catalog/entities/currency.entity';
 import { OrderItem } from './order-item.entity';
 import { OrderLevelCharge } from './order-level-charge.entity';
 

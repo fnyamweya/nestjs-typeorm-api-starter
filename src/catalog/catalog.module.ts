@@ -26,6 +26,7 @@ import { TaxonomyService } from './services/taxonomy.service';
 import { CategoryService } from './services/category.service';
 import { ProductService } from './services/product.service';
 import { CatalogSeeder } from './seeders/catalog.seeder';
+import { PriceService } from './services/price.service';
 
 @Module({
   imports: [
@@ -52,7 +53,7 @@ import { CatalogSeeder } from './seeders/catalog.seeder';
     ]),
   ],
   controllers: [TaxonomyController, CategoryController, ProductController],
-  providers: [TaxonomyService, CategoryService, ProductService, CatalogSeeder],
-  exports: [TypeOrmModule, TaxonomyService, CategoryService, ProductService, CatalogSeeder],
+  providers: [TaxonomyService, CategoryService, ProductService, CatalogSeeder, PriceService],
+  exports: [TypeOrmModule, TaxonomyService, CategoryService, ProductService, CatalogSeeder, PriceService],
 })
 export class CatalogModule {}

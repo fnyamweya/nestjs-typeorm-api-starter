@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module';
 import dataSource from './data-source';
 import { QueueModule } from './queue/queue.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { OrderModule } from './order/order.module';
 import { FeatureFlagModule } from './feature-flag/feature-flag.module';
 
 @Module({
@@ -30,6 +31,7 @@ import { FeatureFlagModule } from './feature-flag/feature-flag.module';
     SettingModule,
     QueueModule,
     CatalogModule,
+    OrderModule,
     FeatureFlagModule,
   ],
   controllers: [AppController],
