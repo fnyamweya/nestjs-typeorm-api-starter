@@ -21,6 +21,7 @@
     "db:seed": "ts-node -r tsconfig-paths/register src/seeders/seed.ts",
     "db:clear": "ts-node -r tsconfig-paths/register src/seeders/clear.ts",
     "db:reset": "npm run db:clear && npm run db:seed",
+    "db:migrate:check": "bash ./scripts/check_migrations.sh",
     "easy-generate": "ts-node -r tsconfig-paths/register cli/easy-generate/index.ts",
     "make:module": "npm run easy-generate make:module",
     "release": "semantic-release"
