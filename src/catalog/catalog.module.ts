@@ -16,6 +16,9 @@ import { ProductOptionValue } from './entities/product-option-value.entity';
 import { VariantOptionValue } from './entities/variant-option-value.entity';
 import { ProductCategory } from './entities/product-category.entity';
 import { ProductAttributeValue } from './entities/product-attribute-value.entity';
+import { Currency } from './entities/currency.entity';
+import { PriceList } from './entities/price-list.entity';
+import { ProductVariantPrice } from './entities/product-variant-price.entity';
 import { TaxonomyController } from './controllers/taxonomy.controller';
 import { CategoryController } from './controllers/category.controller';
 import { ProductController } from './controllers/product.controller';
@@ -43,6 +46,9 @@ import { CatalogSeeder } from './seeders/catalog.seeder';
       VariantOptionValue,
       ProductCategory,
       ProductAttributeValue,
+      Currency,
+      PriceList,
+      ProductVariantPrice,
     ]),
   ],
   controllers: [TaxonomyController, CategoryController, ProductController],

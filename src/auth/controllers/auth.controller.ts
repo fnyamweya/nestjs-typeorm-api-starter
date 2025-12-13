@@ -33,6 +33,7 @@ import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { ForgotPasswordSendOTPDto } from '../dto/forgot-password-send-otp.dto';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { SetPasswordDto } from '../dto/set-password.dto';
 import { CustomerLoginDto } from '../dto/customer-login.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { CustomerRegisterDto } from '../dto/customer-register.dto';
@@ -52,10 +53,13 @@ import {
   ApiUnauthorizedResponse,
 } from '@nestjs/swagger';
 import { RequireRoles } from '../decorators/roles.decorator';
+import { RequirePermissions } from '../decorators/permissions.decorator';
+import { PermissionsGuard } from '../guards/permissions.guard';
+import { PermissionModule } from '../entities/permission.entity';
 import { RolesGuard } from '../guards/roles.guard';
-import { CreateAdminInviteDto } from '../dto/create-admin-invite.dto';
-import { AcceptAdminInviteDto } from '../dto/accept-admin-invite.dto';
-import { DeclineAdminInviteDto } from '../dto/decline-admin-invite.dto';
+import { CreateUserInviteDto } from '../dto/create-user-invite.dto';
+import { AcceptUserInviteDto } from '../dto/accept-user-invite.dto';
+import { DeclineUserInviteDto } from '../dto/decline-user-invite.dto';
 
 @Controller('auth')
 @ApiTags('Authentication')
@@ -114,7 +118,11 @@ export class AuthController {
 
   @Post('admin/login')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Admin login with MFA' })
+  @ApiOperation({
+    summary: 'Admin login with MFA',
+    description:
+      'Seeded accounts: superadmin@gmail.com / passwordD123!@# (Super Admin), admin@example.com / AdminP@ss123 (Admin).',
+  })
   @ApiOkResponse({ description: 'Admin login successful' })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
@@ -142,51 +150,63 @@ export class AuthController {
     return ResponseUtil.created(result, 'Admin registered successfully');
   }
 
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @RequireRoles('Super Admin')
-  @Post('admin/invite')
+  @UseGuards(JwtAuthGuard, PermissionsGuard, RolesGuard)
+  @RequireRoles('Super Admin', 'Admin', 'Customer')
+  @RequirePermissions({ module: PermissionModule.USERS, permission: 'create' })
+  @Post('user/invite')
   @HttpCode(201)
   @ApiBearerAuth('access-token')
-  @ApiOperation({ summary: 'Invite a new admin user (Super Admin only)' })
+  @ApiOperation({
+    summary: 'Invite a new user (details + role + phone)',
+    description:
+      'Requires Users:create and role hierarchy: Super Admin can invite any role; others may only invite within their own subtree. Inviter provides email, name, phone, and role; invitee only sets the password via emailed link.',
+  })
   @ApiCreatedResponse({ description: 'Invitation created and email sent' })
   @ApiForbiddenResponse({ description: 'Insufficient role' })
-  async inviteAdmin(
+  async inviteUser(
     @CurrentUser() user: AuthenticatedUser,
-    @Body() createAdminInviteDto: CreateAdminInviteDto,
+    @Body() createUserInviteDto: CreateUserInviteDto,
   ) {
-    const result = await this.authService.createAdminInvite(
-      createAdminInviteDto,
+    const result = await this.authService.createUserInvite(
+      createUserInviteDto,
       user,
     );
-    return ResponseUtil.created(result, 'Admin invitation sent');
+    return ResponseUtil.created(result, 'User invitation sent');
   }
 
-  @Post('admin/invite/accept')
+  @Post('user/invite/accept')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Accept an admin invitation and set password' })
+  @ApiOperation({
+    summary: 'Accept a user invitation by setting a password',
+    description:
+      'Consumes the invitation token and finalizes the account by setting a password. All other profile details are supplied by the inviter.',
+  })
   @ApiOkResponse({ description: 'Invitation accepted and account activated' })
   @ApiBadRequestResponse({ description: 'Invalid or expired invitation' })
-  async acceptAdminInvite(
-    @Body() acceptAdminInviteDto: AcceptAdminInviteDto,
+  async acceptUserInvite(
+    @Body() acceptUserInviteDto: AcceptUserInviteDto,
     @Req() request: Request,
   ) {
-    const result = await this.authService.acceptAdminInvite(
-      acceptAdminInviteDto,
+    const result = await this.authService.acceptUserInvite(
+      acceptUserInviteDto,
       request,
     );
-    return ResponseUtil.success(result, 'Admin invitation accepted');
+    return ResponseUtil.success(result, 'User invitation accepted');
   }
 
-  @Post('admin/invite/decline')
+  @Post('user/invite/decline')
   @HttpCode(200)
-  @ApiOperation({ summary: 'Decline an admin invitation' })
+  @ApiOperation({
+    summary: 'Decline a user invitation',
+    description: 'Marks the invitation declined; token becomes unusable.',
+  })
   @ApiOkResponse({ description: 'Invitation declined' })
   @ApiBadRequestResponse({ description: 'Invalid or expired invitation' })
-  async declineAdminInvite(@Body() declineAdminInviteDto: DeclineAdminInviteDto) {
-    const result = await this.authService.declineAdminInvite(
-      declineAdminInviteDto,
+  async declineUserInvite(@Body() declineUserInviteDto: DeclineUserInviteDto) {
+    const result = await this.authService.declineUserInvite(
+      declineUserInviteDto,
     );
-    return ResponseUtil.success(result, 'Admin invitation declined');
+    return ResponseUtil.success(result, 'User invitation declined');
   }
 
   @Get('admin/google')
@@ -561,6 +581,19 @@ export class AuthController {
       result,
       'Successfully verify password reset code',
     );
+  }
+
+  @Post('password-set')
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Complete password setup using one-time token' })
+  @ApiOkResponse({ description: 'Password set successfully' })
+  @ApiBadRequestResponse({ description: 'Invalid or expired token' })
+  async completePasswordSetup(
+    @Body() setPasswordDto: SetPasswordDto,
+    @Req() request: Request,
+  ) {
+    await this.authService.completePasswordSetup(setPasswordDto, request);
+    return ResponseUtil.success(null, 'Password set successfully');
   }
 
   @Post('reset-password')

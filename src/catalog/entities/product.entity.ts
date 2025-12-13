@@ -44,6 +44,24 @@ export class Product {
   @Column({ name: 'is_featured', type: 'boolean', default: false })
   isFeatured: boolean;
 
+  @Column({ name: 'tax_class_code', type: 'text', nullable: true })
+  taxClassCode?: string;
+
+  @Column({ name: 'fulfillment_class', type: 'text', default: 'physical' })
+  fulfillmentClass: string;
+
+  @Column({ name: 'country_of_origin', type: 'char', length: 2, nullable: true })
+  countryOfOrigin?: string;
+
+  @Column({ name: 'hs_code', type: 'text', nullable: true })
+  hsCode?: string;
+
+  @Column({ name: 'inventory_strategy', type: 'text', default: 'variant' })
+  inventoryStrategy: string;
+
+  @Column({ name: 'requires_shipping', type: 'boolean', default: true })
+  requiresShipping: boolean;
+
   @Column({ name: 'published_at', type: 'timestamptz', nullable: true })
   publishedAt?: Date;
 

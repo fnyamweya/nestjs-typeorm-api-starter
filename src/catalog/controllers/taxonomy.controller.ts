@@ -44,7 +44,6 @@ export class TaxonomyController {
   }
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'List all taxonomies' })
   @ApiOkResponse({ description: 'Taxonomies retrieved successfully' })
   async findAll() {
@@ -53,7 +52,6 @@ export class TaxonomyController {
   }
 
   @Get('/:id')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'Get taxonomy by id' })
   @ApiOkResponse({ description: 'Taxonomy retrieved successfully' })
   async findOne(@Param('id') id: string) {

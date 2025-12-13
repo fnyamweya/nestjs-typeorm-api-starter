@@ -10,6 +10,7 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Length,
   ValidateNested,
 } from 'class-validator';
 import { CreateProductVariantDto } from './create-product-variant.dto';
@@ -25,6 +26,17 @@ enum ProductStatus {
   DRAFT = 'draft',
   ACTIVE = 'active',
   ARCHIVED = 'archived',
+}
+
+enum FulfillmentClass {
+  PHYSICAL = 'physical',
+  DIGITAL = 'digital',
+  SERVICE = 'service',
+}
+
+enum InventoryStrategy {
+  VARIANT = 'variant',
+  PRODUCT = 'product',
 }
 
 export class CreateProductDto {
@@ -52,6 +64,44 @@ export class CreateProductDto {
   @IsOptional()
   @IsBoolean()
   isFeatured?: boolean;
+
+  @ApiPropertyOptional({ description: 'Tax class code used for pricing', example: 'standard' })
+  @IsOptional()
+  @IsString()
+  taxClassCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Fulfillment class that drives shipping/delivery rules',
+    enum: FulfillmentClass,
+    default: FulfillmentClass.PHYSICAL,
+  })
+  @IsOptional()
+  @IsEnum(FulfillmentClass)
+  fulfillmentClass?: FulfillmentClass;
+
+  @ApiPropertyOptional({ description: 'ISO country of origin', example: 'US' })
+  @IsOptional()
+  @Length(2, 2)
+  countryOfOrigin?: string;
+
+  @ApiPropertyOptional({ description: 'Harmonized system code', example: '851712' })
+  @IsOptional()
+  @IsString()
+  hsCode?: string;
+
+  @ApiPropertyOptional({
+    description: 'Inventory strategy (track per variant or product-level)',
+    enum: InventoryStrategy,
+    default: InventoryStrategy.VARIANT,
+  })
+  @IsOptional()
+  @IsEnum(InventoryStrategy)
+  inventoryStrategy?: InventoryStrategy;
+
+  @ApiPropertyOptional({ description: 'Whether product requires shipping', example: true })
+  @IsOptional()
+  @IsBoolean()
+  requiresShipping?: boolean;
 
   @ApiPropertyOptional({ description: 'Publishing date', example: '2024-01-15T10:00:00.000Z' })
   @IsOptional()
@@ -101,4 +151,4 @@ export class CreateProductDto {
   categoryIds?: string[];
 }
 
-export { ProductType, ProductStatus };
+export { ProductType, ProductStatus, FulfillmentClass, InventoryStrategy };

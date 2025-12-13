@@ -11,6 +11,9 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
+import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
+import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
+import { PermissionModule } from 'src/auth/entities/permission.entity';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { UploadFileDto } from '../dto/upload-file.dto';
@@ -29,7 +32,7 @@ import {
 } from '@nestjs/swagger';
 
 @Controller('api/common')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @ApiTags('Common Uploads')
 @ApiBearerAuth('access-token')
@@ -37,6 +40,7 @@ export class CommonUploadController {
   constructor(private readonly s3: S3ClientUtils) {}
 
   @Post('upload')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
@@ -118,6 +122,7 @@ export class CommonUploadController {
   }
 
   @Post('upload/multi')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
   @UseInterceptors(
     FilesInterceptor('files', 20, {
       storage: memoryStorage(),

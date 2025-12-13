@@ -5,7 +5,13 @@ import { Product } from '../entities/product.entity';
 import { ProductTranslation } from '../entities/product-translation.entity';
 import { ProductVariant } from '../entities/product-variant.entity';
 import { ProductCategory } from '../entities/product-category.entity';
-import { CreateProductDto, ProductStatus, ProductType } from '../dto/create-product.dto';
+import {
+  CreateProductDto,
+  FulfillmentClass,
+  InventoryStrategy,
+  ProductStatus,
+  ProductType,
+} from '../dto/create-product.dto';
 import { UpdateProductDto } from '../dto/update-product.dto';
 import { FilterProductDto } from '../dto/filter-product.dto';
 
@@ -36,6 +42,12 @@ export class ProductService {
       status: payload.status ?? ProductStatus.DRAFT,
       brandId: payload.brandId,
       isFeatured: payload.isFeatured ?? false,
+      taxClassCode: payload.taxClassCode,
+      fulfillmentClass: payload.fulfillmentClass ?? FulfillmentClass.PHYSICAL,
+      countryOfOrigin: payload.countryOfOrigin,
+      hsCode: payload.hsCode,
+      inventoryStrategy: payload.inventoryStrategy ?? InventoryStrategy.VARIANT,
+      requiresShipping: payload.requiresShipping ?? true,
       publishedAt: payload.publishedAt ? new Date(payload.publishedAt) : undefined,
       metaJson: payload.metaJson ?? {},
     });
@@ -53,10 +65,27 @@ export class ProductService {
     if (payload.variants?.length) {
       const variants = payload.variants.map((v, index) =>
         this.variantRepository.create({
-          ...v,
           productId: saved.id,
+          sku: v.sku,
+          barcode: v.barcode,
+          externalId: v.externalId,
+          title: v.title,
           isDefault: v.isDefault ?? index === 0,
           position: v.position ?? index,
+          requiresShipping: v.requiresShipping ?? true,
+          weight: v.weight !== undefined ? v.weight.toString() : undefined,
+          length: v.length !== undefined ? v.length.toString() : undefined,
+          width: v.width !== undefined ? v.width.toString() : undefined,
+          height: v.height !== undefined ? v.height.toString() : undefined,
+          dimensionUnit: v.dimensionUnit ?? 'cm',
+          weightUnit: v.weightUnit ?? 'kg',
+          allowBackorder: v.allowBackorder ?? false,
+          preorderAvailable: v.preorderAvailable ?? false,
+          preorderFrom: v.preorderFrom ? new Date(v.preorderFrom) : undefined,
+          preorderTo: v.preorderTo ? new Date(v.preorderTo) : undefined,
+          taxClassOverride: v.taxClassOverride,
+          fulfillmentClassOverride: v.fulfillmentClassOverride,
+          metaJson: v.metaJson ?? {},
         }),
       );
       const savedVariants = await this.variantRepository.save(variants);
@@ -131,6 +160,12 @@ export class ProductService {
       status: payload.status ?? product.status,
       brandId: payload.brandId ?? product.brandId,
       isFeatured: payload.isFeatured ?? product.isFeatured,
+      taxClassCode: payload.taxClassCode ?? product.taxClassCode,
+      fulfillmentClass: payload.fulfillmentClass ?? product.fulfillmentClass,
+      countryOfOrigin: payload.countryOfOrigin ?? product.countryOfOrigin,
+      hsCode: payload.hsCode ?? product.hsCode,
+      inventoryStrategy: payload.inventoryStrategy ?? product.inventoryStrategy,
+      requiresShipping: payload.requiresShipping ?? product.requiresShipping,
       publishedAt: payload.publishedAt
         ? new Date(payload.publishedAt)
         : product.publishedAt,
@@ -153,10 +188,27 @@ export class ProductService {
       if (payload.variants.length) {
         const variants = payload.variants.map((v, index) =>
           this.variantRepository.create({
-            ...v,
             productId: saved.id,
+            sku: v.sku,
+            barcode: v.barcode,
+            externalId: v.externalId,
+            title: v.title,
             isDefault: v.isDefault ?? index === 0,
             position: v.position ?? index,
+            requiresShipping: v.requiresShipping ?? true,
+            weight: v.weight !== undefined ? v.weight.toString() : undefined,
+            length: v.length !== undefined ? v.length.toString() : undefined,
+            width: v.width !== undefined ? v.width.toString() : undefined,
+            height: v.height !== undefined ? v.height.toString() : undefined,
+            dimensionUnit: v.dimensionUnit ?? 'cm',
+            weightUnit: v.weightUnit ?? 'kg',
+            allowBackorder: v.allowBackorder ?? false,
+            preorderAvailable: v.preorderAvailable ?? false,
+            preorderFrom: v.preorderFrom ? new Date(v.preorderFrom) : undefined,
+            preorderTo: v.preorderTo ? new Date(v.preorderTo) : undefined,
+            taxClassOverride: v.taxClassOverride,
+            fulfillmentClassOverride: v.fulfillmentClassOverride,
+            metaJson: v.metaJson ?? {},
           }),
         );
         const savedVariants = await this.variantRepository.save(variants);

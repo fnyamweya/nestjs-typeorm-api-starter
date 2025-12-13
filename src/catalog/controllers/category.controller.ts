@@ -47,7 +47,6 @@ export class CategoryController {
   }
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'List categories by taxonomy' })
   @ApiQuery({ name: 'taxonomyId', type: String, required: true })
   @ApiQuery({ name: 'isActive', type: Boolean, required: false })
@@ -58,7 +57,6 @@ export class CategoryController {
   }
 
   @Get('/:id')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'Get category by id' })
   @ApiOkResponse({ description: 'Category retrieved successfully' })
   async findOne(@Param('id') id: string) {

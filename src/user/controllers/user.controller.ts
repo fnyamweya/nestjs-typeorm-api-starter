@@ -108,6 +108,10 @@ export class UserController {
   }
 
   @Get()
+  @RequirePermissions({
+    module: PermissionModule.USERS,
+    permission: 'read',
+  })
   @ApiOperation({ summary: 'Retrieve a paginated list of users' })
   @ApiQuery({
     name: 'page',
@@ -166,6 +170,10 @@ export class UserController {
   }
 
   @Get('/:id')
+  @RequirePermissions({
+    module: PermissionModule.USERS,
+    permission: 'read',
+  })
   @ApiOperation({ summary: 'Retrieve a user by identifier' })
   @ApiParam({ name: 'id', description: 'User identifier', type: String })
   @ApiOkResponse({ description: 'User retrieved successfully' })
@@ -208,7 +216,7 @@ export class UserController {
         firstName: { type: 'string', example: 'Jane' },
         lastName: { type: 'string', example: 'Doe' },
         password: { type: 'string', example: 'Str0ngP@ssw0rd' },
-        phone: { type: 'string', example: '+14155551234' },
+        phone: { type: 'string', example: '+1234567890' },
         roleId: {
           type: 'string',
           format: 'uuid',

@@ -28,7 +28,7 @@ import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 import { AdminProfile } from 'src/user/entities/admin-profile.entity';
-import { AdminInvite } from './entities/admin-invite.entity';
+import { UserInvite } from './entities/user-invite.entity';
 
 @Module({
   imports: [
@@ -41,7 +41,7 @@ import { AdminInvite } from './entities/admin-invite.entity';
       UserActivityLog,
       CacheKey,
       UserAuthProvider,
-      AdminInvite,
+      UserInvite,
       Setting,
       CustomerProfile,
       AdminProfile,

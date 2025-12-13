@@ -1,5 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import { createHash, randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import {
@@ -10,6 +12,8 @@ import {
 import { RolePermission } from '../entities/role-permission.entity';
 import { User } from 'src/user/entities/user.entity';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
+import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
+import { CacheKey, CacheKeyService, CacheKeyStatus } from '../entities/cache-key.entity';
 
 interface RoleConfig {
   name: string;
@@ -31,6 +35,10 @@ export class AuthSeeder {
     private rolePermissionRepository: Repository<RolePermission>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(CacheKey)
+    private cacheKeyRepository: Repository<CacheKey>,
+    private configService: ConfigService,
+    private emailServiceUtils: EmailServiceUtils,
   ) {}
 
   private getRoleConfigurations(allModules: string[]): RoleConfig[] {
@@ -197,24 +205,72 @@ export class AuthSeeder {
   }
 
   private async createSuperAdmin(role: Role): Promise<void> {
-    const email = 'superadmin@gmail.com';
-    const existing = await this.userRepository.findOne({ where: { email } });
-    if (!existing) {
-      await this.userRepository.save(
-        this.userRepository.create({
-          email,
-          firstName: 'Super',
-          lastName: 'Admin',
-          phone: '+95912345678',
-          roleId: role.id,
-          passwordHash: 'passwordD123!@#',
-          authProvider: AuthProviderType.LOCAL,
-          isActive: true,
-          status: UserStatus.ACTIVE,
-          mfaChannel: MfaChannel.EMAIL,
-        }),
-      );
+    const email =
+      this.configService.get<string>('SUPER_ADMIN_EMAIL') ||
+      process.env.SUPER_ADMIN_EMAIL;
+
+    if (!email) {
+      throw new Error('SUPER_ADMIN_EMAIL is not configured');
     }
+
+    const existing = await this.userRepository.findOne({ where: { email } });
+    if (existing) {
+      return;
+    }
+
+    const superAdmin = await this.userRepository.save(
+      this.userRepository.create({
+        email,
+        firstName: 'Super',
+        lastName: 'Admin',
+        phone: '+95912345678',
+        roleId: role.id,
+        authProvider: AuthProviderType.LOCAL,
+        isActive: true,
+        status: UserStatus.ACTIVE,
+        mfaChannel: MfaChannel.EMAIL,
+      }),
+    );
+
+    const { token, tokenHash, expiresAt } = this.generatePasswordSetToken();
+
+    await this.cacheKeyRepository.save(
+      this.cacheKeyRepository.create({
+        userId: superAdmin.id,
+        service: CacheKeyService.SET_PASSWORD,
+        code: tokenHash,
+        expiresAt,
+        status: CacheKeyStatus.PENDING,
+        attempts: 0,
+        maxAttempts: 1,
+      }),
+    );
+
+    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+    const passwordSetPath = this.configService.get<string>(
+      'PASSWORD_SET_PATH',
+      '/auth/password-set',
+    );
+    const base = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
+    const link = `${base}${passwordSetPath}?token=${token}`;
+
+    await this.emailServiceUtils.sendSetPasswordLink({
+      email,
+      link,
+      appName: this.configService.get<string>('APP_NAME', 'Application'),
+      expiresInMinutes: Math.round((expiresAt.getTime() - Date.now()) / 60000),
+    });
+  }
+
+  private generatePasswordSetToken() {
+    const token = randomBytes(32).toString('hex');
+    const tokenHash = this.hashToken(token);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    return { token, tokenHash, expiresAt };
+  }
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   private async createAdmin(role: Role): Promise<void> {

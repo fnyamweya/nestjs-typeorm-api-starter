@@ -104,7 +104,7 @@ export class EmailServiceUtils {
     }
   }
 
-  async sendAdminInviteEmail({
+  async sendUserInviteEmail({
     email,
     inviteLink,
     invitedBy,
@@ -122,8 +122,8 @@ export class EmailServiceUtils {
       const mailOptions = {
         from: `"${smtpSettings.smtpFromName}" <${smtpSettings.smtpFromEmail}>`,
         to: email,
-        subject: `You are invited to join as an admin`,
-        html: this.getAdminInviteTemplate({
+        subject: `You are invited to join`,
+        html: this.getUserInviteTemplate({
           inviteLink,
           invitedBy,
           inviteeName,
@@ -131,14 +131,86 @@ export class EmailServiceUtils {
       };
 
       await transporter.sendMail(mailOptions);
-      this.logger.log(`Admin invite sent to ${email}`);
+      this.logger.log(`User invite sent to ${email}`);
     } catch (error) {
-      this.logger.error(`Failed to send admin invite to ${email}:`, error);
-      throw new Error('Failed to send admin invite email');
+      this.logger.error(`Failed to send user invite to ${email}:`, error);
+      throw new Error('Failed to send user invite email');
     }
   }
 
-  private getAdminInviteTemplate({
+  async sendSuperAdminCredentials({
+    email,
+    password,
+    appName,
+  }: {
+    email: string;
+    password: string;
+    appName: string;
+  }): Promise<void> {
+    try {
+      const transporter = await this.getTransporter();
+      const smtpSettings = await this.getSMTPSettings();
+
+      const mailOptions = {
+        from: `"${smtpSettings.smtpFromName}" <${smtpSettings.smtpFromEmail}>`,
+        to: email,
+        subject: `${appName} super admin credentials`,
+        html: this.getSuperAdminCredentialsTemplate({
+          appName,
+          email,
+          password,
+        }),
+      };
+
+      await transporter.sendMail(mailOptions);
+      this.logger.log(`Super admin credentials sent to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send super admin credentials to ${email}:`,
+        error,
+      );
+      throw new Error('Failed to send super admin credentials email');
+    }
+  }
+
+  async sendSetPasswordLink({
+    email,
+    link,
+    appName,
+    expiresInMinutes,
+  }: {
+    email: string;
+    link: string;
+    appName: string;
+    expiresInMinutes: number;
+  }): Promise<void> {
+    try {
+      const transporter = await this.getTransporter();
+      const smtpSettings = await this.getSMTPSettings();
+
+      const mailOptions = {
+        from: `"${smtpSettings.smtpFromName}" <${smtpSettings.smtpFromEmail}>`,
+        to: email,
+        subject: `${appName} password setup`,
+        html: this.getSetPasswordTemplate({
+          appName,
+          link,
+          expiresInMinutes,
+        }),
+      };
+
+      await transporter.sendMail(mailOptions);
+      this.logger.log(`Password set link sent to ${email}`);
+    } catch (error) {
+      this.logger.error(
+        `Failed to send set-password link to ${email}:`,
+        error,
+      );
+      throw new Error('Failed to send set-password email');
+    }
+  }
+
+  private getUserInviteTemplate({
     inviteLink,
     invitedBy,
     inviteeName,
@@ -150,30 +222,232 @@ export class EmailServiceUtils {
     const greetingName = inviteeName || 'there';
     return `
       <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin Invitation</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
-          .container { max-width: 640px; margin: 0 auto; padding: 24px; }
-          .card { background: #f9f9f9; border-radius: 10px; padding: 24px; border: 1px solid #e5e7eb; }
-          .btn { display: inline-block; padding: 12px 18px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 8px; font-weight: 600; }
-          .muted { color: #555; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="card">
-            <h2>Hello ${greetingName},</h2>
-            <p>You have been invited by <strong>${invitedBy}</strong> to join the admin console.</p>
-            <p>Please click the button below to accept the invitation and set your password:</p>
-            <p><a class="btn" href="${inviteLink}" target="_blank" rel="noopener noreferrer">Accept Invitation</a></p>
-            <p class="muted">If you did not expect this invitation, you can safely ignore this email or decline it in the app.</p>
+        <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+          <title>You're Invited</title>
+
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              background: #f3f4f6;
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+              color: #111827;
+              line-height: 1.6;
+            }
+
+            .wrapper {
+              width: 100%;
+              padding: 40px 0;
+            }
+
+            .container {
+              max-width: 640px;
+              margin: 0 auto;
+              background: #ffffff;
+              border-radius: 14px;
+              box-shadow: 0px 6px 22px rgba(0, 0, 0, 0.06);
+              overflow: hidden;
+              border: 1px solid #e5e7eb;
+            }
+
+            .header {
+              background: linear-gradient(135deg, #2563eb, #1e40af);
+              padding: 32px;
+              text-align: center;
+              color: #ffffff;
+            }
+
+            .header h1 {
+              margin: 0;
+              font-size: 26px;
+              font-weight: 700;
+              letter-spacing: -0.4px;
+            }
+
+            .content {
+              padding: 32px;
+            }
+
+            .content h2 {
+              margin-top: 0;
+              font-size: 22px;
+              font-weight: 600;
+              color: #111827;
+            }
+
+            .lead {
+              font-size: 16px;
+              margin-bottom: 20px;
+              color: #374151;
+            }
+
+            .btn {
+              display: inline-block;
+              padding: 14px 26px;
+              background: #2563eb;
+              color: #fff !important;
+              text-decoration: none;
+              font-size: 16px;
+              font-weight: 600;
+              border-radius: 10px;
+              margin: 20px 0;
+              box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            }
+
+            .footer-note {
+              margin-top: 28px;
+              font-size: 14px;
+              color: #6b7280;
+              line-height: 1.5;
+            }
+          </style>
+        </head>
+
+        <body>
+          <div class="wrapper">
+            <div class="container">
+
+              <div class="header">
+                <h1>You're Invited</h1>
+              </div>
+
+              <div class="content">
+                <h2>Hello ${greetingName},</h2>
+
+                <p class="lead">
+                  <strong>${invitedBy}</strong> has invited you to join our platform.  
+                  We’re excited to welcome you aboard!
+                </p>
+
+                <p class="lead">
+                  Click the button below to accept your invitation and set up your account:
+                </p>
+
+                <p style="text-align: center;">
+                  <a class="btn" 
+                    href="${inviteLink}" 
+                    target="_blank" 
+                    rel="noopener noreferrer">
+                    Accept Invitation
+                  </a>
+                </p>
+
+                <p class="footer-note">
+                  If you weren’t expecting this, feel free to ignore the message—nothing will happen until you confirm.
+                </p>
+              </div>
+
+            </div>
           </div>
-        </div>
-      </body>
+        </body>
+      </html>
+    `;
+  }
+
+  private getSuperAdminCredentialsTemplate({
+    appName,
+    email,
+    password,
+  }: {
+    appName: string;
+    email: string;
+    password: string;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+          <title>${appName} Super Admin Credentials</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f9fafb; color: #111827; margin: 0; padding: 0; }
+            .wrapper { padding: 32px 12px; }
+            .card { max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.06); border: 1px solid #e5e7eb; }
+            .header { padding: 24px; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: #ffffff; border-radius: 12px 12px 0 0; }
+            .header h1 { margin: 0; font-size: 22px; }
+            .content { padding: 24px; }
+            .content h2 { margin-top: 0; font-size: 20px; }
+            .item { margin: 12px 0; padding: 14px 16px; background: #f3f4f6; border-radius: 10px; font-weight: 600; letter-spacing: 0.3px; }
+            .label { display: block; font-size: 13px; color: #6b7280; font-weight: 500; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+            .note { margin-top: 18px; font-size: 14px; color: #374151; line-height: 1.5; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="card">
+              <div class="header">
+                <h1>${appName} Super Admin Ready</h1>
+              </div>
+              <div class="content">
+                <h2>Credentials Generated</h2>
+                <p>Use the credentials below to sign in as the super admin.</p>
+                <div class="item">
+                  <span class="label">Email</span>
+                  ${email}
+                </div>
+                <div class="item">
+                  <span class="label">Temporary Password</span>
+                  ${password}
+                </div>
+                <p class="note">Please log in and change this password immediately after your first sign-in.</p>
+              </div>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+  }
+
+  private getSetPasswordTemplate({
+    appName,
+    link,
+    expiresInMinutes,
+  }: {
+    appName: string;
+    link: string;
+    expiresInMinutes: number;
+  }): string {
+    return `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+          <title>${appName} Password Setup</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; background: #f3f4f6; color: #0f172a; margin: 0; padding: 0; }
+            .wrapper { padding: 32px 12px; }
+            .card { max-width: 640px; margin: 0 auto; background: #ffffff; border-radius: 12px; box-shadow: 0 10px 28px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; }
+            .header { padding: 24px; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: #ffffff; border-radius: 12px 12px 0 0; }
+            .header h1 { margin: 0; font-size: 22px; letter-spacing: -0.2px; }
+            .content { padding: 24px; }
+            .content h2 { margin-top: 0; font-size: 20px; }
+            .lead { font-size: 15px; color: #1f2937; margin: 12px 0 18px; }
+            .btn { display: inline-block; padding: 14px 20px; background: #2563eb; color: #fff; text-decoration: none; border-radius: 10px; font-weight: 600; box-shadow: 0 6px 16px rgba(37,99,235,0.35); }
+            .note { margin-top: 18px; font-size: 14px; color: #475569; line-height: 1.6; }
+          </style>
+        </head>
+        <body>
+          <div class="wrapper">
+            <div class="card">
+              <div class="header">
+                <h1>Set your password</h1>
+              </div>
+              <div class="content">
+                <h2>Welcome to ${appName}</h2>
+                <p class="lead">Use the button below to create or update your password. This link expires in ${expiresInMinutes} minutes.</p>
+                <p style="text-align:center;">
+                  <a class="btn" href="${link}" target="_blank" rel="noopener noreferrer">Set Password</a>
+                </p>
+                <p class="note">If you did not request this, you can safely ignore this email.</p>
+              </div>
+            </div>
+          </div>
+        </body>
       </html>
     `;
   }

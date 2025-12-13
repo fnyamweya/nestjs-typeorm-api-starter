@@ -6,15 +6,15 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export enum AdminInviteStatus {
+export enum UserInviteStatus {
   PENDING = 'pending',
   ACCEPTED = 'accepted',
   DECLINED = 'declined',
   EXPIRED = 'expired',
 }
 
-@Entity('admin_invites')
-export class AdminInvite {
+@Entity('user_invites')
+export class UserInvite {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -36,8 +36,11 @@ export class AdminInvite {
   @Column({ name: 'role_id', type: 'uuid', nullable: true })
   roleId?: string;
 
-  @Column({ type: 'varchar', length: 16, default: AdminInviteStatus.PENDING })
-  status: AdminInviteStatus;
+  @Column({ name: 'user_id', type: 'uuid', nullable: true })
+  userId?: string;
+
+  @Column({ type: 'varchar', length: 16, default: UserInviteStatus.PENDING })
+  status: UserInviteStatus;
 
   @Column({ name: 'expires_at', type: 'timestamp' })
   expiresAt: Date;

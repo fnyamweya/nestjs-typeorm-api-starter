@@ -46,23 +46,44 @@ export class ProductVariant {
   @Column({ type: 'int', default: 0 })
   position: number;
 
-  @Column({ name: 'weight_grams', type: 'int', nullable: true })
-  weightGrams?: number;
-
-  @Column({ name: 'height_mm', type: 'int', nullable: true })
-  heightMm?: number;
-
-  @Column({ name: 'width_mm', type: 'int', nullable: true })
-  widthMm?: number;
-
-  @Column({ name: 'depth_mm', type: 'int', nullable: true })
-  depthMm?: number;
-
   @Column({ name: 'requires_shipping', type: 'boolean', default: true })
   requiresShipping: boolean;
 
+  @Column({ name: 'weight', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  weight?: string;
+
+  @Column({ name: 'length', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  length?: string;
+
+  @Column({ name: 'width', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  width?: string;
+
+  @Column({ name: 'height', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  height?: string;
+
+  @Column({ name: 'dimension_unit', type: 'text', default: 'cm' })
+  dimensionUnit: string;
+
+  @Column({ name: 'weight_unit', type: 'text', default: 'kg' })
+  weightUnit: string;
+
   @Column({ name: 'allow_backorder', type: 'boolean', default: false })
   allowBackorder: boolean;
+
+  @Column({ name: 'preorder_available', type: 'boolean', default: false })
+  preorderAvailable: boolean;
+
+  @Column({ name: 'preorder_from', type: 'timestamptz', nullable: true })
+  preorderFrom?: Date;
+
+  @Column({ name: 'preorder_to', type: 'timestamptz', nullable: true })
+  preorderTo?: Date;
+
+  @Column({ name: 'tax_class_override', type: 'text', nullable: true })
+  taxClassOverride?: string;
+
+  @Column({ name: 'fulfillment_class_override', type: 'text', nullable: true })
+  fulfillmentClassOverride?: string;
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;

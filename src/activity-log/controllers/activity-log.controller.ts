@@ -13,6 +13,7 @@ import { FilterActivityLogDto } from '../dto/filter-activity-log.dto';
 import { ActivityAction } from '../entities/user-activity-log.entity';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
+import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/auth/entities/permission.entity';
 import { ResponseUtil } from 'src/common/utils/response.util';
@@ -30,7 +31,7 @@ import {
 } from '@nestjs/swagger';
 
 @Controller('/api/activity-logs')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiTags('Activity Logs')
 @ApiBearerAuth('access-token')
 export class ActivityLogController {

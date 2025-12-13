@@ -22,6 +22,7 @@ export enum CacheKeyStatus {
 export enum CacheKeyService {
   TWO_FACTOR = 'two_factor',
   RESET_PASSWORD = 'reset_password',
+  SET_PASSWORD = 'set_password',
 }
 
 @Entity('cache_keys')

@@ -3,6 +3,7 @@ import {
   UnauthorizedException,
   BadRequestException,
   NotFoundException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -32,6 +33,7 @@ import {
 } from '../entities/cache-key.entity';
 import { VerifyPasswordResetOTPCodeDto } from '../dto/verify-password-reset-otp-code.dto';
 import { ResetPasswordDto } from '../dto/reset-password.dto';
+import { SetPasswordDto } from '../dto/set-password.dto';
 import { CustomerLoginDto } from '../dto/customer-login.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { CustomerRegisterDto } from '../dto/customer-register.dto';
@@ -42,11 +44,12 @@ import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 import { verifyPassword } from 'src/common/utils/password.util';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
 import { UserAuthProvider } from '../entities/user-auth-provider.entity';
-import { AdminInvite, AdminInviteStatus } from '../entities/admin-invite.entity';
-import { CreateAdminInviteDto } from '../dto/create-admin-invite.dto';
-import { AcceptAdminInviteDto } from '../dto/accept-admin-invite.dto';
-import { DeclineAdminInviteDto } from '../dto/decline-admin-invite.dto';
+import { UserInvite, UserInviteStatus } from '../entities/user-invite.entity';
+import { CreateUserInviteDto } from '../dto/create-user-invite.dto';
+import { AcceptUserInviteDto } from '../dto/accept-user-invite.dto';
+import { DeclineUserInviteDto } from '../dto/decline-user-invite.dto';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
+import { FeatureFlagService } from 'src/feature-flag/feature-flag.service';
 
 @Injectable()
 export class AuthService {
@@ -67,13 +70,14 @@ export class AuthService {
     private roleRepository: Repository<Role>,
     @InjectRepository(UserAuthProvider)
     private userAuthProviderRepository: Repository<UserAuthProvider>,
-    @InjectRepository(AdminInvite)
-    private adminInviteRepository: Repository<AdminInvite>,
+    @InjectRepository(UserInvite)
+    private userInviteRepository: Repository<UserInvite>,
     private jwtService: JwtService,
     private configService: ConfigService,
     private twoFactorService: TwoFactorService,
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
+    private featureFlagService: FeatureFlagService,
   ) {}
 
   private async ensureAdminProfile(userId: string) {
@@ -263,157 +267,219 @@ export class AuthService {
     return this.completeLogin(savedUser, request);
   }
 
-  async createAdminInvite(
-    createAdminInviteDto: CreateAdminInviteDto,
+  async createUserInvite(
+    createUserInviteDto: CreateUserInviteDto,
     inviter: AuthenticatedUser,
   ) {
-    const email = createAdminInviteDto.email.trim().toLowerCase();
+    const inviterRole = inviter.role?.name || '';
+
+    const email = createUserInviteDto.email.trim().toLowerCase();
+    const phone = createUserInviteDto.phone.trim();
+
+    const pendingInvite = await this.userInviteRepository.findOne({
+      where: { email, status: UserInviteStatus.PENDING },
+    });
+
+    if (pendingInvite) {
+      pendingInvite.status = UserInviteStatus.EXPIRED;
+      await this.userInviteRepository.save(pendingInvite);
+      if (pendingInvite.userId) {
+        const pendingUser = await this.userRepository.findOne({ where: { id: pendingInvite.userId } });
+        if (pendingUser && !pendingUser.isActive) {
+          await this.userRepository.remove(pendingUser);
+        }
+      }
+    }
 
     const existingUser = await this.userRepository.findOne({ where: { email } });
     if (existingUser) {
       throw new BadRequestException('A user with this email already exists');
     }
 
-    const pendingInvite = await this.adminInviteRepository.findOne({
-      where: { email, status: AdminInviteStatus.PENDING },
-    });
-
-    if (pendingInvite) {
-      pendingInvite.status = AdminInviteStatus.EXPIRED;
-      await this.adminInviteRepository.save(pendingInvite);
+    const existingPhoneUser = await this.userRepository.findOne({ where: { phone } });
+    if (existingPhoneUser) {
+      throw new BadRequestException('A user with this phone already exists');
     }
 
     const adminRole = await this.roleRepository.findOne({
       where: [{ name: 'admin' }, { name: ILike('admin') }],
     });
 
-    const roleId = createAdminInviteDto.roleId || adminRole?.id;
+    const requestedRoleId = createUserInviteDto.roleId || adminRole?.id;
+
+    if (!requestedRoleId) {
+      throw new BadRequestException('Target role is required');
+    }
+
+    const targetRole = await this.roleRepository.findOne({ where: { id: requestedRoleId } });
+    if (!targetRole) {
+      throw new BadRequestException('Target role not found');
+    }
+
+    await this.assertInviterCanAssignRole(inviter.roleId, requestedRoleId, inviterRole);
+
+    const roleId = requestedRoleId;
     const expiresInDays = parseInt(
-      this.configService.get<string>('ADMIN_INVITE_EXPIRY_DAYS', '7'),
+      this.configService.get<string>('USER_INVITE_EXPIRY_DAYS', '7'),
       10,
     );
     const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
 
-    const invite = this.adminInviteRepository.create({
-      email,
-      firstName: createAdminInviteDto.firstName,
-      lastName: createAdminInviteDto.lastName,
-      invitedBy: inviter.id,
-      roleId,
-      token: crypto.randomUUID(),
-      status: AdminInviteStatus.PENDING,
-      expiresAt,
-    });
-
-    const savedInvite = await this.adminInviteRepository.save(invite);
-    const baseLink = this.configService.get<string>(
-      'ADMIN_INVITE_URL',
-      'https://example.com/admin/invite',
-    );
-    const inviteLink = `${baseLink}?token=${savedInvite.token}`;
-
-    await this.emailServiceUtils.sendAdminInviteEmail({
-      email,
-      inviteLink,
-      invitedBy: inviter.email || 'Super Admin',
-      inviteeName: invite.firstName,
-    });
-
-    return {
-      token: savedInvite.token,
-      expiresAt: savedInvite.expiresAt,
-    };
-  }
-
-  async acceptAdminInvite(
-    acceptAdminInviteDto: AcceptAdminInviteDto,
-    request: Request,
-  ) {
-    const invite = await this.adminInviteRepository.findOne({
-      where: { token: acceptAdminInviteDto.token },
-    });
-
-    if (!invite) {
-      throw new BadRequestException('Invitation not found');
-    }
-
-    if (invite.status !== AdminInviteStatus.PENDING) {
-      throw new BadRequestException('Invitation is no longer valid');
-    }
-
-    if (new Date() > invite.expiresAt) {
-      invite.status = AdminInviteStatus.EXPIRED;
-      await this.adminInviteRepository.save(invite);
-      throw new BadRequestException('Invitation has expired');
-    }
-
-    const existingUser = await this.userRepository.findOne({
-      where: { email: invite.email },
-    });
-
-    if (existingUser) {
-      throw new BadRequestException('A user with this email already exists');
-    }
-
-    const roleId =
-      acceptAdminInviteDto.roleId || invite.roleId ||
-      (
-        await this.roleRepository.findOne({
-          where: [{ name: 'admin' }, { name: ILike('admin') }],
-        })
-      )?.id;
-
-    const user = this.userRepository.create({
-      email: invite.email,
-      phone: acceptAdminInviteDto.phone?.trim() || `admin-${crypto.randomUUID()}`,
-      firstName: invite.firstName,
-      lastName: invite.lastName,
-      roleId,
-      authProvider: AuthProviderType.LOCAL,
-      isActive: true,
-      status: UserStatus.ACTIVE,
-      mfaChannel: MfaChannel.EMAIL,
-      twoFactorEnabled: false,
-    });
-    user.password = acceptAdminInviteDto.password;
-
-    const savedUser = await this.userRepository.save(user);
-
-    await this.userAuthProviderRepository.save(
-      this.userAuthProviderRepository.create({
-        userId: savedUser.id,
-        provider: 'local',
-        providerId: savedUser.id,
+    // Create placeholder user that will activate upon password set
+    const pendingUser = await this.userRepository.save(
+      this.userRepository.create({
+        email,
+        phone,
+        firstName: createUserInviteDto.firstName,
+        lastName: createUserInviteDto.lastName,
+        roleId,
+        authProvider: AuthProviderType.LOCAL,
+        isActive: false,
+        status: UserStatus.DISABLED,
+        mfaChannel: MfaChannel.EMAIL,
+        twoFactorEnabled: false,
       }),
     );
 
-    await this.ensureAdminProfile(savedUser.id);
+    const token = crypto.randomUUID();
+    const tokenHash = this.hashToken(token);
 
-    invite.status = AdminInviteStatus.ACCEPTED;
-    invite.acceptedAt = new Date();
-    await this.adminInviteRepository.save(invite);
+    await this.cacheKeyRepository.save(
+      this.cacheKeyRepository.create({
+        userId: pendingUser.id,
+        service: CacheKeyService.SET_PASSWORD,
+        code: tokenHash,
+        expiresAt,
+        status: CacheKeyStatus.PENDING,
+        attempts: 0,
+        maxAttempts: 1,
+      }),
+    );
 
-    return this.completeLogin(savedUser, request);
+    const invite = await this.userInviteRepository.save(
+      this.userInviteRepository.create({
+        email,
+        firstName: createUserInviteDto.firstName,
+        lastName: createUserInviteDto.lastName,
+        invitedBy: inviter.id,
+        roleId,
+        token,
+        status: UserInviteStatus.PENDING,
+        expiresAt,
+        userId: pendingUser.id,
+      }),
+    );
+
+    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
+    const passwordSetPath = this.configService.get<string>(
+      'PASSWORD_SET_PATH',
+      '/auth/password-set',
+    );
+    const base = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
+    const inviteLink = `${base}${passwordSetPath}?token=${invite.token}`;
+
+    await this.emailServiceUtils.sendSetPasswordLink({
+      email,
+      link: inviteLink,
+      appName: this.configService.get<string>('APP_NAME', 'Application'),
+      expiresInMinutes: Math.round((expiresAt.getTime() - Date.now()) / 60000),
+    });
+
+    return {
+      token: invite.token,
+      expiresAt: invite.expiresAt,
+    };
   }
 
-  async declineAdminInvite(declineAdminInviteDto: DeclineAdminInviteDto) {
-    const invite = await this.adminInviteRepository.findOne({
-      where: { token: declineAdminInviteDto.token },
+  async acceptUserInvite(
+    acceptUserInviteDto: AcceptUserInviteDto,
+    request: Request,
+  ) {
+    const updatedUser = await this.completePasswordSetup(
+      { token: acceptUserInviteDto.token, newPassword: acceptUserInviteDto.password },
+      request,
+    );
+
+    return this.completeLogin(updatedUser, request);
+  }
+
+  async declineUserInvite(declineUserInviteDto: DeclineUserInviteDto) {
+    const invite = await this.userInviteRepository.findOne({
+      where: { token: declineUserInviteDto.token },
     });
 
     if (!invite) {
       throw new BadRequestException('Invitation not found');
     }
 
-    if (invite.status !== AdminInviteStatus.PENDING) {
+    if (invite.status !== UserInviteStatus.PENDING) {
       throw new BadRequestException('Invitation is no longer valid');
     }
 
-    invite.status = AdminInviteStatus.DECLINED;
+    invite.status = UserInviteStatus.DECLINED;
     invite.declinedAt = new Date();
-    await this.adminInviteRepository.save(invite);
+    await this.userInviteRepository.save(invite);
+
+    const tokenHash = this.hashToken(declineUserInviteDto.token);
+    const cacheKey = await this.cacheKeyRepository.findOne({
+      where: {
+        code: tokenHash,
+        service: CacheKeyService.SET_PASSWORD,
+        status: CacheKeyStatus.PENDING,
+      },
+    });
+
+    if (cacheKey) {
+      cacheKey.status = CacheKeyStatus.EXPIRED;
+      await this.cacheKeyRepository.save(cacheKey);
+    }
+
+    if (invite.userId) {
+      const placeholderUser = await this.userRepository.findOne({ where: { id: invite.userId } });
+      if (placeholderUser && !placeholderUser.isActive) {
+        await this.userRepository.remove(placeholderUser);
+      }
+    }
 
     return { declined: true };
+  }
+
+  private async assertInviterCanAssignRole(
+    inviterRoleId: string | undefined,
+    targetRoleId: string,
+    inviterRoleName?: string,
+  ) {
+    if (!inviterRoleId) {
+      throw new ForbiddenException('Inviter role is required');
+    }
+
+    const treeRepo = this.roleRepository.manager.getTreeRepository(Role);
+    const inviterRole = await treeRepo.findOne({
+      where: { id: inviterRoleId },
+      relations: ['parent'],
+    });
+
+    if (inviterRole?.name?.toLowerCase() === 'super admin') {
+      return; // Super Admin can invite any role
+    }
+
+    const targetRole = await treeRepo.findOne({
+      where: { id: targetRoleId },
+      relations: ['parent'],
+    });
+
+    if (!targetRole) {
+      throw new BadRequestException('Target role not found');
+    }
+
+    const ancestors = await treeRepo.findAncestors(targetRole);
+    const isAllowed = ancestors.some((r) => r.id === inviterRoleId);
+
+    if (!isAllowed) {
+      throw new ForbiddenException(
+        `Role ${inviterRoleName || inviterRoleId} cannot invite into role ${targetRole.name}`,
+      );
+    }
   }
 
   async loginCustomer(
@@ -489,6 +555,24 @@ export class AuthService {
 
     if (!(await this.verifyUserPassword(user, adminLoginDto.password))) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const env = this.configService.get<string>('NODE_ENV', 'development');
+    const isSuperAdmin = user.role?.name?.toLowerCase() === 'super admin';
+    if (isSuperAdmin && env === 'development') {
+      const shouldBypass2FA = await this.featureFlagService.isEnabled(
+        'auth.super_admin_skip_2fa',
+        {
+          userId: user.id,
+          roles: user.role?.name ? [user.role.name] : [],
+          env,
+        },
+      );
+
+      if (shouldBypass2FA) {
+        await this.ensureAdminProfile(user.id);
+        return this.completeLogin(user, request);
+      }
     }
 
     const is2FAEnabled = await this.twoFactorService.isTwoFactorEnabled(
@@ -730,17 +814,6 @@ export class AuthService {
     return {
       accessToken,
       refreshToken,
-      accessTokenExpiresAt: this.configService.get<string>(
-        'JWT_EXPIRATION',
-        '15m',
-      ),
-      refreshTokenExpiresAt: this.configService.get<string>(
-        'JWT_REFRESH_EXPIRATION',
-        '7d',
-      ),
-      user: {
-        id: user.id,
-      },
     };
   }
 
@@ -1131,6 +1204,127 @@ export class AuthService {
       location: request?.headers['cf-ipcountry'] as string,
     });
     await this.userActivityLogRepository.save(userActivityLog);
+  }
+
+  async completePasswordSetup(
+    setPasswordDto: SetPasswordDto,
+    request: Request,
+  ) {
+    const tokenHash = this.hashToken(setPasswordDto.token);
+
+    const invite = await this.userInviteRepository.findOne({
+      where: { token: setPasswordDto.token },
+    });
+
+    const cacheKey = await this.cacheKeyRepository.findOne({
+      where: {
+        code: tokenHash,
+        service: CacheKeyService.SET_PASSWORD,
+        status: CacheKeyStatus.PENDING,
+      },
+    });
+
+    if (!cacheKey) {
+      if (invite && invite.status === UserInviteStatus.PENDING) {
+        invite.status = UserInviteStatus.EXPIRED;
+        await this.userInviteRepository.save(invite);
+      }
+      throw new BadRequestException('Invalid or expired token');
+    }
+
+    if (new Date() > cacheKey.expiresAt) {
+      cacheKey.status = CacheKeyStatus.EXPIRED;
+      await this.cacheKeyRepository.save(cacheKey);
+      if (invite) {
+        invite.status = UserInviteStatus.EXPIRED;
+        await this.userInviteRepository.save(invite);
+      }
+      throw new BadRequestException('Token has expired');
+    }
+
+    const user = await this.userRepository.findOne({
+      where: { id: cacheKey.userId },
+    });
+
+    if (!user) {
+      cacheKey.status = CacheKeyStatus.EXPIRED;
+      await this.cacheKeyRepository.save(cacheKey);
+      throw new NotFoundException('User not found for token');
+    }
+
+    if (invite) {
+      if (invite.status !== UserInviteStatus.PENDING) {
+        throw new BadRequestException('Invitation is no longer valid');
+      }
+
+      if (invite.userId && invite.userId !== user.id) {
+        throw new BadRequestException('Invitation token does not match user');
+      }
+
+      if (new Date() > invite.expiresAt) {
+        invite.status = UserInviteStatus.EXPIRED;
+        await this.userInviteRepository.save(invite);
+        cacheKey.status = CacheKeyStatus.EXPIRED;
+        await this.cacheKeyRepository.save(cacheKey);
+        throw new BadRequestException('Invitation has expired');
+      }
+    }
+
+    user.password = setPasswordDto.newPassword;
+    user.lastPasswordChangedAt = new Date();
+    user.isActive = true;
+    user.status = UserStatus.ACTIVE;
+    await this.userRepository.save(user);
+
+    cacheKey.status = CacheKeyStatus.USED;
+    await this.cacheKeyRepository.save(cacheKey);
+
+    if (invite) {
+      invite.status = UserInviteStatus.ACCEPTED;
+      invite.acceptedAt = new Date();
+      await this.userInviteRepository.save(invite);
+    }
+
+    const existingProvider = await this.userAuthProviderRepository.findOne({
+      where: { userId: user.id, provider: 'local' },
+    });
+
+    if (!existingProvider) {
+      await this.userAuthProviderRepository.save(
+        this.userAuthProviderRepository.create({
+          userId: user.id,
+          provider: 'local',
+          providerId: user.id,
+        }),
+      );
+    }
+
+    if (user.roleId) {
+      const role = await this.roleRepository.findOne({ where: { id: user.roleId } });
+      if (role?.name?.toLowerCase().includes('admin')) {
+        await this.ensureAdminProfile(user.id);
+      }
+    }
+
+    const { device, browser, os } = parseUserAgent(request);
+    const userActivityLog = this.userActivityLogRepository.create({
+      userId: user.id,
+      action: ActivityAction.CHANGE_PASSWORD,
+      description: 'User set password via one-time link',
+      ipAddress: request?.ip,
+      userAgent: request?.headers['user-agent'],
+      device,
+      browser,
+      os,
+      location: request?.headers['cf-ipcountry'] as string,
+    });
+    await this.userActivityLogRepository.save(userActivityLog);
+
+    return user;
+  }
+
+  private hashToken(token: string): string {
+    return crypto.createHash('sha256').update(token).digest('hex');
   }
 
   private buildAdminUserEntity(

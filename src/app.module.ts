@@ -13,6 +13,7 @@ import { CommonModule } from './common/common.module';
 import dataSource from './data-source';
 import { QueueModule } from './queue/queue.module';
 import { CatalogModule } from './catalog/catalog.module';
+import { FeatureFlagModule } from './feature-flag/feature-flag.module';
 
 @Module({
   imports: [
@@ -29,6 +30,7 @@ import { CatalogModule } from './catalog/catalog.module';
     SettingModule,
     QueueModule,
     CatalogModule,
+    FeatureFlagModule,
   ],
   controllers: [AppController],
   providers: [

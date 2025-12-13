@@ -16,15 +16,15 @@ async function runSeeders() {
     const catalogSeeder = app.get(CatalogSeeder);
 
     // Run seeders in order
+    console.log('⚙️ Seeding application settings...');
+    await settingSeeder.seed();
+    console.log('✅ Settings seeding completed');
+
     console.log(
       '📝 Seeding authentication data (roles, permissions, users)...',
     );
     await authSeeder.seed();
     console.log('✅ Authentication seeding completed');
-
-    console.log('⚙️ Seeding application settings...');
-    await settingSeeder.seed();
-    console.log('✅ Settings seeding completed');
 
     console.log('🗂️ Seeding catalog data...');
     await catalogSeeder.seed();

@@ -47,7 +47,6 @@ export class ProductController {
   }
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'List products with pagination' })
   @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
   @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Page size (default 10)' })
@@ -68,7 +67,6 @@ export class ProductController {
   }
 
   @Get('/:id')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'Get product by id' })
   @ApiOkResponse({ description: 'Product retrieved successfully' })
   async findOne(@Param('id') id: string) {
