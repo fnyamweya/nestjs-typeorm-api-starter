@@ -46,4 +46,34 @@ describe('PriceService', () => {
     expect(resolved.currencyCode).toBe('KES');
     expect(priceListRepo.findOne).toHaveBeenCalled();
   });
+
+  it('selects price list by currency precedence (meta.priority)', async () => {
+    const low = { id: '1', code: 'low', name: 'low', currencyCode: 'KES', isActive: true, metaJson: { priority: 1 }, createdAt: new Date(), updatedAt: new Date() } as PriceList;
+    const high = { id: '2', code: 'high', name: 'high', currencyCode: 'KES', isActive: true, metaJson: { priority: 10 }, createdAt: new Date(), updatedAt: new Date() } as PriceList;
+    // selectPriceList will call find for currency
+    priceListRepo.find.mockResolvedValueOnce([low, high]);
+    // variant prices for the higher priority list
+    variantPriceRepo.find.mockResolvedValueOnce([
+      { unitPrice: '200.00', compareAtPrice: '250.00', minQuantity: 1 } as ProductVariantPrice,
+    ]);
+
+    const resolved = await service.resolveVariantPrice({ productVariantId: 'pv1', currencyCode: 'KES', quantity: 1 });
+    expect(resolved.unitPrice).toBe('200.00');
+    expect(resolved.priceListId).toBe('2');
+  });
+
+  it('caches resolved price', async () => {
+    const pl = { id: '3', code: 'pl3', name: 'pl3', currencyCode: 'KES', isActive: true, createdAt: new Date(), updatedAt: new Date() } as PriceList;
+    priceListRepo.find.mockResolvedValueOnce([pl]);
+    variantPriceRepo.find.mockResolvedValueOnce([
+      { unitPrice: '100.00', minQuantity: 1 } as ProductVariantPrice,
+    ]);
+
+    const r1 = await service.resolveVariantPrice({ productVariantId: 'pv-cache', currencyCode: 'KES', quantity: 1 });
+    const r2 = await service.resolveVariantPrice({ productVariantId: 'pv-cache', currencyCode: 'KES', quantity: 1 });
+
+    expect(r1.unitPrice).toBe('100.00');
+    expect(r2.unitPrice).toBe('100.00');
+    expect(variantPriceRepo.find).toHaveBeenCalledTimes(1);
+  });
 });
