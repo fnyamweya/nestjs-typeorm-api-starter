@@ -1,15 +1,11 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../src/app.module';
-import { SettingSeeder } from '../src/setting/seeders/setting.seeder';
-import { CatalogSeeder } from '../src/catalog/seeders/catalog.seeder';
-import { ShippingSeeder } from '../src/shipping/seeders/shipping.seeder';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProductVariant } from '../src/catalog/entities/product-variant.entity';
 import { OrderLevelCharge } from '../src/order/entities/order-level-charge.entity';
+import { createTestApp, truncateDb } from './e2e/bootstrap';
+
 
 describe('Orders E2E - Shipping integration', () => {
   let app: INestApplication;
@@ -17,25 +13,34 @@ describe('Orders E2E - Shipping integration', () => {
   let chargeRepo: Repository<OrderLevelCharge>;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleRef.createNestApplication();
-    await app.init();
+    try {
+      const t = await createTestApp();
+      app = t.app;
 
-    // Run seeders (settings, catalog, shipping)
-    const settingSeeder = moduleRef.get(SettingSeeder);
-    const catalogSeeder = moduleRef.get(CatalogSeeder);
-    const shippingSeeder = moduleRef.get(ShippingSeeder);
+      // ensure a clean DB and run seeders via existing seed entrypoint
+      await truncateDb(t.ds);
+      const settingSeeder = app.get(require('../src/setting/seeders/setting.seeder').SettingSeeder);
+      const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
+      const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
+      await settingSeeder.seed();
+      await catalogSeeder.seed();
+      await shippingSeeder.seed();
 
-    await settingSeeder.seed();
-    await catalogSeeder.seed();
-    await shippingSeeder.seed();
-
-    variantRepo = moduleRef.get(getRepositoryToken(ProductVariant));
-    chargeRepo = moduleRef.get(getRepositoryToken(OrderLevelCharge));
-  }, 20000);
+      variantRepo = app.get(getRepositoryToken(ProductVariant));
+      chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
+    } catch (err) {
+      console.error('beforeAll failed in Orders E2E', err);
+      throw err;
+    }
+  }, 120000);
 
   afterAll(async () => {
-    await app.close();
+    try {
+      if (app) await app.close();
+    } catch (err) {
+      console.error('afterAll failed closing app in Orders E2E', err);
+      throw err;
+    }
   });
 
   it('creates an order and persists shipping and tax charges', async () => {

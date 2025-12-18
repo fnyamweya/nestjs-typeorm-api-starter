@@ -24,47 +24,40 @@ describe('Orders E2E - Formula shipping integration', () => {
   let kenyaZone: ShippingZone | undefined;
 
   beforeAll(async () => {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-    app = moduleRef.createNestApplication();
-    await app.init();
-
-    // Ensure a clean DB (truncate all public tables) to avoid flakiness between runs
-    ds = moduleRef.get(DataSource);
-    const tables: Array<{ tablename: string }> = await ds.query(`
-      SELECT tablename FROM pg_tables 
-      WHERE schemaname = 'public' 
-      AND tablename NOT LIKE 'pg_%' 
-      AND tablename != 'information_schema'
-    `);
-    if (tables.length) {
-      const list = tables.map((t) => `"${t.tablename}"`).join(', ');
-      await ds.query(`TRUNCATE TABLE ${list} CASCADE;`);
-    }
-
-    // Run seeders (settings, catalog, shipping)
-    const settingSeeder = moduleRef.get(SettingSeeder);
-    const catalogSeeder = moduleRef.get(CatalogSeeder);
-    const shippingSeeder = moduleRef.get(ShippingSeeder);
-
     try {
-      await settingSeeder.seed();
-      await catalogSeeder.seed();
-      await shippingSeeder.seed();
+      const t = await createTestApp();
+      app = t.app;
+      ds = t.ds;
+
+      await truncateDb(ds);
+
+      // Run seeders (settings, catalog, shipping)
+      const settingSeeder = app.get(require('../src/setting/seeders/setting.seeder').SettingSeeder);
+      const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
+      const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
+
+      try {
+        await settingSeeder.seed();
+        await catalogSeeder.seed();
+        await shippingSeeder.seed();
+      } catch (err) {
+        console.error('Seeder failed during e2e setup', err);
+        throw err;
+      }
+
+      variantRepo = app.get(getRepositoryToken(ProductVariant));
+      chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
+      methodRepo = app.get(getRepositoryToken(ShippingMethod));
+      rateRepo = app.get(getRepositoryToken(ShippingRate));
+
+      // Ensure we have the Kenya zone and use it explicitly for the formula method
+      const zone = (await ds.query(`SELECT * FROM shipping_zone WHERE code = 'kenya' LIMIT 1`))[0];
+      if (!zone) throw new Error('Kenya shipping zone not found after seeding');
+      kenyaZone = zone as any;
     } catch (err) {
-      // Surface seeder errors with context
-      console.error('Seeder failed during e2e setup', err);
+      console.error('beforeAll failed in Orders Formula E2E', err);
       throw err;
     }
-
-    variantRepo = moduleRef.get(getRepositoryToken(ProductVariant));
-    chargeRepo = moduleRef.get(getRepositoryToken(OrderLevelCharge));
-    methodRepo = moduleRef.get(getRepositoryToken(ShippingMethod));
-    rateRepo = moduleRef.get(getRepositoryToken(ShippingRate));
-
-    // Ensure we have the Kenya zone and use it explicitly for the formula method
-    const zone = (await ds.query(`SELECT * FROM shipping_zone WHERE code = 'kenya' LIMIT 1`))[0];
-    if (!zone) throw new Error('Kenya shipping zone not found after seeding');
-    kenyaZone = zone as any;
   }, 120000);
 
   afterAll(async () => {
