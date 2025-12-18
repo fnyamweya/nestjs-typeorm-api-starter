@@ -3,6 +3,7 @@ import { AppModule } from '../app.module';
 import { AuthSeeder } from '../auth/seeders/auth.seeder';
 import { SettingSeeder } from '../setting/seeders/setting.seeder';
 import { CatalogSeeder } from '../catalog/seeders/catalog.seeder';
+import { ShippingSeeder } from '../shipping/seeders/shipping.seeder';
 
 async function runSeeders() {
   console.log('🌱 Starting database seeding...');
@@ -14,6 +15,7 @@ async function runSeeders() {
     const authSeeder = app.get(AuthSeeder);
     const settingSeeder = app.get(SettingSeeder);
     const catalogSeeder = app.get(CatalogSeeder);
+      const shippingSeeder = app.get(ShippingSeeder);
 
     // Run seeders in order
     console.log('⚙️ Seeding application settings...');
@@ -28,6 +30,13 @@ async function runSeeders() {
 
     console.log('🗂️ Seeding catalog data...');
     await catalogSeeder.seed();
+    console.log('🚚 Seeding shipping data...');
+    try {
+      await shippingSeeder.seed();
+      console.log('✅ Shipping seeding completed');
+    } catch (err) {
+      console.warn('⚠️ Shipping seeder skipped/unavailable in this environment');
+    }
     console.log('✅ Catalog seeding completed');
 
     console.log('🎉 All seeders completed successfully!');
