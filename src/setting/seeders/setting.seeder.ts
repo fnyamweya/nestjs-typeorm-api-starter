@@ -61,5 +61,24 @@ export class SettingSeeder {
     }
 
     console.log('SMTP configuration seeding completed');
+    // Seed default shipping & tax settings
+    const defaults = [
+      { key: 'shipping_enabled', value: 'true' },
+      { key: 'shipping_free_threshold', value: '1000' },
+      { key: 'shipping_flat_fee', value: '50' },
+      { key: 'tax_enabled', value: 'true' },
+      { key: 'tax_rate', value: '16' },
+    ];
+
+    for (const settingData of defaults) {
+      const existingSetting = await this.settingRepository.findOne({ where: { key: settingData.key } });
+      if (!existingSetting) {
+        const setting = this.settingRepository.create(settingData);
+        await this.settingRepository.save(setting);
+        console.log(`Created default setting: ${settingData.key}`);
+      } else {
+        console.log(`Default setting already exists: ${settingData.key}`);
+      }
+    }
   }
 }

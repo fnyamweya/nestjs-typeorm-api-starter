@@ -143,4 +143,29 @@ export class SettingService {
 
     return plainToClass(SMSResponseDto, smsData);
   }
+
+  async getShippingSettings() {
+    const keys = ['shipping_enabled', 'shipping_free_threshold', 'shipping_flat_fee'];
+    const settings = await this.settingRepository.find({ where: keys.map((k) => ({ key: k })) });
+
+    return {
+      shippingEnabled: this.getSettingValue(settings, 'shipping_enabled') === 'true',
+      freeThreshold: parseFloat(this.getSettingValue(settings, 'shipping_free_threshold') || '0'),
+      flatFee: parseFloat(this.getSettingValue(settings, 'shipping_flat_fee') || '50'),
+      createdAt: settings[0]?.createdAt,
+      updatedAt: settings[0]?.updatedAt,
+    };
+  }
+
+  async getTaxSettings() {
+    const keys = ['tax_enabled', 'tax_rate'];
+    const settings = await this.settingRepository.find({ where: keys.map((k) => ({ key: k })) });
+
+    return {
+      taxEnabled: this.getSettingValue(settings, 'tax_enabled') === 'true',
+      taxRate: parseFloat(this.getSettingValue(settings, 'tax_rate') || '0'),
+      createdAt: settings[0]?.createdAt,
+      updatedAt: settings[0]?.updatedAt,
+    };
+  }
 }
