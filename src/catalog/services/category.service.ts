@@ -4,7 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { FindOptionsWhere, Repository } from 'typeorm';
 import { Category } from '../entities/category.entity';
 import { CategoryTranslation } from '../entities/category-translation.entity';
 import { CategoryClosure } from '../entities/category-closure.entity';
@@ -52,16 +52,18 @@ export class CategoryService {
   }
 
   async findAll(filters: FilterCategoryDto): Promise<Category[]> {
-    const where: Record<string, any> = {
-      taxonomyId: filters.taxonomyId,
-    };
+    const where: FindOptionsWhere<Category> = {};
+
+    if (filters.taxonomyId) {
+      where.taxonomyId = filters.taxonomyId;
+    }
 
     if (filters.isActive !== undefined) {
       where.isActive = filters.isActive;
     }
 
     return this.categoryRepository.find({
-      where,
+      where: Object.keys(where).length ? where : undefined,
       relations: ['translations'],
       order: { sortOrder: 'ASC', key: 'ASC' },
     });

@@ -14,6 +14,26 @@ import { OrderLevelCharge } from '../src/order/entities/order-level-charge.entit
 import { ShippingMethod } from '../src/shipping/entities/shipping-method.entity';
 import { ShippingRate } from '../src/shipping/entities/shipping-rate.entity';
 
+async function createTestApp() {
+  const moduleFixture = await Test.createTestingModule({
+    imports: [AppModule],
+  }).compile();
+
+  const app = moduleFixture.createNestApplication();
+  await app.init();
+
+  const ds = app.get(DataSource);
+  return { app, ds };
+}
+
+async function truncateDb(dataSource: DataSource) {
+  const entities = dataSource.entityMetadatas;
+  for (const entity of entities) {
+    const repository = dataSource.getRepository(entity.name);
+    await repository.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
+  }
+}
+
 describe('Orders E2E - Formula shipping integration', () => {
   let app: INestApplication;
   let variantRepo: Repository<ProductVariant>;

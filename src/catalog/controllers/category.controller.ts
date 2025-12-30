@@ -47,8 +47,13 @@ export class CategoryController {
   }
 
   @Get()
-  @ApiOperation({ summary: 'List categories by taxonomy' })
-  @ApiQuery({ name: 'taxonomyId', type: String, required: true })
+  @ApiOperation({ summary: 'List catalog categories' })
+  @ApiQuery({
+    name: 'taxonomyId',
+    type: String,
+    required: false,
+    description: 'Optional taxonomy id to scope the results',
+  })
   @ApiQuery({ name: 'isActive', type: Boolean, required: false })
   @ApiOkResponse({ description: 'Categories retrieved successfully' })
   async findAll(@Query() filters: FilterCategoryDto) {
