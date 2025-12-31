@@ -4,6 +4,7 @@ import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
 import { AuthService } from '../services/auth.service';
 import { AuthenticatedUser, JwtPayload } from '../interfaces/user.interface';
+import { normalizeProfilePreferences } from 'src/user/profile-preferences';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -23,6 +24,8 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (!user) {
       throw new UnauthorizedException('Invalid token');
     }
+
+    user.profilePreferences = normalizeProfilePreferences(user.profilePreferences);
 
     // Never expose password-derived fields on request.user
     const { passwordHash, password, ...userWithoutSensitive } = user as any;

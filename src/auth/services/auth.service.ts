@@ -50,6 +50,7 @@ import { AcceptUserInviteDto } from '../dto/accept-user-invite.dto';
 import { DeclineUserInviteDto } from '../dto/decline-user-invite.dto';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 import { FeatureFlagService } from 'src/feature-flag/feature-flag.service';
+import { mergeProfilePreferences } from 'src/user/profile-preferences';
 
 @Injectable()
 export class AuthService {
@@ -925,7 +926,15 @@ export class AuthService {
     }
 
     // Update user fields
-    Object.assign(user, updateProfileDto);
+    const { profilePreferences, ...rest } = updateProfileDto as any;
+    Object.assign(user, rest);
+
+    if (profilePreferences !== undefined) {
+      user.profilePreferences = mergeProfilePreferences(
+        user.profilePreferences,
+        profilePreferences,
+      );
+    }
 
     if (profileImage) {
       // Delete previous profile image from S3

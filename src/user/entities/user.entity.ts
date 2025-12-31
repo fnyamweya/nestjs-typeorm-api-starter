@@ -24,6 +24,7 @@ import { UserAuthProvider } from 'src/auth/entities/user-auth-provider.entity';
 import { CustomerProfile } from './customer-profile.entity';
 import { AdminProfile } from './admin-profile.entity';
 import { AuthProviderType, MfaChannel, UserStatus } from '../enums';
+import { UserProfilePreferences } from '../profile-preferences';
 
 @Entity('users')
 @Index(['email', 'phone'])
@@ -119,7 +120,7 @@ export class User {
     type: 'jsonb',
     default: () => "'{}'::jsonb",
   })
-  profilePreferences: Record<string, unknown>;
+  profilePreferences: UserProfilePreferences;
 
   @OneToMany(() => RefreshToken, (refreshToken) => refreshToken.user)
   refreshTokens: RefreshToken[];
