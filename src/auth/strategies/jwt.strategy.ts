@@ -24,10 +24,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token');
     }
 
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
+    // Never expose password-derived fields on request.user
+    const { passwordHash, password, ...userWithoutSensitive } = user as any;
+    void passwordHash;
     void password;
 
-    return userWithoutPassword;
+    return userWithoutSensitive as AuthenticatedUser;
   }
 }

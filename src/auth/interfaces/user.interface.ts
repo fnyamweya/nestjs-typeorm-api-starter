@@ -2,7 +2,7 @@ import { User } from 'src/user/entities/user.entity';
 
 export type AuthenticatedUser = Omit<
   User,
-  'password' | 'generateUUID' | 'hashPassword'
+  'password' | 'passwordHash' | 'generateUUID' | 'hashPassword'
 >;
 
 export interface RequestWithUser extends Request {
