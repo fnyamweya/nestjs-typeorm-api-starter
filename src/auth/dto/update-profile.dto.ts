@@ -9,6 +9,7 @@ export class UpdateProfileDto extends PartialType(CreateUserDto) {
 		description:
 			'User profile preferences (notifications, theme, locale, ui, privacy)',
 		type: 'object',
+		additionalProperties: true,
 	})
 	@IsOptional()
 	@IsObject()

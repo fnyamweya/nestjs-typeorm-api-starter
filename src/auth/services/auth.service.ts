@@ -834,9 +834,8 @@ export class AuthService {
     }
 
     if (refreshToken.expiresAt < new Date()) {
-      // Revoke the refresh token
-      refreshToken.isRevoked = true;
-      await this.refreshTokenRepository.save(refreshToken);
+      // Token is expired; delete it so the table doesn't accumulate stale rows
+      await this.refreshTokenRepository.delete({ id: refreshToken.id });
 
       throw new UnauthorizedException(
         'Expired refresh token! Please login again',
@@ -869,16 +868,13 @@ export class AuthService {
     });
 
     if (refreshToken) {
-      refreshToken.isRevoked = true;
-      await this.refreshTokenRepository.save(refreshToken);
+      await this.refreshTokenRepository.delete({ id: refreshToken.id });
     }
   }
 
   async revokeAllUserTokens(userId: string) {
-    await this.refreshTokenRepository.update(
-      { userId, isRevoked: false },
-      { isRevoked: true },
-    );
+    // Delete all refresh tokens for this user (revoked tokens shouldn't remain in DB)
+    await this.refreshTokenRepository.delete({ userId });
   }
 
   private async generateRefreshToken(userId: string): Promise<string> {
