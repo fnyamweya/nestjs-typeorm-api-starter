@@ -13,10 +13,10 @@ import { OrderItemCharge } from './order-item-charge.entity';
 
 @Entity('order_item')
 export class OrderItem {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'order_id', type: 'bigint' })
+  @Column({ name: 'order_id', type: 'uuid' })
   orderId: string;
 
   @ManyToOne(() => Order, (order) => order.items, { onDelete: 'CASCADE' })
@@ -50,7 +50,7 @@ export class OrderItem {
   @Column({ type: 'int' })
   quantity: number;
 
-  @Column({ name: 'price_list_id', type: 'bigint' })
+  @Column({ name: 'price_list_id', type: 'uuid' })
   priceListId: string;
 
   @Column({ name: 'unit_price', type: 'numeric', precision: 18, scale: 4 })

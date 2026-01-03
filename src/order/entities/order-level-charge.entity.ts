@@ -3,10 +3,10 @@ import { Order } from './order.entity';
 
 @Entity('order_level_charge')
 export class OrderLevelCharge {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'order_id', type: 'bigint' })
+  @Column({ name: 'order_id', type: 'uuid' })
   orderId: string;
 
   @ManyToOne(() => Order, (order) => order.orderLevelCharges, {

@@ -1,23 +1,28 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsEmail, IsNotEmpty, ValidateNested, IsOptional, IsUUID, IsString } from 'class-validator';
+import { IsArray, IsNotEmpty, ValidateNested, IsOptional, IsUUID } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
 
 export class CreateOrderDto {
-  @ApiProperty({ description: 'Customer email' })
-  @IsEmail()
-  customerEmail: string;
+  @ApiProperty({
+    description: 'Customer user id (UUID)',
+    example: '0f3c7d0b-8bb6-4b48-9d53-71f2d9f0a1a9',
+  })
+  @IsUUID()
+  customerId: string;
 
-  @ApiPropertyOptional({ description: 'Customer name' })
-  @IsOptional()
-  @IsNotEmpty()
-  customerName?: string;
-
-  @ApiProperty({ description: 'Order line items', type: CreateOrderItemDto, isArray: true })
+  @ApiProperty({
+    description: 'Order line items',
+    type: CreateOrderItemDto,
+    isArray: true,
+    example: [
+      { productVariantId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 },
+    ],
+  })
   @ValidateNested({ each: true })
   @Type(() => CreateOrderItemDto)
   @IsArray()
-  items: CreateOrderItemDto[];
+  orderItems: CreateOrderItemDto[];
 
   @ApiPropertyOptional({ description: 'Price list id to use for order' })
   @IsOptional()
@@ -25,43 +30,12 @@ export class CreateOrderDto {
   priceListId?: string;
 
   // Shipping destination fields (optional for digital-only orders)
-  @ApiPropertyOptional({ description: 'Shipping country ISO2 code (e.g., US, KE)' })
+  @ApiPropertyOptional({
+    description:
+      'Shipping destination location id (UUID). This is used for shipping zone matching (locationId-only).',
+    example: '9b2d2c8b-1a24-4f64-a1e6-0e8c1c3c9d10',
+  })
   @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  shippingCountry?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping region/state' })
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  shippingRegion?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping postal code' })
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  shippingPostalCode?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping city' })
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  shippingCity?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping address line 1' })
-  @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  shippingAddressLine1?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping address line 2' })
-  @IsOptional()
-  @IsString()
-  shippingAddressLine2?: string;
-
-  @ApiPropertyOptional({ description: 'Shipping phone number' })
-  @IsOptional()
-  @IsString()
-  shippingPhone?: string;
+  @IsUUID()
+  shippingLocationId?: string;
 }

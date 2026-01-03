@@ -1,22 +1,27 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { ProductStatus, ProductType } from './create-product.dto';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import { ProductStatus } from './create-product.dto';
 
 export class FilterProductDto {
-  @ApiPropertyOptional({ description: 'Filter by lifecycle status', enum: ProductStatus })
+  @ApiPropertyOptional({ description: 'Filter by status', enum: ProductStatus })
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
 
-  @ApiPropertyOptional({ description: 'Filter by product type', enum: ProductType })
+  @ApiPropertyOptional({ description: 'Filter by brand id' })
   @IsOptional()
-  @IsEnum(ProductType)
-  type?: ProductType;
+  @IsUUID('4')
+  brandId?: string;
 
-  @ApiPropertyOptional({ description: 'Featured products only', example: true })
+  @ApiPropertyOptional({ description: 'Filter by category id' })
   @IsOptional()
-  @IsBoolean()
-  isFeatured?: boolean;
+  @IsUUID('4')
+  categoryId?: string;
+
+  @ApiPropertyOptional({ description: 'Search term applied to title/slug', example: 'iphone' })
+  @IsOptional()
+  @IsString()
+  search?: string;
 
   @ApiPropertyOptional({ description: 'Page number (default 1)', example: 1 })
   @IsOptional()
@@ -29,9 +34,4 @@ export class FilterProductDto {
   @IsInt()
   @Min(1)
   limit?: number;
-
-  @ApiPropertyOptional({ description: 'Search term applied to name/handle', example: 'iphone' })
-  @IsOptional()
-  @IsString()
-  search?: string;
 }

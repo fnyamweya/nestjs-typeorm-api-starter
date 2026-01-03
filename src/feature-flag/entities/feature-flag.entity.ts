@@ -23,7 +23,7 @@ export enum FeatureFlagStatus {
 
 @Entity('feature_flags')
 export class FeatureFlag {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ length: 100, unique: true })

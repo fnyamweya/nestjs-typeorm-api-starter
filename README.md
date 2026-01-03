@@ -224,6 +224,108 @@ npm run make:module product --path=src/ecommerce
 })
 ```
 
+## 🏷️ Promotions (Rule Engine)
+
+The Promotions module supports rule-based promotions made up of **conditions** and **actions**.
+
+### Item Targeting Conditions
+
+These conditions evaluate against the order's line items. For safety, if an item-targeted condition exists and the order evaluation context does **not** include items, the promotion will **not** apply.
+
+- `item_in_product`
+  - Params: `{ productIds: string[] }` or `{ productId: string }` (also supports `{ ids }` / `{ id }`)
+- `item_in_category`
+  - Params: `{ categoryIds: string[] }` or `{ categoryId: string }` (also supports `{ ids }` / `{ id }`)
+  - Category matching includes **ancestor categories** via `category_closure` (so targeting a parent category matches products in descendant categories).
+- `item_in_taxonomy`
+  - Params: `{ taxonomyIds: string[] }` or `{ taxonomyId: string }` (also supports `{ ids }` / `{ id }`)
+- `item_has_tag`
+  - Params: `{ tags: string[] }` or `{ tag: string }` (also supports `{ ids }` / `{ id }`)
+  - Tags are best-effort derived from `product.meta_json.tags` when present.
+
+For these item conditions, operators should typically be:
+
+- Require match: `eq` | `in` | `contains`
+- Require no match: `neq` | `not_in`
+
+### Example: Create a promotion targeting a taxonomy
+
+`POST /api/v1/promotions`
+
+```json
+{
+  "code": "TAX10",
+  "name": "10% off Phones Taxonomy",
+  "status": "active",
+  "conditions": [
+    {
+      "type": "item_in_taxonomy",
+      "operator": "in",
+      "params": {
+        "taxonomyIds": ["1f64a1e6-0e8c-4f64-a1e6-0e8c1c3c9d10"]
+      }
+    }
+  ],
+  "actions": [
+    {
+      "type": "percent_off",
+      "params": { "percent": 10 },
+      "target": { "scope": "order" }
+    }
+  ]
+}
+```
+
+### Example: Create a promotion targeting product tags
+
+```json
+{
+  "code": "CLEARANCE5",
+  "status": "active",
+  "conditions": [
+    {
+      "type": "item_has_tag",
+      "operator": "contains",
+      "params": { "tags": ["clearance"] }
+    }
+  ],
+  "actions": [
+    { "type": "fixed_off", "params": { "amount": 5, "currency": "KES" } }
+  ]
+}
+```
+
+## 🚚 Shipping (Location-Based Zones)
+
+Shipping zones are matched using the Location tree (`location_closure`) via `locationId`.
+
+- **Configure zone destinations**: attach a zone to a Location node via the admin API:
+  - `POST /api/v1/shipping/zone-locations` (body: `{ zoneId, locationId }`)
+  - `GET /api/v1/shipping/zone-locations`
+  - `DELETE /api/v1/shipping/zone-locations/:id`
+- **Order checkout**:
+  - Provide `shippingLocationId` (UUID) for shipping zone matching.
+
+- **Get quotes (pre-checkout UI)**:
+  - `POST /api/shipping/quotes` with `{ shippingLocationId, orderItems: [{ productVariantId, quantity }], priceListId? }`
+
+Shipping quote selection is **priority-first**, then cheapest among ties.
+
+### Seeding (recommended)
+
+Seeders set up a working baseline for development (settings, locations, catalog, shipping, auth roles/permissions).
+
+```bash
+npm run db:migrate
+npm run db:seed
+```
+
+### Permissions
+
+- Admin shipping endpoints require `Shipping` module permissions (CRUD).
+- Order creation requires `Orders:create`.
+- Shipping quotes require a valid JWT access token.
+
 ### Two-Factor Authentication
 
 - Email OTP-based 2FA (default)

@@ -19,7 +19,7 @@ export enum FeatureFlagTargetType {
 
 @Entity('feature_flag_overrides')
 export class FeatureFlagOverride {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @ManyToOne(() => FeatureFlag, (flag) => flag.overrides, {
@@ -28,7 +28,7 @@ export class FeatureFlagOverride {
   @JoinColumn({ name: 'feature_flag_id' })
   featureFlag: FeatureFlag;
 
-  @Column({ name: 'feature_flag_id', type: 'bigint' })
+  @Column({ name: 'feature_flag_id', type: 'uuid' })
   featureFlagId: string;
 
   @Column({ name: 'target_type', type: 'enum', enum: FeatureFlagTargetType })
@@ -44,7 +44,7 @@ export class FeatureFlagOverride {
   @JoinColumn({ name: 'segment_id' })
   segment?: FeatureSegment;
 
-  @Column({ name: 'segment_id', type: 'bigint', nullable: true })
+  @Column({ name: 'segment_id', type: 'uuid', nullable: true })
   segmentId?: string;
 
   @Column({ name: 'value_boolean', type: 'boolean', nullable: true })

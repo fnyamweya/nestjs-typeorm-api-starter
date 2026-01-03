@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import africastalking from 'africastalking';
 import { Setting } from 'src/setting/entities/setting.entity';
+import { SettingCryptoService } from './setting-crypto.service';
 
 interface SMSSettings {
   provider: string;
@@ -21,6 +22,7 @@ export class SmsServiceUtils {
   constructor(
     @InjectRepository(Setting)
     private settingRepository: Repository<Setting>,
+    private readonly crypto: SettingCryptoService,
   ) {}
 
   private async getSMSSettings(): Promise<SMSSettings> {
@@ -51,17 +53,19 @@ export class SmsServiceUtils {
 
   private getSettingValue(settings: Setting[], key: string): string {
     const setting = settings.find((s) => s.key === key);
-    return setting?.value || '';
+    const value = setting?.value || '';
+    if (key === 'sms_at_api_key' || key === 'sms_at_username') {
+      return this.crypto.decrypt(value);
+    }
+    return value;
   }
 
-  async sendTwoFactorCodeSMS({
+  async sendSms({
     to,
-    code,
-    expiresIn,
+    message,
   }: {
-    to: string;
-    code: string;
-    expiresIn: number;
+    to: string | string[];
+    message: string;
   }): Promise<void> {
     const smsSettings = await this.getSMSSettings();
 
@@ -83,17 +87,33 @@ export class SmsServiceUtils {
     });
 
     const sms = client.SMS;
+    const recipients = Array.isArray(to) ? to : [to];
 
     try {
       await sms.send({
-        to: [to],
-        message: `Your verification code is ${code}. It expires in ${expiresIn} minutes.`,
+        to: recipients,
+        message,
         from: smsSettings.senderId,
       });
-      this.logger.log(`SMS verification code sent to ${to}`);
+      this.logger.log(`SMS sent to ${recipients.join(',')}`);
     } catch (error) {
-      this.logger.error(`Failed to send SMS to ${to}`, error as Error);
+      this.logger.error(`Failed to send SMS to ${recipients.join(',')}`, error as Error);
       throw new Error('Failed to send SMS');
     }
+  }
+
+  async sendTwoFactorCodeSMS({
+    to,
+    code,
+    expiresIn,
+  }: {
+    to: string;
+    code: string;
+    expiresIn: number;
+  }): Promise<void> {
+    await this.sendSms({
+      to,
+      message: `Your verification code is ${code}. It expires in ${expiresIn} minutes.`,
+    });
   }
 }

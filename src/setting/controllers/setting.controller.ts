@@ -20,6 +20,10 @@ import { ResponseUtil } from 'src/common/utils/response.util';
 import { ApiResponse } from 'src/common/interfaces/api-response.interface';
 import { CreateSMSSettingDto } from '../dto/create-sms-setting.dto';
 import { SMSResponseDto } from '../dto/sms-response.dto';
+import { CreateWhatsappSettingDto } from '../dto/create-whatsapp-setting.dto';
+import { WhatsappResponseDto } from '../dto/whatsapp-response.dto';
+import { UpdateWhatsappSecretsDto } from '../dto/update-whatsapp-secrets.dto';
+import { WhatsappSecretsResponseDto } from '../dto/whatsapp-secrets-response.dto';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -156,5 +160,100 @@ export class SettingController {
       smsSettings,
       'SMS settings retrieved successfully',
     );
+  }
+
+  @Post('whatsapp')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'create',
+  })
+  @LogActivity({
+    action: ActivityAction.CREATE,
+    description: 'WhatsApp settings setup successfully',
+    resourceType: 'whatsapp-settings',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update WhatsApp configuration' })
+  @ApiBody({ type: CreateWhatsappSettingDto })
+  @ApiCreatedResponse({
+    description: 'WhatsApp settings setup successfully',
+    type: WhatsappResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to manage settings',
+  })
+  async createWhatsappSettings(
+    @Body() createWhatsappSettingDto: CreateWhatsappSettingDto,
+  ): Promise<ApiResponse<WhatsappResponseDto>> {
+    const whatsappSettings = await this.settingService.createWhatsappSettings(
+      createWhatsappSettingDto,
+    );
+    return ResponseUtil.created(
+      whatsappSettings,
+      'WhatsApp settings setup successfully',
+    );
+  }
+
+  @Get('whatsapp')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve configured WhatsApp settings' })
+  @ApiOkResponse({
+    description: 'WhatsApp settings retrieved successfully',
+    type: WhatsappResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to view settings',
+  })
+  async getWhatsappSettings(): Promise<ApiResponse<WhatsappResponseDto>> {
+    const whatsappSettings = await this.settingService.getWhatsappSettings();
+    return ResponseUtil.success(
+      whatsappSettings,
+      'WhatsApp settings retrieved successfully',
+    );
+  }
+
+  @Post('whatsapp/secrets')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'WhatsApp webhook secrets updated successfully',
+    resourceType: 'whatsapp-secrets',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update WhatsApp webhook secrets (app secret + verify token)',
+    description:
+      'Stores secrets encrypted at rest. Values are never returned in responses; only presence booleans.',
+  })
+  @ApiBody({ type: UpdateWhatsappSecretsDto })
+  @ApiOkResponse({
+    description: 'WhatsApp webhook secrets updated successfully',
+    type: WhatsappSecretsResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to manage settings',
+  })
+  async updateWhatsappSecrets(
+    @Body() payload: UpdateWhatsappSecretsDto,
+  ): Promise<ApiResponse<WhatsappSecretsResponseDto>> {
+    const data = await this.settingService.updateWhatsappSecrets(payload);
+    return ResponseUtil.success(data, 'WhatsApp webhook secrets updated successfully');
   }
 }

@@ -9,12 +9,21 @@ import { ShippingModule } from '../shipping/shipping.module';
 import { OrderItem } from './entities/order-item.entity';
 import { OrderLevelCharge } from './entities/order-level-charge.entity';
 import { OrderItemCharge } from './entities/order-item-charge.entity';
+import { OrderShippingAddress } from './entities/order-shipping-address.entity';
 import { OrderService } from './services/order.service';
 import { OrderController } from './controllers/order.controller';
+import { User } from '../user/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Order, OrderItem, OrderLevelCharge, OrderItemCharge]),
+    TypeOrmModule.forFeature([
+      Order,
+      OrderItem,
+      OrderLevelCharge,
+      OrderItemCharge,
+      OrderShippingAddress,
+      User,
+    ]),
     CatalogModule,
     PromotionModule,
     // need settings for shipping & tax

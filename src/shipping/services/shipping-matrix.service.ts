@@ -6,15 +6,25 @@ import { ShippingRate } from '../entities/shipping-rate.entity';
 import { ShippingZoneLocation } from '../entities/shipping-zone-location.entity';
 import { ShippingZone } from '../entities/shipping-zone.entity';
 import { evaluateFormula } from '../utils/formula-evaluator';
+import { AppCacheService } from 'src/common/cache/app-cache.service';
+import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
 
 interface ShippingContext {
-  countryCode?: string;
-  region?: string;
-  postalCode?: string;
+  locationId?: string;
   subtotal: number;
   totalWeight?: number;
   itemCount?: number;
   currencyCode?: string;
+
+  // Optional catalog-derived constraints
+  allowedMethodCodes?: string[];
+  excludedMethodCodes?: string[];
+  ratePriorityBoost?: number;
+
+  // Optional: enable rate targeting via rate.metaJson.{productIds,categoryIds,taxonomyIds}
+  productIds?: string[];
+  categoryIds?: string[];
+  taxonomyIds?: string[];
 }
 
 @Injectable()
@@ -28,31 +38,109 @@ export class ShippingMatrixService {
     private readonly methodRepo: Repository<ShippingMethod>,
     @InjectRepository(ShippingRate)
     private readonly rateRepo: Repository<ShippingRate>,
+    private readonly cache: AppCacheService,
   ) {}
 
   /**
    * Returns candidate shipping quotes sorted by price then rate priority.
    */
   async getQuotes(ctx: ShippingContext) {
-    // 1) Find matching zones
-    const locations = await this.locationRepo.find({ where: { countryCode: ctx.countryCode } });
-    const zoneIds = locations.map((l) => l.zoneId);
+    const normalized = {
+      locationId: ctx.locationId,
+      subtotal: ctx.subtotal,
+      totalWeight: ctx.totalWeight,
+      itemCount: ctx.itemCount,
+      currencyCode: ctx.currencyCode,
+      allowedMethodCodes: (ctx.allowedMethodCodes ?? []).slice().map(String).sort(),
+      excludedMethodCodes: (ctx.excludedMethodCodes ?? []).slice().map(String).sort(),
+      ratePriorityBoost: ctx.ratePriorityBoost,
+      productIds: (ctx.productIds ?? []).slice().map(String).sort(),
+      categoryIds: (ctx.categoryIds ?? []).slice().map(String).sort(),
+      taxonomyIds: (ctx.taxonomyIds ?? []).slice().map(String).sort(),
+    };
 
-    if (zoneIds.length === 0) {
-      const globalZone = await this.zoneRepo.findOne({ where: { code: 'global' } });
-      if (!globalZone) return [];
-      zoneIds.push(globalZone.id);
-    }
+    const rawKey = cacheKeyFromParts('shipping', 'matrix', 'quotes', normalized);
+    const key = `shipping:matrix:quotes:${cacheKeyHash(rawKey)}`;
+
+    return this.cache.remember(
+      key,
+      () => this.computeQuotes({ ...ctx, ...normalized }),
+      { ttlSeconds: 60 },
+    );
+  }
+
+  private async computeQuotes(ctx: ShippingContext) {
+    // 1) Find matching zones (locationId-only)
+    const zoneIds = await this.resolveZoneIdsByLocation(ctx.locationId);
+    if (zoneIds.length === 0) return [];
 
     // 2) Find active methods in those zones
-    const methods = await this.methodRepo.find({ where: { zoneId: In(zoneIds), isActive: true } });
+    let methods = await this.methodRepo.find({
+      where: { zoneId: In(zoneIds), isActive: true },
+    });
 
-    const candidates: Array<{ method: ShippingMethod; rate: ShippingRate; amount: number }> = [];
+    if (ctx.allowedMethodCodes?.length) {
+      const allowed = new Set(ctx.allowedMethodCodes);
+      methods = methods.filter((m) => allowed.has(m.code));
+    }
+
+    if (ctx.excludedMethodCodes?.length) {
+      const excluded = new Set(ctx.excludedMethodCodes);
+      methods = methods.filter((m) => !excluded.has(m.code));
+    }
+
+    const priorityBoost = ctx.ratePriorityBoost ?? 0;
+    const productIds = new Set(ctx.productIds ?? []);
+    const categoryIds = new Set(ctx.categoryIds ?? []);
+    const taxonomyIds = new Set(ctx.taxonomyIds ?? []);
+    const candidates: Array<{
+      method: ShippingMethod;
+      rate: ShippingRate;
+      amount: number;
+      effectivePriority: number;
+    }> = [];
 
     for (const method of methods) {
       const rates = await this.rateRepo.find({ where: { methodId: method.id }, order: { priority: 'DESC' } });
 
       for (const rate of rates) {
+        const meta: any = rate.metaJson || {};
+
+        // Rate targeting (optional): if the rate declares targets, it must match the order context.
+        const targetProductIds: string[] | undefined = Array.isArray(meta.productIds)
+          ? meta.productIds
+          : undefined;
+        const targetCategoryIds: string[] | undefined = Array.isArray(meta.categoryIds)
+          ? meta.categoryIds
+          : undefined;
+        const targetTaxonomyIds: string[] | undefined = Array.isArray(meta.taxonomyIds)
+          ? meta.taxonomyIds
+          : undefined;
+
+        const hasTargets =
+          (targetProductIds && targetProductIds.length > 0) ||
+          (targetCategoryIds && targetCategoryIds.length > 0) ||
+          (targetTaxonomyIds && targetTaxonomyIds.length > 0);
+
+        let targetBonus = 0;
+        if (hasTargets) {
+          const productMatch =
+            targetProductIds?.some((id) => productIds.has(String(id))) ?? false;
+          const categoryMatch =
+            targetCategoryIds?.some((id) => categoryIds.has(String(id))) ?? false;
+          const taxonomyMatch =
+            targetTaxonomyIds?.some((id) => taxonomyIds.has(String(id))) ?? false;
+
+          if (!productMatch && !categoryMatch && !taxonomyMatch) {
+            continue;
+          }
+
+          // More specific matches should outrank less specific matches.
+          if (productMatch) targetBonus = 300;
+          else if (categoryMatch) targetBonus = 200;
+          else if (taxonomyMatch) targetBonus = 100;
+        }
+
         const minWeight = rate.minWeight ? parseFloat(rate.minWeight) : undefined;
         const maxWeight = rate.maxWeight ? parseFloat(rate.maxWeight) : undefined;
         const minSubtotal = rate.minSubtotal ? parseFloat(rate.minSubtotal) : undefined;
@@ -82,7 +170,6 @@ export class ShippingMatrixService {
         }
 
         if (rate.calculationType === 'table_rate') {
-          const meta: any = rate.metaJson || {};
           const measure = meta.measure || 'subtotal';
           const tiers: any[] = meta.tiers || [];
 
@@ -94,7 +181,6 @@ export class ShippingMatrixService {
 
         if (rate.calculationType === 'formula') {
           try {
-            const meta = rate.metaJson as any;
             const expr = String(meta?.formula ?? rate.price ?? '');
             amount = evaluateFormula(expr, {
               subtotal: ctx.subtotal ?? 0,
@@ -106,12 +192,70 @@ export class ShippingMatrixService {
           }
         }
 
-        candidates.push({ method, rate, amount });
+        candidates.push({
+          method,
+          rate,
+          amount,
+          effectivePriority: (rate.priority ?? 0) + priorityBoost + targetBonus,
+        });
       }
     }
 
-    candidates.sort((a, b) => a.amount - b.amount || b.rate.priority - a.rate.priority);
+    // Priority-first: choose the highest priority candidate; tie-break by lowest amount.
+    candidates.sort((a, b) => b.effectivePriority - a.effectivePriority || a.amount - b.amount);
 
     return candidates;
+  }
+
+  private async resolveZoneIdsByLocation(locationId?: string): Promise<string[]> {
+    if (!locationId) {
+      const globalZone = await this.zoneRepo.findOne({ where: { code: 'global' } });
+      return globalZone ? [globalZone.id] : [];
+    }
+
+    // Pull ancestors (including self) with depth, smallest depth = most specific.
+    const closureRows: Array<{ id_ancestor: string; depth: number }> =
+      await this.locationRepo.query(
+        `SELECT id_ancestor, depth FROM "location_closure" WHERE id_descendant = $1 ORDER BY depth ASC;`,
+        [locationId],
+      );
+
+    const ancestorDepth = new Map<string, number>();
+    for (const r of closureRows) {
+      ancestorDepth.set(r.id_ancestor, Number(r.depth));
+    }
+
+    // Some DBs may not have the self row yet; be defensive.
+    if (!ancestorDepth.has(locationId)) {
+      ancestorDepth.set(locationId, 0);
+    }
+
+    const ancestorIds = Array.from(ancestorDepth.keys());
+    const matches = await this.locationRepo.find({
+      where: { locationId: In(ancestorIds) },
+    });
+
+    if (!matches.length) {
+      const globalZone = await this.zoneRepo.findOne({ where: { code: 'global' } });
+      return globalZone ? [globalZone.id] : [];
+    }
+
+    // Choose zones attached to the most specific matching location(s).
+    let bestDepth = Number.POSITIVE_INFINITY;
+    const zoneDepth = new Map<string, number>();
+
+    for (const m of matches) {
+      const d = ancestorDepth.get(m.locationId as string);
+      if (d === undefined) continue;
+      const prev = zoneDepth.get(m.zoneId);
+      if (prev === undefined || d < prev) zoneDepth.set(m.zoneId, d);
+      if (d < bestDepth) bestDepth = d;
+    }
+
+    const zoneIds = Array.from(zoneDepth.entries())
+      .filter(([, d]) => d === bestDepth)
+      .map(([zoneId]) => zoneId);
+
+    return zoneIds;
   }
 }

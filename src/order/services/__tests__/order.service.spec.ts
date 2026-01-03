@@ -4,25 +4,39 @@ import { OrderService } from '../order.service';
 import { Order } from '../../entities/order.entity';
 import { OrderItem } from '../../entities/order-item.entity';
 import { ProductVariant } from '../../../catalog/entities/product-variant.entity';
+import { Product } from '../../../catalog/entities/product.entity';
+import { ProductCategory } from '../../../catalog/entities/product-category.entity';
+import { Category } from '../../../catalog/entities/category.entity';
+import { CategoryClosure } from '../../../catalog/entities/category-closure.entity';
 import { PriceList } from '../../../catalog/entities/price-list.entity';
 import { PriceService } from '../../../catalog/services/price.service';
 import { OrderLevelCharge } from '../../entities/order-level-charge.entity';
 import { PromotionService } from '../../../promotion/services/promotion.service';
 import { TaxService } from '../../services/tax.service';
 import { ShippingMatrixService } from '../../../shipping/services/shipping-matrix.service';
+import { OrderShippingAddress } from '../../entities/order-shipping-address.entity';
+import { User } from '../../../user/entities/user.entity';
+import { CatalogShippingContextService } from '../../../shipping/services/catalog-shipping-context.service';
 
 describe('OrderService', () => {
   let service: OrderService;
 
   const orderRepo = { create: jest.fn(), save: jest.fn() };
-  const orderItemRepo = { create: jest.fn(), save: jest.fn() };
+  const orderItemRepo = { create: jest.fn(), save: jest.fn(), find: jest.fn() };
   const variantRepo = { findOne: jest.fn() };
+  const productRepo = { find: jest.fn() };
+  const productCategoryRepo = { find: jest.fn() };
+  const categoryRepo = { find: jest.fn() };
+  const categoryClosureRepo = { find: jest.fn() };
+  const userRepo = { findOne: jest.fn() };
   const priceListRepo = { findOne: jest.fn() };
   const priceService = { resolveVariantPrice: jest.fn(), findActivePriceListByCurrency: jest.fn() };
   const orderLevelChargeRepo = { create: jest.fn(), save: jest.fn() };
+  const orderShippingAddressRepo = { create: jest.fn(), save: jest.fn() };
   const promotionService = { evaluatePromotions: jest.fn(), findActivePromotions: jest.fn() };
   const shippingMatrixService = { getQuotes: jest.fn() };
   const taxService = { calculateTax: jest.fn() };
+  const catalogShippingContextService = { resolveCatalogShippingContext: jest.fn() };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -31,12 +45,19 @@ describe('OrderService', () => {
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: getRepositoryToken(OrderItem), useValue: orderItemRepo },
         { provide: getRepositoryToken(ProductVariant), useValue: variantRepo },
+        { provide: getRepositoryToken(Product), useValue: productRepo },
+        { provide: getRepositoryToken(ProductCategory), useValue: productCategoryRepo },
+        { provide: getRepositoryToken(Category), useValue: categoryRepo },
+        { provide: getRepositoryToken(CategoryClosure), useValue: categoryClosureRepo },
+        { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(PriceList), useValue: priceListRepo },
         { provide: getRepositoryToken(OrderLevelCharge), useValue: orderLevelChargeRepo },
+        { provide: getRepositoryToken(OrderShippingAddress), useValue: orderShippingAddressRepo },
         { provide: PriceService, useValue: priceService },
         { provide: PromotionService, useValue: promotionService },
         { provide: ShippingMatrixService, useValue: shippingMatrixService },
         { provide: TaxService, useValue: taxService },
+        { provide: CatalogShippingContextService, useValue: catalogShippingContextService },
       ],
     }).compile();
 
@@ -46,11 +67,26 @@ describe('OrderService', () => {
   afterEach(() => jest.resetAllMocks());
 
   it('creates order and items with computed totals', async () => {
-    const fakeOrder = { id: '100', orderNumber: 'ORD-1', itemsSubtotal: '0', itemCount: 0 };
+    const fakeOrder: any = { id: '100', orderNumber: 'ORD-1', itemsSubtotal: '0', itemCount: 0, currencyCode: 'KES' };
     orderRepo.create.mockReturnValue(fakeOrder);
-    orderRepo.save.mockResolvedValue({ ...fakeOrder, id: '100' });
+    orderRepo.save.mockImplementation(async (o: any) => o);
 
-    variantRepo.findOne.mockResolvedValue({ id: 'pv1', sku: 'SKU-1', title: 'Variant 1', requiresShipping: true, weight: '1.234' } as ProductVariant);
+    userRepo.findOne.mockResolvedValue({
+      id: 'c1',
+      email: 'test@example.com',
+      firstName: 'Test',
+      lastName: 'Customer',
+    } as any);
+
+    variantRepo.findOne.mockResolvedValue({
+      id: 'pv1',
+      productId: 'p1',
+      sku: 'SKU-1',
+      title: 'Variant 1',
+      requiresShipping: true,
+      weight: '1.234',
+    } as ProductVariant);
+
     priceService.resolveVariantPrice.mockResolvedValue({
       priceListId: '1', currencyCode: 'KES', unitPrice: '100.00', compareAtPrice: '120.00',
     });
@@ -62,10 +98,31 @@ describe('OrderService', () => {
     promotionService.findActivePromotions.mockResolvedValue([]);
     shippingMatrixService.getQuotes.mockResolvedValue([{ method: { id: 'm1', displayName: 'Standard' , code: 'standard' } as any, rate: { id: 'r1', calculationType: 'flat', price: '50.00', metaJson: {} } as any, amount: 50 }]);
     taxService.calculateTax.mockResolvedValue({ amount: 36.8, rate: 0.16, meta: {} });
+    catalogShippingContextService.resolveCatalogShippingContext.mockResolvedValue({
+      allowedMethodCodes: undefined,
+      excludedMethodCodes: undefined,
+      ratePriorityBoost: 0,
+      productIds: ['p1'],
+      categoryIds: [],
+      taxonomyIds: [],
+    });
+
+    orderShippingAddressRepo.create.mockImplementation((x: any) => x);
+    orderShippingAddressRepo.save.mockResolvedValue(undefined);
+
+    orderItemRepo.create.mockImplementation((x: any) => x);
+    orderItemRepo.save.mockResolvedValue(undefined);
+    orderItemRepo.find.mockResolvedValue([{ quantity: 2, metaJson: { weight: '1.234' } }]);
+
+    productRepo.find.mockResolvedValue([]);
+    productCategoryRepo.find.mockResolvedValue([]);
+    categoryRepo.find.mockResolvedValue([]);
+    categoryClosureRepo.find.mockResolvedValue([]);
 
     const payload = {
-      customerEmail: 'test@example.com',
-      items: [{ productVariantId: 'pv1', quantity: 2 }],
+      customerId: 'c1',
+      orderItems: [{ productVariantId: 'pv1', quantity: 2 }],
+      shippingLocationId: 'loc1',
     };
 
     const result = await service.create(payload as any);

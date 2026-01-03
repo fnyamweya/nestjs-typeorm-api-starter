@@ -17,6 +17,7 @@ import { JwtStrategy } from './strategies/jwt.strategy';
 import { AdminGoogleStrategy } from './strategies/admin-google.strategy';
 import { AdminAppleStrategy } from './strategies/admin-apple.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { OptionalJwtAuthGuard } from './guards/optional-jwt-auth.guard';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { User } from 'src/user/entities/user.entity';
@@ -68,6 +69,7 @@ import { UserInvite } from './entities/user-invite.entity';
     AdminGoogleStrategy,
     AdminAppleStrategy,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     PermissionsGuard,
     RolesGuard,
     AuthSeeder,
@@ -79,6 +81,7 @@ import { UserInvite } from './entities/user-invite.entity';
     TwoFactorService,
     EmailServiceUtils,
     JwtAuthGuard,
+    OptionalJwtAuthGuard,
     PermissionsGuard,
     RolesGuard,
   ],

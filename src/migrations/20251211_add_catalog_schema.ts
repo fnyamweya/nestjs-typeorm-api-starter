@@ -258,11 +258,20 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
     );
 
     await queryRunner.query(`
-      ALTER TABLE "product"
-      ADD CONSTRAINT "FK_product_default_variant"
-      FOREIGN KEY ("default_variant_id")
-      REFERENCES "product_variant"("id")
-      ON DELETE SET NULL;
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1
+          FROM pg_constraint
+          WHERE conname = 'FK_product_default_variant'
+        ) THEN
+          ALTER TABLE "product"
+          ADD CONSTRAINT "FK_product_default_variant"
+          FOREIGN KEY ("default_variant_id")
+          REFERENCES "product_variant"("id")
+          ON DELETE SET NULL;
+        END IF;
+      END$$;
     `);
   }
 

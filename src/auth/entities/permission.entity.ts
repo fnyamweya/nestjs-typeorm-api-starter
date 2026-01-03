@@ -19,12 +19,42 @@ export enum PermissionType {
 }
 
 export enum PermissionModule {
+  // Core / admin
   USERS = 'Users',
   ROLES = 'Roles',
   PERMISSIONS = 'Permissions',
+  AUTHENTICATION = 'Authentication',
+
+  // Platform
+  APP = 'App',
   ACTIVITY_LOGS = 'Activity Logs',
   SETTINGS = 'Settings',
   REPORTING = 'Reporting',
+
+  // Commerce
+  ORDERS = 'Orders',
+  PROMOTIONS = 'Promotions',
+  CHANNELS = 'Channels',
+  CUSTOMER_TIERS = 'Customer Tiers',
+  SHIPPING = 'Shipping',
+  TAX = 'Tax',
+
+  // Catalog / content
+  CATALOG = 'Catalog',
+  LOCATIONS = 'Locations',
+  ADDRESSES = 'Addresses',
+  ADDRESS_CONFIG = 'Address Config',
+  CUSTOMER_ADDRESSES = 'Customer Addresses',
+
+  // Payments / integrations
+  MPESA = 'Mpesa',
+
+  // Misc
+  FEATURE_FLAGS = 'Feature Flags',
+  QUEUE = 'Queue',
+  COMMON_UPLOADS = 'Common Uploads',
+
+  // Legacy / existing
   PRODUCTS = 'Products',
   BANNERS = 'Banners',
   CONTACT_INFOS = 'Contact Infos',

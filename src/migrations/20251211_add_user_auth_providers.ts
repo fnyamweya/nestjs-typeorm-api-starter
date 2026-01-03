@@ -4,6 +4,8 @@ export class AddUserAuthProviders20251211001000 implements MigrationInterface {
   name = 'AddUserAuthProviders20251211001000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "user_auth_providers" (
         "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

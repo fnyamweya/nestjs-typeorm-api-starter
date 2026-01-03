@@ -19,8 +19,11 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "db:seed": "ts-node -r tsconfig-paths/register src/seeders/seed.ts",
+    "db:simulate": "ts-node -r tsconfig-paths/register src/seeders/simulate.ts",
     "db:clear": "ts-node -r tsconfig-paths/register src/seeders/clear.ts",
+    "db:migrate": "ts-node -r tsconfig-paths/register src/seeders/migrate.ts",
     "db:reset": "npm run db:clear && npm run db:seed",
+    "db:reset-password": "ts-node -r tsconfig-paths/register src/seeders/reset-password.ts",
     "db:migrate:check": "bash ./scripts/check_migrations.sh",
     "easy-generate": "ts-node -r tsconfig-paths/register cli/easy-generate/index.ts",
     "make:module": "npm run easy-generate make:module",
@@ -29,6 +32,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.879.0",
     "@aws-sdk/s3-request-presigner": "^3.879.0",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
@@ -44,11 +48,14 @@
     "@types/xlsx": "^0.0.35",
     "africastalking": "^0.7.8",
     "argon2": "^0.44.0",
+    "axios": "^1.13.2",
     "bullmq": "^5.12.5",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
     "commander": "^12.1.0",
+    "fast-json-patch": "^3.1.1",
     "ioredis": "^5.4.1",
+    "json-logic-js": "^2.0.5",
     "multer": "^2.0.2",
     "multer-s3": "^3.0.1",
     "nest-winston": "^1.10.2",
@@ -121,6 +128,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^src/(.*)$": "<rootDir>/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

@@ -1,46 +1,59 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
+  IsArray,
   IsBoolean,
   IsNotEmpty,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
-  IsNumber,
-  IsDateString,
+  ValidateNested,
 } from 'class-validator';
-import { Type } from 'class-transformer';
+import { CreateProductPriceDto } from './create-product-price.dto';
 
-export class CreateProductVariantDto {
-  @ApiProperty({ description: 'Stock keeping unit', example: 'IPH-15-BLK-128' })
-  @IsString()
-  @IsNotEmpty()
-  sku: string;
-
-  @ApiPropertyOptional({ description: 'Optional barcode', example: '1234567890123' })
-  @IsOptional()
-  @IsString()
-  barcode?: string;
-
-  @ApiPropertyOptional({ description: 'External reference id', example: 'shopify-variant-123' })
-  @IsOptional()
-  @IsString()
-  externalId?: string;
-
-  @ApiProperty({ description: 'Variant title or label', example: 'Black / 128 GB' })
+export class CreateProductVariationDto {
+  @ApiProperty({ description: 'Variation title', example: 'Black / 128 GB' })
   @IsString()
   @IsNotEmpty()
   title: string;
 
-  @ApiPropertyOptional({ description: 'Mark as default variant', example: true })
+  @ApiPropertyOptional({ description: 'Stock keeping unit', example: 'IPH-15-BLK-128' })
+  @IsOptional()
+  @IsString()
+  sku?: string;
+
+  @ApiPropertyOptional({ description: 'External reference', example: 'shopify-variant-123' })
+  @IsOptional()
+  @IsString()
+  externalRef?: string;
+
+  @ApiPropertyOptional({ description: 'Variation status', example: 'active' })
+  @IsOptional()
+  @IsString()
+  status?: string;
+
+  @ApiPropertyOptional({ description: 'Mark as default variation', example: true })
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
-  @ApiPropertyOptional({ description: 'Display order among variants', example: 1 })
+  @ApiPropertyOptional({ description: 'Display order among variations', example: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   position?: number;
+
+  @ApiPropertyOptional({ description: 'Variation attributes', example: { color: 'black', size: 'M' } })
+  @IsOptional()
+  @IsObject()
+  attributes?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Variation images', example: ['https://cdn.example.com/1.png'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  images?: string[];
 
   @ApiPropertyOptional({ description: 'Requires shipping', example: true })
   @IsOptional()
@@ -71,48 +84,24 @@ export class CreateProductVariantDto {
   @IsNumber()
   height?: number;
 
-  @ApiPropertyOptional({ description: 'Unit used for dimensions', example: 'cm', default: 'cm' })
+  @ApiPropertyOptional({ description: 'Unit used for dimensions', example: 'cm' })
   @IsOptional()
   @IsString()
   dimensionUnit?: string;
 
-  @ApiPropertyOptional({ description: 'Unit used for weight', example: 'kg', default: 'kg' })
+  @ApiPropertyOptional({ description: 'Unit used for weight', example: 'kg' })
   @IsOptional()
   @IsString()
   weightUnit?: string;
 
-  @ApiPropertyOptional({ description: 'Allow backorder if out of stock', example: false })
-  @IsOptional()
-  @IsBoolean()
-  allowBackorder?: boolean;
-
-  @ApiPropertyOptional({ description: 'Allow preorder before stock arrival', example: true })
-  @IsOptional()
-  @IsBoolean()
-  preorderAvailable?: boolean;
-
-  @ApiPropertyOptional({ description: 'Preorder start date', example: '2024-11-01T00:00:00.000Z' })
-  @IsOptional()
-  @IsDateString()
-  preorderFrom?: string;
-
-  @ApiPropertyOptional({ description: 'Preorder end date', example: '2024-11-15T00:00:00.000Z' })
-  @IsOptional()
-  @IsDateString()
-  preorderTo?: string;
-
-  @ApiPropertyOptional({ description: 'Override tax class for this variant', example: 'reduced' })
-  @IsOptional()
-  @IsString()
-  taxClassOverride?: string;
-
-  @ApiPropertyOptional({ description: 'Override fulfillment class for this variant', example: 'digital' })
-  @IsOptional()
-  @IsString()
-  fulfillmentClassOverride?: string;
-
-  @ApiPropertyOptional({ description: 'Arbitrary variant metadata', example: { color: 'black' } })
+  @ApiPropertyOptional({ description: 'Variation metadata', example: { preorder: true } })
   @IsOptional()
   @IsObject()
   metaJson?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Variation prices', type: () => CreateProductPriceDto, isArray: true })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => CreateProductPriceDto)
+  prices?: CreateProductPriceDto[];
 }

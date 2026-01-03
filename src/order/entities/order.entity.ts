@@ -36,7 +36,7 @@ export enum FulfillmentStatus {
 
 @Entity('order')
 export class Order {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ name: 'order_number', type: 'text', unique: true })
@@ -54,7 +54,7 @@ export class Order {
   @Column({ name: 'customer_name', type: 'text', nullable: true })
   customerName?: string;
 
-  @Column({ name: 'price_list_id', type: 'bigint' })
+  @Column({ name: 'price_list_id', type: 'uuid' })
   priceListId: string;
 
   @ManyToOne(() => PriceList, { onDelete: 'RESTRICT' })

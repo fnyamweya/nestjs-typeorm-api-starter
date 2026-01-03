@@ -13,6 +13,9 @@ import { winstonConfig } from './common/config/logger.config';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: WinstonModule.createLogger(winstonConfig),
+    // Required for verifying Meta webhook signatures (X-Hub-Signature-256)
+    // against the exact raw request body.
+    rawBody: true,
   });
 
   // Lightweight root handler so GET / returns a helpful response

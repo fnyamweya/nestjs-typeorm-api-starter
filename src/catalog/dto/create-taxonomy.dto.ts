@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class CreateTaxonomyDto {
   @ApiProperty({ description: 'Machine-readable taxonomy code', example: 'product-taxonomy' })
@@ -21,4 +21,18 @@ export class CreateTaxonomyDto {
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
+
+  @ApiPropertyOptional({ description: 'Whether taxonomy is active', example: true })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description:
+      'Arbitrary metadata JSON blob (supports taxonomy-level shipping rules under metaJson.shipping)',
+    example: { shipping: { allowedMethodCodes: ['standard'], ratePriorityBoost: 100 } },
+  })
+  @IsOptional()
+  @IsObject()
+  metaJson?: Record<string, unknown>;
 }

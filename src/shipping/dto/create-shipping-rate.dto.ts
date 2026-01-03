@@ -35,14 +35,18 @@ export class CreateShippingRateDto {
   @IsOptional()
   pricePerUnit?: string;
 
-  @ApiPropertyOptional({ description: 'Priority (lower number = higher priority)' })
+  @ApiPropertyOptional({ description: 'Priority (higher number = higher priority)' })
   @IsOptional()
   priority?: number;
 
   @ApiPropertyOptional({
     description:
-      'Extra metadata depending on calculation type. Examples:\n - table_rate: {"tiers":[{"upto":100,"price":"10.00"}], "measure":"subtotal"} \n - formula (simple): {"formula":"subtotal * 0.05"} \n - formula (weight surcharge): {"formula":"subtotal * 0.03 + max(0, totalWeight - 2) * 5"} \n - formula (surcharge cap): {"formula":"min(subtotal * 0.1, 50)"} \n - volumetric (example): {"formula":"max(subtotal * 0.02, (length*width*height)/5000)"} - note: volumetric variables must be provided by context',
-    example: { tiers: [{ upto: 100, price: '10.00' }], measure: 'subtotal' },
+      'Extra metadata depending on calculation type. Examples:\n - table_rate: {"tiers":[{"upto":100,"price":"10.00"}], "measure":"subtotal"}\n - formula: {"formula":"subtotal * 0.05"}\n\nOptional targeting (so rates can apply to specific catalog entities):\n - productIds: ["<uuid>"]\n - categoryIds: ["<uuid>"]\n - taxonomyIds: ["<uuid>"]\n\nTargeted rates get a priority boost vs non-targeted rates (product > category > taxonomy).',
+    example: {
+      tiers: [{ upto: 100, price: '10.00' }],
+      measure: 'subtotal',
+      categoryIds: ['9b1deb4d-5b99-4b8f-9a9b-1b4c2d1f0000'],
+    },
   })
   @IsOptional()
   metaJson?: Record<string, unknown>;

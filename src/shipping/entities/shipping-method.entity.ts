@@ -4,10 +4,10 @@ import { ShippingRate } from './shipping-rate.entity';
 
 @Entity('shipping_method')
 export class ShippingMethod {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'zone_id', type: 'bigint' })
+  @Column({ name: 'zone_id', type: 'uuid' })
   zoneId: string;
 
   @ManyToOne(() => ShippingZone, (z) => z.methods, { onDelete: 'CASCADE' })

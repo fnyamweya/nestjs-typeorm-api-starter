@@ -15,6 +15,8 @@ import { Permission } from '../entities/permission.entity';
 import { RolePermission } from '../entities/role-permission.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
+import { AppCacheService } from 'src/common/cache/app-cache.service';
+import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
 
 @Injectable()
 export class RoleService {
@@ -25,28 +27,47 @@ export class RoleService {
     private permissionRepository: Repository<Permission>,
     @InjectDataSource()
     private dataSource: DataSource,
+    private readonly cache: AppCacheService,
   ) {}
 
   async findAll(page: number = 1, limit: number = 10, getAll: boolean = false) {
-    const skip = (page - 1) * limit;
-    const findOptions: FindManyOptions<Role> = {
-      order: { createdAt: 'DESC' },
-      relations: ['rolePermissions', 'rolePermissions.permission'],
-    };
+    const rawKey = cacheKeyFromParts('auth', 'roles', 'list', {
+      page,
+      limit,
+      getAll,
+    });
+    const key = `auth:roles:list:${cacheKeyHash(rawKey)}`;
 
-    if (!getAll) {
-      findOptions.skip = skip;
-      findOptions.take = limit;
-    }
+    return this.cache.remember(
+      key,
+      () => {
+        const skip = (page - 1) * limit;
+        const findOptions: FindManyOptions<Role> = {
+          order: { createdAt: 'DESC' },
+          relations: ['rolePermissions', 'rolePermissions.permission'],
+        };
 
-    return await this.roleRepository.findAndCount(findOptions);
+        if (!getAll) {
+          findOptions.skip = skip;
+          findOptions.take = limit;
+        }
+
+        return this.roleRepository.findAndCount(findOptions);
+      },
+      { ttlSeconds: 60 },
+    );
   }
 
   async findAllPermissions() {
-    return this.permissionRepository.find({
-      select: ['id', 'module', 'permission'],
-      order: { createdAt: 'DESC' },
-    });
+    return this.cache.remember(
+      'auth:permissions:all',
+      () =>
+        this.permissionRepository.find({
+          select: ['id', 'module', 'permission'],
+          order: { createdAt: 'DESC' },
+        }),
+      { ttlSeconds: 300 },
+    );
   }
 
   async count(): Promise<number> {
@@ -76,7 +97,7 @@ export class RoleService {
     await this.validatePermissionIds(createRoleDto.permissionIds);
 
     // Use transaction to ensure data consistency
-    return await this.dataSource.transaction(async (manager) => {
+    const created = await this.dataSource.transaction(async (manager) => {
       // Create the role
       const role = manager.create(Role, {
         name: createRoleDto.name,
@@ -103,6 +124,9 @@ export class RoleService {
         relations: ['rolePermissions', 'rolePermissions.permission'],
       });
     });
+
+    await this.cache.delByPrefix('auth:roles:list:');
+    return created;
   }
 
   async update(id: string, updateRoleDto: UpdateRoleDto): Promise<Role | null> {
@@ -131,7 +155,7 @@ export class RoleService {
     }
 
     // Use transaction to ensure data consistency
-    return await this.dataSource.transaction(async (manager) => {
+    const updated = await this.dataSource.transaction(async (manager) => {
       // Update role basic info
       if (updateRoleDto.name || updateRoleDto.description) {
         await manager.update(Role, id, {
@@ -161,6 +185,9 @@ export class RoleService {
         relations: ['rolePermissions', 'rolePermissions.permission'],
       });
     });
+
+    await this.cache.delByPrefix('auth:roles:list:');
+    return updated;
   }
 
   async remove(id: string): Promise<boolean> {
@@ -178,6 +205,7 @@ export class RoleService {
     }
 
     await this.roleRepository.delete(id);
+    await this.cache.delByPrefix('auth:roles:list:');
     return true;
   }
 

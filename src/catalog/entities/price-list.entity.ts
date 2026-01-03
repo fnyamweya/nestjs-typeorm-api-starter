@@ -8,7 +8,7 @@ import {
 
 @Entity('price_list')
 export class PriceList {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'text', unique: true })

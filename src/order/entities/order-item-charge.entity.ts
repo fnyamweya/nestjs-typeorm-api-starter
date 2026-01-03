@@ -3,10 +3,10 @@ import { OrderItem } from './order-item.entity';
 
 @Entity('order_item_charge')
 export class OrderItemCharge {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'order_item_id', type: 'bigint' })
+  @Column({ name: 'order_item_id', type: 'uuid' })
   orderItemId: string;
 
   @ManyToOne(() => OrderItem, (item) => item.itemCharges, { onDelete: 'CASCADE' })

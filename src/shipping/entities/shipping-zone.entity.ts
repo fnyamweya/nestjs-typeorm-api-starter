@@ -4,7 +4,7 @@ import { ShippingMethod } from './shipping-method.entity';
 
 @Entity('shipping_zone')
 export class ShippingZone {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'text', unique: true })

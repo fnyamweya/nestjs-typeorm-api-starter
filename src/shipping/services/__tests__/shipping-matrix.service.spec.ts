@@ -14,6 +14,7 @@ describe('ShippingMatrixService', () => {
   let locRepo: any;
   let methodRepo: any;
   let rateRepo: any;
+  let cache: any;
 
   beforeEach(() => {
     zoneRepo = mockRepo({ findOne: jest.fn().mockResolvedValue({ id: 'g1', code: 'global' }) });
@@ -21,7 +22,13 @@ describe('ShippingMatrixService', () => {
     methodRepo = mockRepo();
     rateRepo = mockRepo();
 
-    svc = new ShippingMatrixService(zoneRepo, locRepo, methodRepo, rateRepo);
+    cache = {
+      remember: jest.fn((_: string, fn: any) => fn()),
+      del: jest.fn().mockResolvedValue(undefined),
+      delByPrefix: jest.fn().mockResolvedValue(undefined),
+    };
+
+    svc = new ShippingMatrixService(zoneRepo, locRepo, methodRepo, rateRepo, cache);
   });
 
   it('calculates flat rate', async () => {

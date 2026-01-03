@@ -28,13 +28,13 @@ import { UpdateTaxonomyDto } from '../dto/update-taxonomy.dto';
 
 @Controller('catalog/taxonomies')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Catalog: Taxonomies')
-@ApiBearerAuth('access-token')
 export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
   @ApiOperation({ summary: 'Create a taxonomy' })
   @ApiCreatedResponse({ description: 'Taxonomy created successfully' })
@@ -60,6 +60,8 @@ export class TaxonomyController {
   }
 
   @Patch('/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
   @ApiOperation({ summary: 'Update taxonomy' })
   @ApiOkResponse({ description: 'Taxonomy updated successfully' })
@@ -72,6 +74,8 @@ export class TaxonomyController {
   }
 
   @Delete('/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
   @ApiOperation({ summary: 'Delete taxonomy' })
   @ApiOkResponse({ description: 'Taxonomy deleted successfully' })

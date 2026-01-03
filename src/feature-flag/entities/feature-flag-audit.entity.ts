@@ -16,7 +16,7 @@ export enum FeatureFlagAuditAction {
 
 @Entity('feature_flag_audit')
 export class FeatureFlagAudit {
-  @PrimaryGeneratedColumn({ type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @ManyToOne(() => FeatureFlag, (flag) => flag.audits, {
@@ -26,7 +26,7 @@ export class FeatureFlagAudit {
   @JoinColumn({ name: 'feature_flag_id' })
   featureFlag?: FeatureFlag;
 
-  @Column({ name: 'feature_flag_id', type: 'bigint', nullable: true })
+  @Column({ name: 'feature_flag_id', type: 'uuid', nullable: true })
   featureFlagId?: string;
 
   @Column({ type: 'varchar', length: 20 })

@@ -1,16 +1,14 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
-  OneToMany,
-  Index,
   CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
-import { VariantOptionValue } from './variant-option-value.entity';
 
 @Entity('product_variant')
 @Index('idx_variant_product', ['productId', 'isDefault'])
@@ -29,22 +27,28 @@ export class ProductVariant {
   product: Product;
 
   @Column({ type: 'text', nullable: false })
-  sku: string;
+  title: string;
 
   @Column({ type: 'text', nullable: true })
-  barcode?: string;
+  sku?: string;
 
-  @Column({ name: 'external_id', type: 'text', nullable: true })
-  externalId?: string;
+  @Column({ name: 'external_ref', type: 'text', nullable: true })
+  externalRef?: string;
 
-  @Column({ type: 'text', nullable: false })
-  title: string;
+  @Column({ type: 'text', default: 'active' })
+  status: string;
 
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault: boolean;
 
   @Column({ type: 'int', default: 0 })
   position: number;
+
+  @Column({ name: 'attributes_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  attributesJson: Record<string, unknown>;
+
+  @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  imagesJson: string[];
 
   @Column({ name: 'requires_shipping', type: 'boolean', default: true })
   requiresShipping: boolean;
@@ -67,24 +71,6 @@ export class ProductVariant {
   @Column({ name: 'weight_unit', type: 'text', default: 'kg' })
   weightUnit: string;
 
-  @Column({ name: 'allow_backorder', type: 'boolean', default: false })
-  allowBackorder: boolean;
-
-  @Column({ name: 'preorder_available', type: 'boolean', default: false })
-  preorderAvailable: boolean;
-
-  @Column({ name: 'preorder_from', type: 'timestamptz', nullable: true })
-  preorderFrom?: Date;
-
-  @Column({ name: 'preorder_to', type: 'timestamptz', nullable: true })
-  preorderTo?: Date;
-
-  @Column({ name: 'tax_class_override', type: 'text', nullable: true })
-  taxClassOverride?: string;
-
-  @Column({ name: 'fulfillment_class_override', type: 'text', nullable: true })
-  fulfillmentClassOverride?: string;
-
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;
 
@@ -93,10 +79,4 @@ export class ProductVariant {
 
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
-
-  @OneToMany(
-    () => VariantOptionValue,
-    (variantOptionValue: VariantOptionValue) => variantOptionValue.variant,
-  )
-  optionValues: VariantOptionValue[];
 }

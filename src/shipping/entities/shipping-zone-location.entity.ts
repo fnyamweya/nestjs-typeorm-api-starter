@@ -1,14 +1,14 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { ShippingZone } from './shipping-zone.entity';
 
-export type ShippingLocationType = 'country' | 'region' | 'postal_code' | 'radius';
+export type ShippingLocationType = 'location' | 'country' | 'region' | 'postal_code' | 'radius';
 
 @Entity('shipping_zone_location')
 export class ShippingZoneLocation {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'zone_id', type: 'bigint' })
+  @Column({ name: 'zone_id', type: 'uuid' })
   zoneId: string;
 
   @ManyToOne(() => ShippingZone, (z) => z.locations, { onDelete: 'CASCADE' })
@@ -17,6 +17,11 @@ export class ShippingZoneLocation {
 
   @Column({ name: 'type', type: 'text' })
   type: ShippingLocationType;
+
+  // Preferred mapping: link a zone to a Location tree node.
+  // We keep legacy country/region/postal_code columns for backward compatibility.
+  @Column({ name: 'location_id', type: 'uuid', nullable: true })
+  locationId?: string;
 
   @Column({ name: 'country_code', type: 'char', length: 2, nullable: true })
   countryCode?: string;

@@ -35,6 +35,15 @@ export class CustomerProfile {
   @Column({ name: 'marketing_opt_in', default: false })
   marketingOptIn: boolean;
 
+  @Column({ name: 'tier_override_code', type: 'text', nullable: true })
+  tierOverrideCode?: string | null;
+
+  @Column({ name: 'tier_resolved_code', type: 'text', nullable: true })
+  tierResolvedCode?: string | null;
+
+  @Column({ name: 'tier_resolved_at', type: 'timestamptz', nullable: true })
+  tierResolvedAt?: Date | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

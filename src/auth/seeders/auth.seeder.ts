@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes } from 'crypto';
+import * as argon2 from 'argon2';
 import { Repository } from 'typeorm';
 import { Role } from '../entities/role.entity';
 import {
@@ -254,12 +255,24 @@ export class AuthSeeder {
     const base = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
     const link = `${base}${passwordSetPath}?token=${token}`;
 
-    await this.emailServiceUtils.sendSetPasswordLink({
-      email,
-      link,
-      appName: this.configService.get<string>('APP_NAME', 'Application'),
-      expiresInMinutes: Math.round((expiresAt.getTime() - Date.now()) / 60000),
-    });
+    try {
+      await this.emailServiceUtils.sendSetPasswordLink({
+        email,
+        link,
+        appName: this.configService.get<string>('APP_NAME', 'Application'),
+        expiresInMinutes: Math.round(
+          (expiresAt.getTime() - Date.now()) / 60000,
+        ),
+      });
+    } catch (err) {
+      // In many dev environments SMTP is not configured.
+      // Permissions/roles/users should still seed successfully.
+      // eslint-disable-next-line no-console
+      console.warn(
+        '⚠️ Skipping set-password email during seeding:',
+        (err as any)?.message || err,
+      );
+    }
   }
 
   private generatePasswordSetToken() {
@@ -277,6 +290,35 @@ export class AuthSeeder {
     const email = 'admin@example.com';
     const existing = await this.userRepository.findOne({ where: { email } });
     if (!existing) {
+      const password = 'AdminP@ss123';
+      const passwordHash = await argon2.hash(password, {
+        type: argon2.argon2id,
+        memoryCost: parseInt(
+          this.configService.get<string>('ARGON2_MEMORY_COST') ||
+            process.env.ARGON2_MEMORY_COST ||
+            '19456',
+          10,
+        ),
+        timeCost: parseInt(
+          this.configService.get<string>('ARGON2_TIME_COST') ||
+            process.env.ARGON2_TIME_COST ||
+            '3',
+          10,
+        ),
+        parallelism: parseInt(
+          this.configService.get<string>('ARGON2_PARALLELISM') ||
+            process.env.ARGON2_PARALLELISM ||
+            '1',
+          10,
+        ),
+        hashLength: parseInt(
+          this.configService.get<string>('ARGON2_HASH_LENGTH') ||
+            process.env.ARGON2_HASH_LENGTH ||
+            '32',
+          10,
+        ),
+      });
+
       await this.userRepository.save(
         this.userRepository.create({
           email,
@@ -284,7 +326,7 @@ export class AuthSeeder {
           lastName: 'Admin',
           phone: '+14155550100',
           roleId: role.id,
-          passwordHash: 'AdminP@ss123',
+          passwordHash,
           authProvider: AuthProviderType.LOCAL,
           isActive: true,
           status: UserStatus.ACTIVE,

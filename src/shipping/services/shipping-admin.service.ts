@@ -2,28 +2,41 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ShippingZone } from '../entities/shipping-zone.entity';
+import { ShippingZoneLocation } from '../entities/shipping-zone-location.entity';
 import { ShippingMethod } from '../entities/shipping-method.entity';
 import { ShippingRate } from '../entities/shipping-rate.entity';
 import { CreateShippingZoneDto } from '../dto/create-shipping-zone.dto';
+import { CreateShippingZoneLocationDto } from '../dto/create-shipping-zone-location.dto';
 import { CreateShippingMethodDto } from '../dto/create-shipping-method.dto';
 import { CreateShippingRateDto } from '../dto/create-shipping-rate.dto';
 import { validateFormula } from '../utils/formula-evaluator';
+import { AppCacheService } from 'src/common/cache/app-cache.service';
 
 @Injectable()
 export class ShippingAdminService {
   constructor(
     @InjectRepository(ShippingZone)
     private readonly zoneRepo: Repository<ShippingZone>,
+    @InjectRepository(ShippingZoneLocation)
+    private readonly zoneLocationRepo: Repository<ShippingZoneLocation>,
     @InjectRepository(ShippingMethod)
     private readonly methodRepo: Repository<ShippingMethod>,
     @InjectRepository(ShippingRate)
     private readonly rateRepo: Repository<ShippingRate>,
+    private readonly cache: AppCacheService,
   ) {}
+
+  private async invalidateShippingCaches() {
+    await this.cache.delByPrefix('shipping:quotes:');
+    await this.cache.delByPrefix('shipping:matrix:quotes:');
+  }
 
   // Zones
   async createZone(payload: CreateShippingZoneDto) {
     const zone = this.zoneRepo.create(payload as any);
-    return this.zoneRepo.save(zone);
+    const saved = await this.zoneRepo.save(zone);
+    await this.invalidateShippingCaches();
+    return saved;
   }
 
   async listZones() {
@@ -38,23 +51,55 @@ export class ShippingAdminService {
 
   async updateZone(id: string, payload: Partial<CreateShippingZoneDto>) {
     await this.zoneRepo.update(id, payload as any);
+    await this.invalidateShippingCaches();
     return this.getZone(id);
   }
 
   async deleteZone(id: string) {
     const res = await this.zoneRepo.delete(id);
-    return (res.affected || 0) > 0;
+    const deleted = (res.affected || 0) > 0;
+    if (deleted) await this.invalidateShippingCaches();
+    return deleted;
+  }
+
+  // Zone locations
+  async createZoneLocation(payload: CreateShippingZoneLocationDto) {
+    const z = await this.zoneRepo.findOne({ where: { id: payload.zoneId } });
+    if (!z) throw new NotFoundException('Shipping zone not found');
+
+    const row = this.zoneLocationRepo.create({
+      zoneId: payload.zoneId,
+      type: (payload.type as any) ?? 'location',
+      locationId: payload.locationId,
+    });
+    const saved = await this.zoneLocationRepo.save(row);
+    await this.invalidateShippingCaches();
+    return saved;
+  }
+
+  async listZoneLocations(zoneId?: string) {
+    if (zoneId) return this.zoneLocationRepo.find({ where: { zoneId } });
+    return this.zoneLocationRepo.find();
+  }
+
+  async deleteZoneLocation(id: string) {
+    const res = await this.zoneLocationRepo.delete(id);
+    const deleted = (res.affected || 0) > 0;
+    if (deleted) await this.invalidateShippingCaches();
+    return deleted;
   }
 
   // Methods
   async createMethod(payload: CreateShippingMethodDto) {
     const method = this.methodRepo.create(payload as any);
-    return this.methodRepo.save(method);
+    const saved = await this.methodRepo.save(method);
+    await this.invalidateShippingCaches();
+    return saved;
   }
 
   async listMethods(zoneId?: string) {
-    if (zoneId) return this.methodRepo.find({ where: { zoneId } });
-    return this.methodRepo.find();
+    if (zoneId) return this.methodRepo.find({ where: { zoneId }, relations: ['rates'] });
+    return this.methodRepo.find({ relations: ['rates'] });
   }
 
   async getMethod(id: string) {
@@ -65,12 +110,15 @@ export class ShippingAdminService {
 
   async updateMethod(id: string, payload: Partial<CreateShippingMethodDto>) {
     await this.methodRepo.update(id, payload as any);
+    await this.invalidateShippingCaches();
     return this.getMethod(id);
   }
 
   async deleteMethod(id: string) {
     const res = await this.methodRepo.delete(id);
-    return (res.affected || 0) > 0;
+    const deleted = (res.affected || 0) > 0;
+    if (deleted) await this.invalidateShippingCaches();
+    return deleted;
   }
 
   // Rates
@@ -94,7 +142,9 @@ export class ShippingAdminService {
     }
 
     const r = this.rateRepo.create(payload as any);
-    return this.rateRepo.save(r);
+    const saved = await this.rateRepo.save(r);
+    await this.invalidateShippingCaches();
+    return saved;
   }
 
   async listRates(methodId?: string) {
@@ -128,11 +178,14 @@ export class ShippingAdminService {
     }
 
     await this.rateRepo.update(id, payload as any);
+    await this.invalidateShippingCaches();
     return this.getRate(id);
   }
 
   async deleteRate(id: string) {
     const res = await this.rateRepo.delete(id);
-    return (res.affected || 0) > 0;
+    const deleted = (res.affected || 0) > 0;
+    if (deleted) await this.invalidateShippingCaches();
+    return deleted;
   }
 }

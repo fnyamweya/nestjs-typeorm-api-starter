@@ -1,10 +1,12 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
-  ManyToOne,
-  JoinColumn,
+  CreateDateColumn,
+  Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
 import { Product } from './product.entity';
 
@@ -28,23 +30,17 @@ export class ProductTranslation {
   locale: string;
 
   @Column({ type: 'text', nullable: false })
-  name: string;
-
-  @Column({ name: 'short_description', type: 'text', nullable: true })
-  shortDescription?: string;
-
-  @Column({ name: 'long_description', type: 'text', nullable: true })
-  longDescription?: string;
-
-  @Column({ name: 'seo_title', type: 'text', nullable: true })
-  seoTitle?: string;
-
-  @Column({ name: 'seo_description', type: 'text', nullable: true })
-  seoDescription?: string;
-
-  @Column({ name: 'seo_keywords', type: 'text', array: true, nullable: true })
-  seoKeywords?: string[];
+  title: string;
 
   @Column({ type: 'text', nullable: true })
-  slug?: string;
+  description?: string;
+
+  @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  metaJson: Record<string, unknown>;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+  createdAt: Date;
+
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+  updatedAt: Date;
 }

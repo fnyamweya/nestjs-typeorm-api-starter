@@ -2,35 +2,47 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-
-export type PromotionType = 'percentage' | 'fixed' | 'free_shipping';
+import { PromotionAction } from './promotion-action.entity';
+import { PromotionCondition } from './promotion-condition.entity';
+import { PromotionStatus, StackingPolicy } from './promotion.enums';
 
 @Entity('promotion')
 export class Promotion {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'text', unique: true })
+  @Index({ unique: true })
+  @Column({ type: 'text' })
   code: string;
+
+  @Column({ type: 'text', nullable: true })
+  name?: string;
 
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'text' })
-  type: PromotionType;
+  @Column({ type: 'enum', enum: PromotionStatus, default: PromotionStatus.DRAFT })
+  status: PromotionStatus;
 
-  // percentage e.g. 10 for 10% or fixed amount string numeric
-  @Column({ name: 'value', type: 'numeric', precision: 12, scale: 2, default: 0 })
-  value: string;
+  @Column({ type: 'int', default: 100 })
+  priority: number;
 
-  @Column({ name: 'currency_code', type: 'char', length: 3, nullable: true })
-  currencyCode?: string;
+  @Column({ name: 'stacking_policy', type: 'enum', enum: StackingPolicy, default: StackingPolicy.STACKABLE })
+  stackingPolicy: StackingPolicy;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+  @Column({ name: 'stacking_group', type: 'text', nullable: true })
+  stackingGroup?: string;
+
+  @Column({ name: 'max_redemptions', type: 'int', nullable: true })
+  maxRedemptions?: number;
+
+  @Column({ name: 'max_redemptions_per_customer', type: 'int', nullable: true })
+  maxRedemptionsPerCustomer?: number;
 
   @Column({ name: 'valid_from', type: 'timestamptz', nullable: true })
   validFrom?: Date;
@@ -38,8 +50,17 @@ export class Promotion {
   @Column({ name: 'valid_to', type: 'timestamptz', nullable: true })
   validTo?: Date;
 
-  @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
-  metaJson: Record<string, unknown>;
+  @Column({ type: 'jsonb', default: () => "'[]'::jsonb" })
+  channels: string[];
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  metadata: Record<string, unknown>;
+
+  @OneToMany(() => PromotionCondition, (c) => c.promotion, { cascade: true })
+  conditions: PromotionCondition[];
+
+  @OneToMany(() => PromotionAction, (a) => a.promotion, { cascade: true })
+  actions: PromotionAction[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

@@ -5,12 +5,16 @@ import { Repository } from 'typeorm';
 import { ProductVariant } from '../src/catalog/entities/product-variant.entity';
 import { OrderLevelCharge } from '../src/order/entities/order-level-charge.entity';
 import { createTestApp, truncateDb } from './e2e/bootstrap';
+import { Location, LocationType } from '../src/location/entities/location.entity';
+import { User } from '../src/user/entities/user.entity';
 
 
 describe('Orders E2E - Shipping integration', () => {
   let app: INestApplication;
   let variantRepo: Repository<ProductVariant>;
   let chargeRepo: Repository<OrderLevelCharge>;
+  let locationRepo: Repository<Location>;
+  let userRepo: Repository<User>;
 
   beforeAll(async () => {
     try {
@@ -22,12 +26,16 @@ describe('Orders E2E - Shipping integration', () => {
       const settingSeeder = app.get(require('../src/setting/seeders/setting.seeder').SettingSeeder);
       const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
       const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
+      const locationSeeder = app.get(require('../src/location/seeders/location.seeder').LocationSeeder);
       await settingSeeder.seed();
+      await locationSeeder.seed();
       await catalogSeeder.seed();
       await shippingSeeder.seed();
 
       variantRepo = app.get(getRepositoryToken(ProductVariant));
       chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
+      locationRepo = app.get(getRepositoryToken(Location));
+      userRepo = app.get(getRepositoryToken(User));
     } catch (err) {
       console.error('beforeAll failed in Orders E2E', err);
       throw err;
@@ -51,10 +59,18 @@ describe('Orders E2E - Shipping integration', () => {
       throw new Error('Variant not found');
     }
 
+    const kenya = await locationRepo.findOne({ where: { type: LocationType.COUNTRY, countryCode: 'KE' } });
+    expect(kenya).toBeDefined();
+
+    let customer = await userRepo.findOne({ where: { email: 'e2e@example.com' } });
+    if (!customer) {
+      customer = await userRepo.save(userRepo.create({ email: 'e2e@example.com', phone: '254700000010' } as any) as any);
+    }
+
     const payload = {
-      customerEmail: 'e2e@example.com',
-      items: [{ productVariantId: variant.id, quantity: 2 }],
-      shippingCountry: 'KE',
+      customerId: customer.id,
+      orderItems: [{ productVariantId: variant.id, quantity: 2 }],
+      shippingLocationId: kenya!.id,
     };
 
     const res = await request(app.getHttpServer()).post('/orders').send(payload).expect(201);

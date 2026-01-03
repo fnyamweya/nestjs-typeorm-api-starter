@@ -27,6 +27,12 @@ export class Taxonomy {
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault: boolean;
 
+  @Column({ name: 'is_active', type: 'boolean', default: true })
+  isActive: boolean;
+
+  @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  metaJson: Record<string, unknown>;
+
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 

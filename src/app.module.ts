@@ -16,6 +16,14 @@ import { CatalogModule } from './catalog/catalog.module';
 import { OrderModule } from './order/order.module';
 import { PromotionModule } from './promotion/promotion.module';
 import { FeatureFlagModule } from './feature-flag/feature-flag.module';
+import { MpesaModule } from './mpesa/mpesa.module';
+import { SmsModule } from './sms/sms.module';
+import { AddressModule } from './address/address.module';
+import { CustomerAddressModule } from './customer-address/customer-address.module';
+import { LocationModule } from './location/location.module';
+import { WhatsappModule } from './whatsapp/whatsapp.module';
+import { ChannelsModule } from './channels/channels.module';
+import { CustomerTierModule } from './customer-tier/customer-tier.module';
 
 @Module({
   imports: [
@@ -35,6 +43,14 @@ import { FeatureFlagModule } from './feature-flag/feature-flag.module';
     OrderModule,
     PromotionModule,
     FeatureFlagModule,
+    MpesaModule,
+    SmsModule,
+    WhatsappModule,
+    AddressModule,
+    CustomerAddressModule,
+    LocationModule,
+    ChannelsModule,
+    CustomerTierModule,
   ],
   controllers: [AppController],
   providers: [

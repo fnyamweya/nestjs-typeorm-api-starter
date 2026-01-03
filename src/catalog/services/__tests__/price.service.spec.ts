@@ -2,8 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { PriceService } from '../price.service';
 import { PriceList } from '../../entities/price-list.entity';
-import { ProductVariantPrice } from '../../entities/product-variant-price.entity';
-import { Currency } from '../../entities/currency.entity';
+import { ProductPrice } from '../../entities/product-price.entity';
+import { AppCacheService } from 'src/common/cache/app-cache.service';
 
 describe('PriceService', () => {
   let service: PriceService;
@@ -12,33 +12,47 @@ describe('PriceService', () => {
     findOne: jest.fn(),
     find: jest.fn(),
   };
-  const variantPriceRepo = {
+  const productPriceRepo = {
     find: jest.fn(),
   };
-  const currencyRepo = {
-    findOne: jest.fn(),
+  const cache = {
+    remember: jest.fn(),
   };
+  let cacheStore: Map<string, unknown>;
 
   beforeEach(async () => {
+    cacheStore = new Map<string, unknown>();
+    cache.remember.mockImplementation(
+      async (key: string, factory: () => Promise<unknown>, _options?: { ttlSeconds: number }) => {
+        if (cacheStore.has(key)) return cacheStore.get(key);
+        const value = await factory();
+        cacheStore.set(key, value);
+        return value;
+      },
+    );
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PriceService,
         { provide: getRepositoryToken(PriceList), useValue: priceListRepo },
-        { provide: getRepositoryToken(ProductVariantPrice), useValue: variantPriceRepo },
-        { provide: getRepositoryToken(Currency), useValue: currencyRepo },
+        { provide: getRepositoryToken(ProductPrice), useValue: productPriceRepo },
+        { provide: AppCacheService, useValue: cache },
       ],
     }).compile();
 
     service = module.get<PriceService>(PriceService);
   });
 
-  afterEach(() => jest.resetAllMocks());
+  afterEach(() => {
+    jest.resetAllMocks();
+    cacheStore.clear();
+  });
 
   it('resolves price for variant using provided price list', async () => {
     const pl = { id: '1', currencyCode: 'KES', isActive: true } as PriceList;
     priceListRepo.findOne.mockResolvedValue(pl);
-    variantPriceRepo.find.mockResolvedValueOnce([
-      { unitPrice: '1000.00', compareAtPrice: '1200.00', minQuantity: 1 } as ProductVariantPrice,
+    productPriceRepo.find.mockResolvedValueOnce([
+      { id: 'p1', unitPrice: '1000.00', compareAtPrice: '1200.00', minQuantity: 1 } as ProductPrice,
     ]);
 
     const resolved = await service.resolveVariantPrice({ productVariantId: 'pv1', priceListId: '1', quantity: 1 });
@@ -50,11 +64,9 @@ describe('PriceService', () => {
   it('selects price list by currency precedence (meta.priority)', async () => {
     const low = { id: '1', code: 'low', name: 'low', currencyCode: 'KES', isActive: true, metaJson: { priority: 1 }, createdAt: new Date(), updatedAt: new Date() } as PriceList;
     const high = { id: '2', code: 'high', name: 'high', currencyCode: 'KES', isActive: true, metaJson: { priority: 10 }, createdAt: new Date(), updatedAt: new Date() } as PriceList;
-    // selectPriceList will call find for currency
     priceListRepo.find.mockResolvedValueOnce([low, high]);
-    // variant prices for the higher priority list
-    variantPriceRepo.find.mockResolvedValueOnce([
-      { unitPrice: '200.00', compareAtPrice: '250.00', minQuantity: 1 } as ProductVariantPrice,
+    productPriceRepo.find.mockResolvedValueOnce([
+      { id: 'p2', unitPrice: '200.00', compareAtPrice: '250.00', minQuantity: 1 } as ProductPrice,
     ]);
 
     const resolved = await service.resolveVariantPrice({ productVariantId: 'pv1', currencyCode: 'KES', quantity: 1 });
@@ -65,8 +77,8 @@ describe('PriceService', () => {
   it('caches resolved price', async () => {
     const pl = { id: '3', code: 'pl3', name: 'pl3', currencyCode: 'KES', isActive: true, createdAt: new Date(), updatedAt: new Date() } as PriceList;
     priceListRepo.find.mockResolvedValueOnce([pl]);
-    variantPriceRepo.find.mockResolvedValueOnce([
-      { unitPrice: '100.00', minQuantity: 1 } as ProductVariantPrice,
+    productPriceRepo.find.mockResolvedValueOnce([
+      { id: 'p3', unitPrice: '100.00', minQuantity: 1 } as unknown as ProductPrice,
     ]);
 
     const r1 = await service.resolveVariantPrice({ productVariantId: 'pv-cache', currencyCode: 'KES', quantity: 1 });
@@ -74,6 +86,29 @@ describe('PriceService', () => {
 
     expect(r1.unitPrice).toBe('100.00');
     expect(r2.unitPrice).toBe('100.00');
-    expect(variantPriceRepo.find).toHaveBeenCalledTimes(1);
+    expect(productPriceRepo.find).toHaveBeenCalledTimes(1);
+  });
+
+  it('prefers context-matched prices over generic ones', async () => {
+    const pl = { id: 'ctx', currencyCode: 'KES', isActive: true } as PriceList;
+    priceListRepo.findOne.mockResolvedValue(pl);
+    productPriceRepo.find.mockResolvedValueOnce([
+      {
+        id: 'p4',
+        unitPrice: '90.00',
+        minQuantity: 1,
+        metaJson: { conditions: { customerGroupIds: ['vip'] } },
+      } as unknown as ProductPrice,
+      { id: 'p5', unitPrice: '100.00', minQuantity: 1, metaJson: {} } as unknown as ProductPrice,
+    ]);
+
+    const resolved = await service.resolveVariantPrice({
+      productVariantId: 'pv1',
+      priceListId: 'ctx',
+      quantity: 1,
+      context: { customerGroupId: 'vip' },
+    });
+
+    expect(resolved.unitPrice).toBe('90.00');
   });
 });

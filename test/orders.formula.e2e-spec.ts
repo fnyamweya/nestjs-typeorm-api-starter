@@ -13,6 +13,8 @@ import { ProductVariant } from '../src/catalog/entities/product-variant.entity';
 import { OrderLevelCharge } from '../src/order/entities/order-level-charge.entity';
 import { ShippingMethod } from '../src/shipping/entities/shipping-method.entity';
 import { ShippingRate } from '../src/shipping/entities/shipping-rate.entity';
+import { Location, LocationType } from '../src/location/entities/location.entity';
+import { User } from '../src/user/entities/user.entity';
 
 async function createTestApp() {
   const moduleFixture = await Test.createTestingModule({
@@ -40,8 +42,11 @@ describe('Orders E2E - Formula shipping integration', () => {
   let chargeRepo: Repository<OrderLevelCharge>;
   let methodRepo: Repository<ShippingMethod>;
   let rateRepo: Repository<ShippingRate>;
+  let locationRepo: Repository<Location>;
+  let userRepo: Repository<User>;
   let ds: DataSource;
   let kenyaZone: ShippingZone | undefined;
+  let kenyaLocationId: string;
 
   beforeAll(async () => {
     try {
@@ -55,9 +60,11 @@ describe('Orders E2E - Formula shipping integration', () => {
       const settingSeeder = app.get(require('../src/setting/seeders/setting.seeder').SettingSeeder);
       const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
       const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
+      const locationSeeder = app.get(require('../src/location/seeders/location.seeder').LocationSeeder);
 
       try {
         await settingSeeder.seed();
+        await locationSeeder.seed();
         await catalogSeeder.seed();
         await shippingSeeder.seed();
       } catch (err) {
@@ -69,6 +76,12 @@ describe('Orders E2E - Formula shipping integration', () => {
       chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
       methodRepo = app.get(getRepositoryToken(ShippingMethod));
       rateRepo = app.get(getRepositoryToken(ShippingRate));
+      locationRepo = app.get(getRepositoryToken(Location));
+      userRepo = app.get(getRepositoryToken(User));
+
+      const kenya = await locationRepo.findOne({ where: { type: LocationType.COUNTRY, countryCode: 'KE' } });
+      if (!kenya) throw new Error('Kenya location not found after seeding');
+      kenyaLocationId = kenya.id;
 
       // Ensure we have the Kenya zone and use it explicitly for the formula method
       const zone = (await ds.query(`SELECT * FROM shipping_zone WHERE code = 'kenya' LIMIT 1`))[0];
@@ -103,15 +116,20 @@ describe('Orders E2E - Formula shipping integration', () => {
     // Set variant weight so per_weight routes produce non-zero amounts and priority tie-breakers favor formula
     await variantRepo.update({ sku: 'PHONE-001' } as any, { weight: '1' } as any);
 
-    const quotes = await shippingMatrixService.getQuotes({ countryCode: 'KE', subtotal: 400, totalWeight: 1, itemCount: 2, currencyCode: 'KES' });
+    const quotes = await shippingMatrixService.getQuotes({ locationId: kenyaLocationId, subtotal: 400, totalWeight: 1, itemCount: 2, currencyCode: 'KES' });
     expect(quotes.length).toBeGreaterThan(0);
     expect(quotes[0].method.code).toBe('formula-method');
     expect(quotes[0].amount).toBeCloseTo(400 * 0.05, 6);
 
+    let customer = await userRepo.findOne({ where: { email: 'e2e-formula@example.com' } });
+    if (!customer) {
+      customer = await userRepo.save(userRepo.create({ email: 'e2e-formula@example.com', phone: '254700000012' } as any) as any);
+    }
+
     const payload = {
-      customerEmail: 'e2e-formula@example.com',
-      items: [{ productVariantId: variant.id, quantity: 2 }],
-      shippingCountry: 'KE',
+      customerId: customer.id,
+      orderItems: [{ productVariantId: variant.id, quantity: 2 }],
+      shippingLocationId: kenyaLocationId,
     };
 
     const res = await request(app.getHttpServer()).post('/orders').send(payload).expect(201);

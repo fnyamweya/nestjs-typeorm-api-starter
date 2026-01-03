@@ -31,13 +31,13 @@ import { FilterCategoryDto } from '../dto/filter-category.dto';
 
 @Controller('catalog/categories')
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-@UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('Catalog: Categories')
-@ApiBearerAuth('access-token')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
 
   @Post()
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
   @ApiOperation({ summary: 'Create category' })
   @ApiCreatedResponse({ description: 'Category created successfully' })
@@ -70,6 +70,8 @@ export class CategoryController {
   }
 
   @Patch('/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
   @ApiOperation({ summary: 'Update category' })
   @ApiOkResponse({ description: 'Category updated successfully' })
@@ -79,6 +81,8 @@ export class CategoryController {
   }
 
   @Delete('/:id')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
   @ApiOperation({ summary: 'Delete category' })
   @ApiOkResponse({ description: 'Category deleted successfully' })

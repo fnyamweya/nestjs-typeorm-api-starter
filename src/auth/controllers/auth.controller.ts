@@ -359,11 +359,11 @@ export class AuthController {
   async updateProfile(
     @CurrentUser() user: AuthenticatedUser,
     @UploadedFiles()
-    files: Express.Multer.File[],
+    files: Express.Multer.File[] | undefined,
     @Body() updateProfileDto: UpdateProfileDto,
     @Req() request: Request,
   ) {
-    const profileImage = files.find(
+    const profileImage = (files ?? []).find(
       (file) => file.fieldname === 'profileImage',
     );
 

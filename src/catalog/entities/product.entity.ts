@@ -1,69 +1,55 @@
 import {
-  Entity,
-  PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
-  UpdateDateColumn,
+  Entity,
   Index,
-  OneToMany,
-  OneToOne,
   JoinColumn,
+  ManyToOne,
+  OneToMany,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
 } from 'typeorm';
+import { Brand } from './brand.entity';
+import { ProductCategory } from './product-category.entity';
+import { ProductChannel } from './product-channel.entity';
+import { ProductPrice } from './product-price.entity';
 import { ProductTranslation } from './product-translation.entity';
 import { ProductVariant } from './product-variant.entity';
-import { ProductOption } from './product-option.entity';
-import { ProductCategory } from './product-category.entity';
-import { ProductAttributeValue } from './product-attribute-value.entity';
 
 @Entity('product')
-@Index('idx_product_status', ['status', 'publishedAt'])
-@Index('uq_product_handle', ['handle'], { unique: true })
+@Index('idx_product_status', ['status', 'createdAt'])
+@Index('uq_product_slug', ['slug'], { unique: true })
 export class Product {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
   @Column({ type: 'text', nullable: false })
-  handle: string;
+  title: string;
 
-  @Column({ type: 'text', default: 'standard' })
-  type: string;
+  @Column({ type: 'text', nullable: true })
+  description?: string;
 
   @Column({ type: 'text', default: 'draft' })
   status: string;
 
+  @Column({ type: 'text', nullable: false })
+  slug: string;
+
+  @Column({ name: 'external_ref', type: 'text', nullable: true })
+  externalRef?: string;
+
   @Column({ name: 'brand_id', type: 'uuid', nullable: true })
   brandId?: string;
 
-  @Column({ name: 'default_variant_id', type: 'uuid', nullable: true })
-  defaultVariantId?: string;
+  @ManyToOne(() => Brand, (brand) => brand.products, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'brand_id' })
+  brand?: Brand;
 
-  @OneToOne(() => ProductVariant, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'default_variant_id' })
-  defaultVariant?: ProductVariant;
+  @Column({ name: 'availability_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  availabilityJson: Record<string, unknown>;
 
-  @Column({ name: 'is_featured', type: 'boolean', default: false })
-  isFeatured: boolean;
-
-  @Column({ name: 'tax_class_code', type: 'text', nullable: true })
-  taxClassCode?: string;
-
-  @Column({ name: 'fulfillment_class', type: 'text', default: 'physical' })
-  fulfillmentClass: string;
-
-  @Column({ name: 'country_of_origin', type: 'char', length: 2, nullable: true })
-  countryOfOrigin?: string;
-
-  @Column({ name: 'hs_code', type: 'text', nullable: true })
-  hsCode?: string;
-
-  @Column({ name: 'inventory_strategy', type: 'text', default: 'variant' })
-  inventoryStrategy: string;
-
-  @Column({ name: 'requires_shipping', type: 'boolean', default: true })
-  requiresShipping: boolean;
-
-  @Column({ name: 'published_at', type: 'timestamptz', nullable: true })
-  publishedAt?: Date;
+  @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  imagesJson: string[];
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;
@@ -80,15 +66,12 @@ export class Product {
   @OneToMany(() => ProductVariant, (variant) => variant.product)
   variants: ProductVariant[];
 
-  @OneToMany(() => ProductOption, (option) => option.product)
-  options: ProductOption[];
-
   @OneToMany(() => ProductCategory, (productCategory) => productCategory.product)
   productCategories: ProductCategory[];
 
-  @OneToMany(
-    () => ProductAttributeValue,
-    (productAttributeValue) => productAttributeValue.product,
-  )
-  attributeValues: ProductAttributeValue[];
+  @OneToMany(() => ProductChannel, (productChannel) => productChannel.product)
+  productChannels: ProductChannel[];
+
+  @OneToMany(() => ProductPrice, (price) => price.product)
+  prices: ProductPrice[];
 }

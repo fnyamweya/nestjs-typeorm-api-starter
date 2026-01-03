@@ -5,10 +5,10 @@ export type ShippingCalculationType = 'flat' | 'per_weight' | 'per_item' | 'tabl
 
 @Entity('shipping_rate')
 export class ShippingRate {
-  @PrimaryGeneratedColumn('increment', { type: 'bigint' })
+  @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'method_id', type: 'bigint' })
+  @Column({ name: 'method_id', type: 'uuid' })
   methodId: string;
 
   @ManyToOne(() => ShippingMethod, (m) => m.rates, { onDelete: 'CASCADE' })

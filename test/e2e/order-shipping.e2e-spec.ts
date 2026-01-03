@@ -6,12 +6,16 @@ import { ProductVariant } from '../../src/catalog/entities/product-variant.entit
 import { Order } from '../../src/order/entities/order.entity';
 import { OrderLevelCharge } from '../../src/order/entities/order-level-charge.entity';
 import { createTestApp, truncateDb } from '../e2e/bootstrap';
+import { Location, LocationType } from '../../src/location/entities/location.entity';
+import { User } from '../../src/user/entities/user.entity';
 
 describe('Order Shipping E2E', () => {
   let app: INestApplication;
   let variantRepo: Repository<ProductVariant>;
   let orderRepo: Repository<Order>;
   let chargeRepo: Repository<OrderLevelCharge>;
+  let locationRepo: Repository<Location>;
+  let userRepo: Repository<User>;
 
   beforeAll(async () => {
     try {
@@ -23,14 +27,18 @@ describe('Order Shipping E2E', () => {
       const catalogSeeder = app.get(require('../../src/catalog/seeders/catalog.seeder').CatalogSeeder);
       const shippingSeeder = app.get(require('../../src/shipping/seeders/shipping.seeder').ShippingSeeder);
       const settingSeeder = app.get(require('../../src/setting/seeders/setting.seeder').SettingSeeder);
+      const locationSeeder = app.get(require('../../src/location/seeders/location.seeder').LocationSeeder);
 
       await catalogSeeder.seed();
       await settingSeeder.seed();
+      await locationSeeder.seed();
       await shippingSeeder.seed();
 
       variantRepo = app.get(getRepositoryToken(ProductVariant));
       orderRepo = app.get(getRepositoryToken(Order));
       chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
+      locationRepo = app.get(getRepositoryToken(Location));
+      userRepo = app.get(getRepositoryToken(User));
     } catch (err) {
       console.error('beforeAll failed in Order Shipping E2E', err);
       throw err;
@@ -50,10 +58,18 @@ describe('Order Shipping E2E', () => {
     const variant = await variantRepo.findOne({ where: { sku: 'PHONE-001' } });
     expect(variant).toBeDefined();
 
+    const kenya = await locationRepo.findOne({ where: { type: LocationType.COUNTRY, countryCode: 'KE' } });
+    expect(kenya).toBeDefined();
+
+    let customer = await userRepo.findOne({ where: { email: 'buyer@example.com' } });
+    if (!customer) {
+      customer = await userRepo.save(userRepo.create({ email: 'buyer@example.com', phone: '254700000011' } as any) as any);
+    }
+
     const payload = {
-      customerEmail: 'buyer@example.com',
-      items: [{ productVariantId: variant!.id, quantity: 1 }],
-      shippingCountry: 'KE',
+      customerId: customer.id,
+      orderItems: [{ productVariantId: variant!.id, quantity: 1 }],
+      shippingLocationId: kenya!.id,
     };
 
     const res = await request(app.getHttpServer()).post('/orders').send(payload).expect(201);

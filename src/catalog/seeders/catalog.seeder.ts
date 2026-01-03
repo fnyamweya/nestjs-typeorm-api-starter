@@ -7,10 +7,10 @@ import { Product } from '../entities/product.entity';
 import { ProductVariant } from '../entities/product-variant.entity';
 import { Currency } from '../entities/currency.entity';
 import { PriceList } from '../entities/price-list.entity';
-import { ProductVariantPrice } from '../entities/product-variant-price.entity';
 import { ProductStatus } from '../dto/create-product.dto';
 import { CategoryService } from '../services/category.service';
 import { ProductService } from '../services/product.service';
+import { Brand } from '../entities/brand.entity';
 
 @Injectable()
 export class CatalogSeeder {
@@ -29,110 +29,126 @@ export class CatalogSeeder {
     private readonly currencyRepository: Repository<Currency>,
     @InjectRepository(PriceList)
     private readonly priceListRepository: Repository<PriceList>,
-    @InjectRepository(ProductVariantPrice)
-    private readonly variantPriceRepository: Repository<ProductVariantPrice>,
+    @InjectRepository(Brand)
+    private readonly brandRepository: Repository<Brand>,
     private readonly categoryService: CategoryService,
     private readonly productService: ProductService,
   ) {}
 
   async seed() {
+    await this.resetCatalogData();
+
+    const priceList = await this.ensureCurrencyAndPriceList();
+    const [nova, acme] = await this.seedBrands();
+
     const taxonomy = await this.ensureDefaultTaxonomy();
-    const electronics = await this.ensureCategory(taxonomy.id, {
-      key: 'electronics',
-      slug: 'electronics',
-      name: 'Electronics',
-    });
+    const categories = await this.seedCategories(taxonomy.id);
 
-    await this.ensureCategory(taxonomy.id, {
-      key: 'phones',
-      slug: 'phones',
-      name: 'Phones',
-      parentId: electronics.id,
+    await this.seedProducts({
+      priceList,
+      brands: { nova, acme },
+      categories,
     });
+  }
 
-    await this.ensureSampleProduct(electronics.id);
-    await this.ensureCurrencyAndPriceList();
+  private async resetCatalogData(): Promise<void> {
+    await this.productRepository.delete({});
+    await this.categoryRepository.delete({});
+    await this.taxonomyRepository.delete({});
+    await this.brandRepository.delete({});
   }
 
   private async ensureDefaultTaxonomy(): Promise<Taxonomy> {
-    let taxonomy = await this.taxonomyRepository.findOne({ where: { code: 'default' } });
-
-    if (!taxonomy) {
-      taxonomy = this.taxonomyRepository.create({
-        code: 'default',
-        name: 'Default Catalog',
-        description: 'Primary storefront taxonomy',
-        isDefault: true,
-      });
-      taxonomy = await this.taxonomyRepository.save(taxonomy);
-      this.logger.log('Created default taxonomy');
-    }
-
-    return taxonomy;
+    const taxonomy = this.taxonomyRepository.create({
+      code: 'default',
+      name: 'Default Catalog',
+      description: 'Primary storefront taxonomy',
+      isDefault: true,
+    });
+    const saved = await this.taxonomyRepository.save(taxonomy);
+    this.logger.log('Created default taxonomy');
+    return saved;
   }
 
-  private async ensureCategory(
-    taxonomyId: string,
-    payload: { key: string; slug: string; name: string; parentId?: string },
-  ): Promise<Category> {
-    const existing = await this.categoryRepository.findOne({
-      where: { taxonomyId, key: payload.key },
-    });
+  private async seedBrands(): Promise<[Brand, Brand]> {
+    const nova = await this.brandRepository.save(
+      this.brandRepository.create({
+        name: 'Nova',
+        slug: 'nova',
+        description: 'Premium electronics and devices',
+        logoUrl: 'https://cdn.example.com/brands/nova.png',
+        websiteUrl: 'https://example.com/nova',
+        isActive: true,
+        metaJson: { tier: 'premium' },
+      }),
+    );
 
-    if (existing) {
-      return existing;
-    }
+    const acme = await this.brandRepository.save(
+      this.brandRepository.create({
+        name: 'Acme',
+        slug: 'acme',
+        description: 'Everyday accessories and essentials',
+        logoUrl: 'https://cdn.example.com/brands/acme.png',
+        websiteUrl: 'https://example.com/acme',
+        isActive: true,
+        metaJson: { tier: 'value' },
+      }),
+    );
 
-    const category = await this.categoryService.create({
+    this.logger.log('Seeded brands Nova and Acme');
+    return [nova, acme];
+  }
+
+  private async seedCategories(taxonomyId: string): Promise<{
+    electronics: Category;
+    phones: Category;
+    accessories: Category;
+    home: Category;
+    lighting: Category;
+  }> {
+    const electronics = await this.categoryService.create({
       taxonomyId,
-      parentId: payload.parentId,
-      key: payload.key,
-      slug: payload.slug,
-      translations: [
-        {
-          locale: 'en',
-          name: payload.name,
-        },
-      ],
+      key: 'electronics',
+      slug: 'electronics',
+      translations: [{ locale: 'en', name: 'Electronics' }],
     });
-    this.logger.log(`Created category ${payload.key}`);
-    return category;
+
+    const phones = await this.categoryService.create({
+      taxonomyId,
+      parentId: electronics.id,
+      key: 'phones',
+      slug: 'phones',
+      translations: [{ locale: 'en', name: 'Phones' }],
+    });
+
+    const accessories = await this.categoryService.create({
+      taxonomyId,
+      parentId: electronics.id,
+      key: 'accessories',
+      slug: 'accessories',
+      translations: [{ locale: 'en', name: 'Accessories' }],
+    });
+
+    const home = await this.categoryService.create({
+      taxonomyId,
+      key: 'home',
+      slug: 'home',
+      translations: [{ locale: 'en', name: 'Home' }],
+    });
+
+    const lighting = await this.categoryService.create({
+      taxonomyId,
+      parentId: home.id,
+      key: 'lighting',
+      slug: 'lighting',
+      translations: [{ locale: 'en', name: 'Lighting' }],
+    });
+
+    this.logger.log('Seeded categories');
+    return { electronics, phones, accessories, home, lighting };
   }
 
-  private async ensureSampleProduct(categoryId: string): Promise<void> {
-    const existing = await this.productRepository.findOne({
-      where: { handle: 'sample-phone' },
-    });
-
-    if (existing) {
-      return;
-    }
-
-    await this.productService.create({
-      handle: 'sample-phone',
-      status: ProductStatus.ACTIVE,
-      isFeatured: true,
-      translations: [
-        {
-          locale: 'en',
-          name: 'Sample Phone',
-          shortDescription: 'Reference device listing',
-        },
-      ],
-      variants: [
-        {
-          sku: 'PHONE-001',
-          title: 'Sample Phone Default',
-          isDefault: true,
-          requiresShipping: true,
-        },
-      ],
-      categoryIds: [categoryId],
-    });
-    this.logger.log('Created sample product sample-phone');
-  }
-
-  private async ensureCurrencyAndPriceList(): Promise<void> {
+  private async ensureCurrencyAndPriceList(): Promise<PriceList> {
     // Ensure KES exists
     let kes = await this.currencyRepository.findOne({ where: { code: 'KES' } });
     if (!kes) {
@@ -144,27 +160,181 @@ export class CatalogSeeder {
     // Ensure price list exists
     let priceList = await this.priceListRepository.findOne({ where: { code: 'retail-kes' } });
     if (!priceList) {
-      priceList = this.priceListRepository.create({ code: 'retail-kes', name: 'Retail (KES)', currencyCode: 'KES' });
+      priceList = this.priceListRepository.create({
+        code: 'retail-kes',
+        name: 'Retail (KES)',
+        currencyCode: 'KES',
+        isActive: true,
+        metaJson: { priority: 1 },
+      });
       priceList = await this.priceListRepository.save(priceList);
       this.logger.log('Created price list retail-kes');
     }
 
-    // Ensure variant price for sample variant exists
-    const variant = await this.variantRepository.findOne({ where: { sku: 'PHONE-001' } });
-    if (variant) {
-      const existing = await this.variantPriceRepository.findOne({ where: { priceListId: priceList.id, productVariantId: variant.id } });
-      if (!existing) {
-        const vp = this.variantPriceRepository.create({
-          priceListId: priceList.id,
-          productVariantId: variant.id,
-          unitPrice: '200.00',
-          compareAtPrice: '0',
-          minQuantity: 1,
-          metaJson: {},
-        });
-        await this.variantPriceRepository.save(vp);
-        this.logger.log('Created sample variant price for PHONE-001');
-      }
+    return priceList;
+  }
+
+  private async seedProducts(payload: {
+    priceList: PriceList;
+    brands: { nova: Brand; acme: Brand };
+    categories: { phones: Category; accessories: Category; lighting: Category };
+  }): Promise<void> {
+    const channels = ['WEB', 'MOBILE', 'WHATSAPP'];
+    const availability = {
+      channels,
+      countries: ['KE', 'TZ'],
+      locations: ['Nairobi', 'Dar es Salaam'],
+      stock: { type: 'FINITE', quantity: 120 },
+      schedule: { startAt: '2025-01-01T00:00:00Z', endAt: '2026-01-01T00:00:00Z', timezone: 'UTC' },
+      meta: { source: 'seed' },
+    };
+
+    const phone = await this.productService.create({
+      title: 'Nova X Phone',
+      description: 'Flagship smartphone with pro-grade camera and long battery life.',
+      status: ProductStatus.ACTIVE,
+      slug: 'nova-x-phone',
+      externalRef: 'NOVA-X-001',
+      brandId: payload.brands.nova.id,
+      categoryIds: [payload.categories.phones.id],
+      availability,
+      images: [
+        'https://cdn.example.com/products/nova-x/main.png',
+        'https://cdn.example.com/products/nova-x/alt.png',
+      ],
+      translations: [
+        { locale: 'en', title: 'Nova X Phone', description: 'Flagship smartphone with pro-grade camera.' },
+        { locale: 'sw', title: 'Simu ya Nova X', description: 'Simu ya kisasa yenye kamera bora.' },
+      ],
+      variations: [
+        {
+          title: 'Black / 128 GB',
+          sku: 'PHONE-001',
+          isDefault: true,
+          attributes: { color: 'black', storage: '128GB' },
+          images: ['https://cdn.example.com/products/nova-x/black.png'],
+          prices: [
+            {
+              priceListId: payload.priceList.id,
+              unitPrice: 129999,
+              compareAtPrice: 139999,
+              minQuantity: 1,
+            },
+          ],
+        },
+        {
+          title: 'Silver / 256 GB',
+          sku: 'PHONE-002',
+          attributes: { color: 'silver', storage: '256GB' },
+          images: ['https://cdn.example.com/products/nova-x/silver.png'],
+          prices: [
+            {
+              priceListId: payload.priceList.id,
+              unitPrice: 149999,
+              compareAtPrice: 159999,
+              minQuantity: 1,
+            },
+          ],
+        },
+      ],
+      metaJson: { tags: ['smartphone', 'nova', 'flagship'] },
+    });
+
+    const defaultVariant = phone.variants?.find((v) => v.isDefault) ?? phone.variants?.[0];
+    if (defaultVariant) {
+      const promoStart = new Date();
+      promoStart.setDate(promoStart.getDate() - 1);
+      const promoEnd = new Date();
+      promoEnd.setDate(promoEnd.getDate() + 14);
+
+      await this.productService.addVariationPrice(phone.id, defaultVariant.id, {
+        priceListId: payload.priceList.id,
+        unitPrice: 119999,
+        compareAtPrice: 129999,
+        validFrom: promoStart.toISOString(),
+        validTo: promoEnd.toISOString(),
+        metaJson: { reason: 'launch-promo' },
+      });
     }
+
+    await this.productService.create({
+      title: 'Acme Fast Charger',
+      description: 'Compact USB-C charger with fast charging support.',
+      status: ProductStatus.ACTIVE,
+      slug: 'acme-fast-charger',
+      externalRef: 'ACME-CHG-FAST',
+      brandId: payload.brands.acme.id,
+      categoryIds: [payload.categories.accessories.id],
+      availability: {
+        ...availability,
+        stock: { type: 'FINITE', quantity: 300 },
+      },
+      images: ['https://cdn.example.com/products/acme-charger/main.png'],
+      translations: [
+        { locale: 'en', title: 'Acme Fast Charger', description: 'Compact USB-C charger.' },
+        { locale: 'sw', title: 'Chaja ya Haraka Acme', description: 'Chaja ndogo ya USB-C.' },
+      ],
+      prices: [
+        {
+          priceListId: payload.priceList.id,
+          unitPrice: 3999,
+          compareAtPrice: 4999,
+          minQuantity: 1,
+        },
+      ],
+      variations: [
+        {
+          title: 'Standard',
+          sku: 'ACME-CHG-STD',
+          isDefault: true,
+          attributes: { color: 'white', power: '30W' },
+        },
+      ],
+      metaJson: { tags: ['charger', 'accessory'] },
+    });
+
+    await this.productService.create({
+      title: 'Solar Lantern',
+      description: 'Portable solar lantern with adjustable brightness.',
+      status: ProductStatus.ACTIVE,
+      slug: 'solar-lantern',
+      externalRef: 'SOL-LANTERN-01',
+      brandId: payload.brands.acme.id,
+      categoryIds: [payload.categories.lighting.id],
+      availability: {
+        ...availability,
+        stock: { type: 'FINITE', quantity: 80 },
+        schedule: { startAt: '2025-03-01T00:00:00Z', endAt: '2026-03-01T00:00:00Z', timezone: 'UTC' },
+      },
+      images: ['https://cdn.example.com/products/lantern/main.png'],
+      translations: [
+        { locale: 'en', title: 'Solar Lantern', description: 'Portable lantern with long-lasting light.' },
+        { locale: 'sw', title: 'Taa ya Jua', description: 'Taa inayochajiwa kwa jua.' },
+      ],
+      variations: [
+        {
+          title: 'Rechargeable',
+          sku: 'SOL-LANT-REC',
+          isDefault: true,
+          attributes: { power: 'solar', battery: '4000mAh' },
+          prices: [
+            {
+              priceListId: payload.priceList.id,
+              unitPrice: 24999,
+              minQuantity: 1,
+            },
+            {
+              priceListId: payload.priceList.id,
+              unitPrice: 22999,
+              minQuantity: 1,
+              metaJson: { conditions: { countryCodes: ['TZ'] } },
+            },
+          ],
+        },
+      ],
+      metaJson: { tags: ['solar', 'lighting', 'outdoor'] },
+    });
+
+    this.logger.log('Seeded sample products');
   }
 }

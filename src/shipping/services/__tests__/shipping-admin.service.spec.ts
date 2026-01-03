@@ -16,15 +16,27 @@ function mockRepo(overrides: Partial<any> = {}) {
 describe('ShippingAdminService', () => {
   let svc: ShippingAdminService;
   let zoneRepo: any;
+  let zoneLocationRepo: any;
   let methodRepo: any;
   let rateRepo: any;
+  let cache: any;
 
   beforeEach(() => {
     zoneRepo = mockRepo();
+    zoneLocationRepo = mockRepo({
+      // createZoneLocation() expects zoneRepo.findOne() to validate zone exists
+      // so this repo doesn't need special behavior for these formula tests
+    });
     methodRepo = mockRepo();
     rateRepo = mockRepo();
 
-    svc = new ShippingAdminService(zoneRepo, methodRepo, rateRepo);
+    cache = {
+      delByPrefix: jest.fn().mockResolvedValue(undefined),
+      del: jest.fn().mockResolvedValue(undefined),
+      remember: jest.fn((_: string, fn: any) => fn()),
+    };
+
+    svc = new ShippingAdminService(zoneRepo, zoneLocationRepo, methodRepo, rateRepo, cache);
   });
 
   it('rejects invalid formula on createRate', async () => {

@@ -97,9 +97,9 @@ export class UserController {
   async create(
     @Body() createUserDto: CreateUserDto,
     @UploadedFiles()
-    files: Express.Multer.File[],
+    files: Express.Multer.File[] | undefined,
   ) {
-    const profileImage = files.find(
+    const profileImage = (files ?? []).find(
       (file) => file.fieldname === 'profileImage',
     );
 
@@ -241,9 +241,9 @@ export class UserController {
     @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
     @UploadedFiles()
-    files: Express.Multer.File[],
+    files: Express.Multer.File[] | undefined,
   ) {
-    const profileImage = files.find(
+    const profileImage = (files ?? []).find(
       (file) => file.fieldname === 'profileImage',
     );
 

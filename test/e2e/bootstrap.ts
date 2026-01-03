@@ -10,7 +10,10 @@ export type TestApp = {
 
 export async function createTestApp(): Promise<TestApp> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
-  const app = moduleRef.createNestApplication();
+  const app = moduleRef.createNestApplication({
+    // Needed for webhook signature verification tests.
+    rawBody: true,
+  });
 
   // Optionally configure global pipes/filters/logging for e2e clarity
   app.enableShutdownHooks();

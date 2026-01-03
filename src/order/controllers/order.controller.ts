@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ApiTags, ApiCreatedResponse, ApiBearerAuth, ApiBody } from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
@@ -16,9 +16,8 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  // In a public API this may be allowed unauthenticated; admin context uses jwt/permissions
-  // @UseGuards(JwtAuthGuard, PermissionsGuard)
-  // @RequirePermissions({ module: PermissionModule.ORDERS, permission: 'create' })
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions({ module: PermissionModule.ORDERS, permission: 'create' })
   @ApiBody({ type: CreateOrderDto })
   @ApiCreatedResponse({ description: 'Order created successfully' })
   async create(@Body() payload: CreateOrderDto) {
