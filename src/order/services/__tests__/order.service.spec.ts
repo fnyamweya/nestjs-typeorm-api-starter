@@ -3,7 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { OrderService } from '../order.service';
 import { Order } from '../../entities/order.entity';
 import { OrderItem } from '../../entities/order-item.entity';
-import { ProductVariant } from '../../../catalog/entities/product-variant.entity';
+import { ProductSku } from '../../../catalog/entities/product-sku.entity';
 import { Product } from '../../../catalog/entities/product.entity';
 import { ProductCategory } from '../../../catalog/entities/product-category.entity';
 import { Category } from '../../../catalog/entities/category.entity';
@@ -17,22 +17,24 @@ import { ShippingMatrixService } from '../../../shipping/services/shipping-matri
 import { OrderShippingAddress } from '../../entities/order-shipping-address.entity';
 import { User } from '../../../user/entities/user.entity';
 import { CatalogShippingContextService } from '../../../shipping/services/catalog-shipping-context.service';
+import { Location } from '../../../location/entities/location.entity';
 
 describe('OrderService', () => {
   let service: OrderService;
 
   const orderRepo = { create: jest.fn(), save: jest.fn() };
   const orderItemRepo = { create: jest.fn(), save: jest.fn(), find: jest.fn() };
-  const variantRepo = { findOne: jest.fn() };
+  const skuRepo = { findOne: jest.fn() };
   const productRepo = { find: jest.fn() };
   const productCategoryRepo = { find: jest.fn() };
   const categoryRepo = { find: jest.fn() };
   const categoryClosureRepo = { find: jest.fn() };
   const userRepo = { findOne: jest.fn() };
   const priceListRepo = { findOne: jest.fn() };
-  const priceService = { resolveVariantPrice: jest.fn(), findActivePriceListByCurrency: jest.fn() };
+  const priceService = { resolveSkuPrice: jest.fn(), findActivePriceListByCurrency: jest.fn() };
   const orderLevelChargeRepo = { create: jest.fn(), save: jest.fn() };
   const orderShippingAddressRepo = { create: jest.fn(), save: jest.fn() };
+  const locationRepo = { findOne: jest.fn() };
   const promotionService = { evaluatePromotions: jest.fn(), findActivePromotions: jest.fn() };
   const shippingMatrixService = { getQuotes: jest.fn() };
   const taxService = { calculateTax: jest.fn() };
@@ -44,7 +46,7 @@ describe('OrderService', () => {
         OrderService,
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: getRepositoryToken(OrderItem), useValue: orderItemRepo },
-        { provide: getRepositoryToken(ProductVariant), useValue: variantRepo },
+        { provide: getRepositoryToken(ProductSku), useValue: skuRepo },
         { provide: getRepositoryToken(Product), useValue: productRepo },
         { provide: getRepositoryToken(ProductCategory), useValue: productCategoryRepo },
         { provide: getRepositoryToken(Category), useValue: categoryRepo },
@@ -53,6 +55,7 @@ describe('OrderService', () => {
         { provide: getRepositoryToken(PriceList), useValue: priceListRepo },
         { provide: getRepositoryToken(OrderLevelCharge), useValue: orderLevelChargeRepo },
         { provide: getRepositoryToken(OrderShippingAddress), useValue: orderShippingAddressRepo },
+        { provide: getRepositoryToken(Location), useValue: locationRepo },
         { provide: PriceService, useValue: priceService },
         { provide: PromotionService, useValue: promotionService },
         { provide: ShippingMatrixService, useValue: shippingMatrixService },
@@ -78,19 +81,21 @@ describe('OrderService', () => {
       lastName: 'Customer',
     } as any);
 
-    variantRepo.findOne.mockResolvedValue({
+    locationRepo.findOne.mockResolvedValue({ id: 'loc1', countryCode: 'KE' } as unknown as Location);
+
+    skuRepo.findOne.mockResolvedValue({
       id: 'pv1',
       productId: 'p1',
       sku: 'SKU-1',
-      title: 'Variant 1',
+      title: 'SKU 1',
       requiresShipping: true,
-      weight: '1.234',
-    } as ProductVariant);
+      attributes: { weight: '1.234' },
+    } as unknown as ProductSku);
 
-    priceService.resolveVariantPrice.mockResolvedValue({
+    priceService.resolveSkuPrice.mockResolvedValue({
       priceListId: '1', currencyCode: 'KES', unitPrice: '100.00', compareAtPrice: '120.00',
     });
-    priceService.findActivePriceListByCurrency.mockResolvedValue({ id: '1', currencyCode: 'KES' } as PriceList);
+    priceService.findActivePriceListByCurrency.mockResolvedValue({ id: '1', currency: 'KES' } as unknown as PriceList);
     promotionService.evaluatePromotions.mockResolvedValue({
       applied: [{ code: 'PROMO10', promotionId: 'p1', discount: '20.00' }],
       totalDiscount: '20.00',
@@ -121,7 +126,7 @@ describe('OrderService', () => {
 
     const payload = {
       customerId: 'c1',
-      orderItems: [{ productVariantId: 'pv1', quantity: 2 }],
+      orderItems: [{ productSkuId: 'pv1', quantity: 2 }],
       shippingLocationId: 'loc1',
     };
 
@@ -129,7 +134,7 @@ describe('OrderService', () => {
     expect(orderRepo.save).toHaveBeenCalled();
     expect(orderItemRepo.save).toHaveBeenCalled();
 
-    // ensure variant weight is persisted to the order item meta so weight-based shipping works
+    // ensure SKU weight is persisted to the order item meta so weight-based shipping works
     const createdItem = orderItemRepo.create.mock.calls[0][0];
     expect(createdItem).toBeDefined();
     expect(createdItem.metaJson).toBeDefined();

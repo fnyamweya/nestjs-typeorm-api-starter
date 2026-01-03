@@ -15,7 +15,7 @@ export class PublicProductPriceDto {
   compareAtPrice?: string;
 }
 
-export class PublicProductVariationDto {
+export class PublicProductSkuDto {
   @ApiProperty()
   id: string;
 
@@ -97,8 +97,8 @@ export class PublicProductDto {
   @ApiPropertyOptional({ type: () => PublicProductPriceDto })
   price?: PublicProductPriceDto;
 
-  @ApiProperty({ type: () => PublicProductVariationDto, isArray: true })
-  variations: PublicProductVariationDto[];
+  @ApiProperty({ type: () => PublicProductSkuDto, isArray: true })
+  skus: PublicProductSkuDto[];
 
   @ApiProperty({ type: () => PublicProductCategoryRefDto, isArray: true })
   categories: PublicProductCategoryRefDto[];

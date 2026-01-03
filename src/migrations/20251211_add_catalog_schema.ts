@@ -146,6 +146,19 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
         "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+
+    // If the product table already existed (older schema), CREATE TABLE IF NOT EXISTS
+    // won't add new columns. Ensure published_at exists before creating indexes that use it.
+    await queryRunner.query(`DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'product'
+          AND column_name = 'published_at'
+      ) THEN
+        ALTER TABLE "product" ADD COLUMN "published_at" TIMESTAMPTZ;
+      END IF;
+    END $$;`);
     await queryRunner.query(
       'CREATE INDEX IF NOT EXISTS "idx_product_status" ON "product" ("status", "published_at")',
     );
@@ -256,6 +269,20 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
     await queryRunner.query(
       'CREATE INDEX IF NOT EXISTS "idx_product_attr_number" ON "product_attribute_value" ("attribute_id", "value_number")',
     );
+
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'product'
+            AND column_name = 'default_variant_id'
+        ) THEN
+          ALTER TABLE "product" ADD COLUMN "default_variant_id" uuid;
+        END IF;
+      END $$;
+    `);
 
     await queryRunner.query(`
       DO $$

@@ -3,9 +3,9 @@ import { Type } from 'class-transformer';
 import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
 
 export class ShippingQuoteItemDto {
-  @ApiProperty({ description: 'Product variant id (UUID)', example: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11' })
+  @ApiProperty({ description: 'Product SKU id (UUID)', example: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11' })
   @IsUUID()
-  productVariantId: string;
+  productSkuId: string;
 
   @ApiProperty({ description: 'Quantity', example: 2 })
   @IsInt()
@@ -25,7 +25,7 @@ export class GetShippingQuotesDto {
     description: 'Order line items',
     type: ShippingQuoteItemDto,
     isArray: true,
-    example: [{ productVariantId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 }],
+    example: [{ productSkuId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 }],
   })
   @ValidateNested({ each: true })
   @Type(() => ShippingQuoteItemDto)

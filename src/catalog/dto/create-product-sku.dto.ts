@@ -12,8 +12,8 @@ import {
 } from 'class-validator';
 import { CreateProductPriceDto } from './create-product-price.dto';
 
-export class CreateProductVariationDto {
-  @ApiProperty({ description: 'Variation title', example: 'Black / 128 GB' })
+export class CreateProductSkuDto {
+  @ApiProperty({ description: 'SKU title', example: 'Black / 128 GB' })
   @IsString()
   @IsNotEmpty()
   title: string;
@@ -23,33 +23,43 @@ export class CreateProductVariationDto {
   @IsString()
   sku?: string;
 
-  @ApiPropertyOptional({ description: 'External reference', example: 'shopify-variant-123' })
+  @ApiPropertyOptional({ description: 'External reference', example: 'shopify-sku-123' })
   @IsOptional()
   @IsString()
   externalRef?: string;
 
-  @ApiPropertyOptional({ description: 'Variation status', example: 'active' })
+  @ApiPropertyOptional({ description: 'SKU status', example: 'active' })
   @IsOptional()
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Mark as default variation', example: true })
+  @ApiPropertyOptional({ description: 'Mark as default SKU', example: true })
   @IsOptional()
   @IsBoolean()
   isDefault?: boolean;
 
-  @ApiPropertyOptional({ description: 'Display order among variations', example: 1 })
+  @ApiPropertyOptional({ description: 'Display order among SKUs', example: 1 })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   position?: number;
 
-  @ApiPropertyOptional({ description: 'Variation attributes', example: { color: 'black', size: 'M' } })
+  @ApiPropertyOptional({ description: 'SKU attributes', example: { color: 'black', size: 'M' } })
   @IsOptional()
   @IsObject()
   attributes?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Variation images', example: ['https://cdn.example.com/1.png'] })
+  @ApiPropertyOptional({ description: 'SKU options (preferred). If both provided, options wins.', example: { color: 'black', size: 'M' } })
+  @IsOptional()
+  @IsObject()
+  options?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'Inventory state by location or warehouse', example: { locations: { "NAIROBI": { onHand: 10, reserved: 2 } } } })
+  @IsOptional()
+  @IsObject()
+  inventory?: Record<string, unknown>;
+
+  @ApiPropertyOptional({ description: 'SKU images', example: ['https://cdn.example.com/1.png'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -94,12 +104,12 @@ export class CreateProductVariationDto {
   @IsString()
   weightUnit?: string;
 
-  @ApiPropertyOptional({ description: 'Variation metadata', example: { preorder: true } })
+  @ApiPropertyOptional({ description: 'SKU metadata', example: { preorder: true } })
   @IsOptional()
   @IsObject()
   metaJson?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Variation prices', type: () => CreateProductPriceDto, isArray: true })
+  @ApiPropertyOptional({ description: 'SKU prices', type: () => CreateProductPriceDto, isArray: true })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateProductPriceDto)

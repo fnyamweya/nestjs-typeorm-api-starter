@@ -11,7 +11,7 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     );`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "price_list" (
-      "id" bigserial PRIMARY KEY,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
       "code" text NOT NULL UNIQUE,
       "name" text NOT NULL,
       "currency_code" char(3) NOT NULL,
@@ -25,8 +25,8 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     );`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "product_variant_price" (
-      "id" bigserial PRIMARY KEY,
-      "price_list_id" bigint NOT NULL,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "price_list_id" uuid NOT NULL,
       "product_variant_id" uuid NOT NULL,
       "unit_price" numeric(18,4) NOT NULL,
       "compare_at_price" numeric(18,4),
@@ -44,13 +44,13 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "uq_variant_price_tier" ON "product_variant_price" ("price_list_id", "product_variant_id", "min_quantity");`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "order" (
-      "id" bigserial PRIMARY KEY,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
       "order_number" text NOT NULL UNIQUE,
       "external_id" text,
       "customer_id" uuid,
       "customer_email" text NOT NULL,
       "customer_name" text,
-      "price_list_id" bigint NOT NULL,
+      "price_list_id" uuid NOT NULL,
       "currency_code" char(3) NOT NULL,
       "locale" text,
       "sales_channel_code" text,
@@ -85,8 +85,8 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     );`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "order_item" (
-      "id" bigserial PRIMARY KEY,
-      "order_id" bigint NOT NULL,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "order_id" uuid NOT NULL,
       "product_id" uuid,
       "product_variant_id" uuid,
       "sku" text,
@@ -96,7 +96,7 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
       "variant_options_json" jsonb NOT NULL DEFAULT '{}'::jsonb,
       "attributes_json" jsonb NOT NULL DEFAULT '{}'::jsonb,
       "quantity" int NOT NULL,
-      "price_list_id" bigint NOT NULL,
+      "price_list_id" uuid NOT NULL,
       "unit_price" numeric(18,4) NOT NULL,
       "compare_at_price" numeric(18,4),
       "base_subtotal" numeric(18,4) NOT NULL,
@@ -116,8 +116,8 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     );`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "order_level_charge" (
-      "id" bigserial PRIMARY KEY,
-      "order_id" bigint NOT NULL,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "order_id" uuid NOT NULL,
       "charge_kind" text NOT NULL,
       "code" text,
       "display_name" text NOT NULL,
@@ -135,8 +135,8 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
     );`);
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "order_item_charge" (
-      "id" bigserial PRIMARY KEY,
-      "order_item_id" bigint NOT NULL,
+      "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+      "order_item_id" uuid NOT NULL,
       "charge_kind" text NOT NULL,
       "code" text,
       "display_name" text NOT NULL,

@@ -2,11 +2,11 @@ import { ApiProperty } from '@nestjs/swagger';
 import { IsInt, IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateOrderItemDto {
-  @ApiProperty({ description: 'Product variant id', example: '544e2b0b-...' })
+  @ApiProperty({ description: 'Product SKU id', example: '544e2b0b-...' })
   @IsUUID()
-  productVariantId: string;
+  productSkuId: string;
 
-  @ApiProperty({ description: 'Quantity of this variant', example: 1 })
+  @ApiProperty({ description: 'Quantity of this SKU', example: 1 })
   @IsInt()
   quantity: number;
 

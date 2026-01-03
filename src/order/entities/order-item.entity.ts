@@ -26,8 +26,8 @@ export class OrderItem {
   @Column({ name: 'product_id', type: 'uuid', nullable: true })
   productId?: string;
 
-  @Column({ name: 'product_variant_id', type: 'uuid', nullable: true })
-  productVariantId?: string;
+  @Column({ name: 'product_sku_id', type: 'uuid', nullable: true })
+  productSkuId?: string;
 
   @Column({ type: 'text', nullable: true })
   sku?: string;
@@ -38,11 +38,11 @@ export class OrderItem {
   @Column({ name: 'product_name', type: 'text' })
   productName: string;
 
-  @Column({ name: 'variant_title', type: 'text', nullable: true })
-  variantTitle?: string;
+  @Column({ name: 'sku_title', type: 'text', nullable: true })
+  skuTitle?: string;
 
-  @Column({ name: 'variant_options_json', type: 'jsonb', default: () => "'{}'::jsonb" })
-  variantOptionsJson: Record<string, unknown>;
+  @Column({ name: 'sku_options_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  skuOptionsJson: Record<string, unknown>;
 
   @Column({ name: 'attributes_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   attributesJson: Record<string, unknown>;

@@ -118,30 +118,30 @@ export class ProductController {
     return ResponseUtil.success(prices, 'Product prices retrieved successfully');
   }
 
-  @Post('/:id/variations/:variationId/prices')
+  @Post('/:id/skus/:skuId/prices')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
-  @ApiOperation({ summary: 'Add variation price' })
-  @ApiCreatedResponse({ description: 'Variation price created successfully' })
-  async addVariationPrice(
+  @ApiOperation({ summary: 'Add SKU price' })
+  @ApiCreatedResponse({ description: 'SKU price created successfully' })
+  async addSkuPrice(
     @Param('id') id: string,
-    @Param('variationId') variationId: string,
+    @Param('skuId') skuId: string,
     @Body() payload: CreateProductPriceDto,
   ) {
-    const price = await this.productService.addVariationPrice(id, variationId, payload);
-    return ResponseUtil.created(price, 'Variation price created successfully');
+    const price = await this.productService.addSkuPrice(id, skuId, payload);
+    return ResponseUtil.created(price, 'SKU price created successfully');
   }
 
-  @Get('/:id/variations/:variationId/prices')
+  @Get('/:id/skus/:skuId/prices')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
-  @ApiOperation({ summary: 'List variation prices' })
-  @ApiOkResponse({ description: 'Variation prices retrieved successfully' })
-  async listVariationPrices(@Param('id') id: string, @Param('variationId') variationId: string) {
-    const prices = await this.productService.listVariationPrices(id, variationId);
-    return ResponseUtil.success(prices, 'Variation prices retrieved successfully');
+  @ApiOperation({ summary: 'List SKU prices' })
+  @ApiOkResponse({ description: 'SKU prices retrieved successfully' })
+  async listSkuPrices(@Param('id') id: string, @Param('skuId') skuId: string) {
+    const prices = await this.productService.listSkuPrices(id, skuId);
+    return ResponseUtil.success(prices, 'SKU prices retrieved successfully');
   }
 
   @Get('/:id/overrides')

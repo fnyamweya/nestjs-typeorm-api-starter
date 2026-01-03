@@ -10,11 +10,11 @@ import { AttributeDefinition } from './entities/attribute-definition.entity';
 import { CategoryAttribute } from './entities/category-attribute.entity';
 import { Product } from './entities/product.entity';
 import { ProductTranslation } from './entities/product-translation.entity';
-import { ProductVariant } from './entities/product-variant.entity';
+import { ProductSku } from './entities/product-sku.entity';
 import { ProductCategory } from './entities/product-category.entity';
 import { Currency } from './entities/currency.entity';
 import { PriceList } from './entities/price-list.entity';
-import { ProductPrice } from './entities/product-price.entity';
+import { PriceRow } from './entities/price-row.entity';
 import { Brand } from './entities/brand.entity';
 import { ProductChannel } from './entities/product-channel.entity';
 import { ProductContextOverride } from './entities/product-context-override.entity';
@@ -48,13 +48,13 @@ import { CustomerTierModule } from '../customer-tier/customer-tier.module';
       CategoryAttribute,
       Product,
       ProductTranslation,
-      ProductVariant,
+      ProductSku,
       ProductCategory,
       ProductChannel,
       ProductContextOverride,
       Currency,
       PriceList,
-      ProductPrice,
+      PriceRow,
       Brand,
       Channel,
     ]),

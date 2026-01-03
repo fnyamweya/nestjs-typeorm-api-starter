@@ -3,18 +3,16 @@ import {
   CreateDateColumn,
   Entity,
   Index,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
+import { ProductOptionDefinition } from './product-option-definition.entity';
+import { ProductSku } from './product-sku.entity';
+import { JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Brand } from './brand.entity';
 import { ProductCategory } from './product-category.entity';
-import { ProductChannel } from './product-channel.entity';
-import { ProductPrice } from './product-price.entity';
 import { ProductTranslation } from './product-translation.entity';
-import { ProductVariant } from './product-variant.entity';
+import { ProductChannel } from './product-channel.entity';
 
 @Entity('product')
 @Index('idx_product_status', ['status', 'createdAt'])
@@ -41,18 +39,22 @@ export class Product {
   @Column({ name: 'brand_id', type: 'uuid', nullable: true })
   brandId?: string;
 
-  @ManyToOne(() => Brand, (brand) => brand.products, { onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'brand_id' })
-  brand?: Brand;
-
   @Column({ name: 'availability_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   availabilityJson: Record<string, unknown>;
 
   @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
   imagesJson: string[];
 
-  @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({ name: 'option_definitions_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  optionDefinitionsJson: Array<Record<string, unknown>>;
+
+  // Migration 20260112 introduces metadata_json and backfills from legacy meta_json.
+  @Column({ name: 'metadata_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;
+
+  @ManyToOne(() => Brand, (brand) => brand.products, { onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'brand_id' })
+  brand?: Brand;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
@@ -60,18 +62,18 @@ export class Product {
   @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
-  @OneToMany(() => ProductTranslation, (translation) => translation.product)
+  @OneToMany(() => ProductOptionDefinition, (def) => def.product)
+  optionDefinitions: ProductOptionDefinition[];
+
+  @OneToMany(() => ProductTranslation, (t) => t.product)
   translations: ProductTranslation[];
 
-  @OneToMany(() => ProductVariant, (variant) => variant.product)
-  variants: ProductVariant[];
+  @OneToMany(() => ProductSku, (sku) => sku.product)
+  skus: ProductSku[];
+
+  @OneToMany(() => ProductChannel, (pc) => pc.product)
+  productChannels: ProductChannel[];
 
   @OneToMany(() => ProductCategory, (productCategory) => productCategory.product)
   productCategories: ProductCategory[];
-
-  @OneToMany(() => ProductChannel, (productChannel) => productChannel.product)
-  productChannels: ProductChannel[];
-
-  @OneToMany(() => ProductPrice, (price) => price.product)
-  prices: ProductPrice[];
 }

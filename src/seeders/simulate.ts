@@ -6,7 +6,7 @@ import { SettingSeeder } from '../setting/seeders/setting.seeder';
 import { CatalogSeeder } from '../catalog/seeders/catalog.seeder';
 import { ShippingSeeder } from '../shipping/seeders/shipping.seeder';
 import { OrderService } from '../order/services/order.service';
-import { ProductVariant } from '../catalog/entities/product-variant.entity';
+import { ProductSku } from '../catalog/entities/product-sku.entity';
 import { Order } from '../order/entities/order.entity';
 import { MpesaService } from '../mpesa/services/mpesa.service';
 import { LocationSeeder } from '../location/seeders/location.seeder';
@@ -35,7 +35,7 @@ async function runSimulationSeed() {
     const orderService = app.get(OrderService);
     const mpesaService = app.get(MpesaService);
 
-    const variantRepo = app.get<Repository<ProductVariant>>(getRepositoryToken(ProductVariant));
+    const skuRepo = app.get<Repository<ProductSku>>(getRepositoryToken(ProductSku));
     const orderRepo = app.get<Repository<Order>>(getRepositoryToken(Order));
     const locationRepo = app.get<Repository<Location>>(getRepositoryToken(Location));
     const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
@@ -51,9 +51,9 @@ async function runSimulationSeed() {
       // ignore (some envs may not have shipping tables)
     }
 
-    const variant = await variantRepo.findOne({ where: { sku: 'PHONE-001' } });
-    if (!variant) {
-      throw new Error('Missing seeded product variant SKU PHONE-001. Run db:seed first or check CatalogSeeder.');
+    const sku = await skuRepo.findOne({ where: { sku: 'PHONE-001' } });
+    if (!sku) {
+      throw new Error('Missing seeded product SKU PHONE-001. Run db:seed first or check CatalogSeeder.');
     }
 
     // Idempotent-ish: reuse the same simulated order if it exists
@@ -86,7 +86,7 @@ async function runSimulationSeed() {
     if (!order) {
       order = await orderService.create({
         customerId: customer.id,
-        orderItems: [{ productVariantId: variant.id, quantity: 2 }],
+        orderItems: [{ productSkuId: sku.id, quantity: 2 }],
         shippingLocationId: kenya.id,
       });
 

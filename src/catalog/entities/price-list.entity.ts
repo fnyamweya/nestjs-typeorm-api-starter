@@ -6,6 +6,10 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
+export type PriceListStatus = 'active' | 'inactive' | 'archived';
+export type PriceListStackingPolicy = 'EXCLUSIVE' | 'STACKABLE';
+export type PriceListMatchPolicy = 'HIGHEST_PRIORITY' | 'LOWEST_PRICE' | 'FIRST_MATCH';
+
 @Entity('price_list')
 export class PriceList {
   @PrimaryGeneratedColumn('uuid')
@@ -18,19 +22,25 @@ export class PriceList {
   name: string;
 
   @Column({ name: 'currency_code', type: 'char', length: 3 })
-  currencyCode: string;
+  currency: string;
 
-  @Column({ name: 'is_active', type: 'boolean', default: true })
-  isActive: boolean;
+  @Column({ name: 'priority', type: 'int', default: 0 })
+  priority: number;
 
-  @Column({ name: 'valid_from', type: 'timestamptz', nullable: true })
-  validFrom?: Date;
+  @Column({ name: 'scope_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  scope: Record<string, unknown>;
 
-  @Column({ name: 'valid_to', type: 'timestamptz', nullable: true })
-  validTo?: Date;
+  @Column({ name: 'status', type: 'text', default: 'active' })
+  status: PriceListStatus;
 
-  @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
-  metaJson: Record<string, unknown>;
+  @Column({ name: 'stacking_policy', type: 'text', default: 'EXCLUSIVE' })
+  stackingPolicy: PriceListStackingPolicy;
+
+  @Column({ name: 'match_policy', type: 'text', default: 'HIGHEST_PRIORITY' })
+  matchPolicy: PriceListMatchPolicy;
+
+  @Column({ name: 'stop_after_match', type: 'boolean', default: true })
+  stopAfterMatch: boolean;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

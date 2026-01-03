@@ -1,8 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Raw, Repository } from 'typeorm';
+import { Currency } from '../entities/currency.entity';
 import { PriceList } from '../entities/price-list.entity';
-import { ProductPrice } from '../entities/product-price.entity';
+import { PriceRow } from '../entities/price-row.entity';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
 
@@ -39,14 +40,33 @@ export class PriceService {
   constructor(
     @InjectRepository(PriceList)
     private readonly priceListRepository: Repository<PriceList>,
-    @InjectRepository(ProductPrice)
-    private readonly productPriceRepository: Repository<ProductPrice>,
+    @InjectRepository(Currency)
+    private readonly currencyRepository: Repository<Currency>,
+    @InjectRepository(PriceRow)
+    private readonly priceRowRepository: Repository<PriceRow>,
     private readonly cache: AppCacheService,
   ) {}
 
+  private formatMinorUnits(amount: string, precision: number) {
+    const p = Math.max(0, precision ?? 2);
+    const negative = amount.startsWith('-');
+    const digits = negative ? amount.slice(1) : amount;
+    const padded = digits.padStart(p + 1, '0');
+    const intPart = padded.slice(0, padded.length - p);
+    const fracPart = padded.slice(padded.length - p);
+    const normalizedInt = intPart.replace(/^0+(?=\d)/, '0');
+    const value = p === 0 ? normalizedInt : `${normalizedInt}.${fracPart}`;
+    return negative ? `-${value}` : value;
+  }
+
+  private async getCurrencyPrecision(currencyCode: string) {
+    const c = await this.currencyRepository.findOne({ where: { code: currencyCode } });
+    return c?.precision ?? 2;
+  }
+
   private getCacheKey(opts: {
     productId?: string;
-    productVariantId?: string;
+    productSkuId?: string;
     quantity: number;
     priceListId?: string;
     currencyCode?: string;
@@ -54,7 +74,7 @@ export class PriceService {
   }) {
     const rawKey = cacheKeyFromParts('price', 'resolve', {
       productId: opts.productId,
-      productVariantId: opts.productVariantId,
+      productSkuId: opts.productSkuId,
       quantity: opts.quantity,
       priceListId: opts.priceListId,
       currencyCode: opts.currencyCode,
@@ -63,15 +83,16 @@ export class PriceService {
     return `price:resolve:${cacheKeyHash(rawKey)}`;
   }
 
-  private getConditions(metaJson?: Record<string, unknown>): PriceConditions | null {
-    if (!metaJson || typeof metaJson !== 'object') return null;
-    const raw = (metaJson as Record<string, unknown>).conditions;
-    if (!raw || typeof raw !== 'object') return null;
-    return raw as PriceConditions;
+  private getRowConditions(selectorJson?: Record<string, unknown>): PriceConditions | null {
+    if (!selectorJson || typeof selectorJson !== 'object') return null;
+    // selector_json is expected to be the conditions object (or contain a 'conditions' object).
+    const maybe = (selectorJson as Record<string, unknown>).conditions;
+    if (maybe && typeof maybe === 'object') return maybe as PriceConditions;
+    return selectorJson as PriceConditions;
   }
 
-  private matchesContext(metaJson: Record<string, unknown> | undefined, context?: PricingContext) {
-    const conditions = this.getConditions(metaJson);
+  private matchesRowContext(selectorJson: Record<string, unknown> | undefined, context?: PricingContext) {
+    const conditions = this.getRowConditions(selectorJson);
     if (!conditions) return true;
     if (!context) return false;
 
@@ -102,14 +123,8 @@ export class PriceService {
     return true;
   }
 
-  private isUnconditional(metaJson: Record<string, unknown> | undefined) {
-    const conditions = this.getConditions(metaJson);
-    if (!conditions) return true;
-    return Object.keys(conditions).length === 0;
-  }
-
-  private specificityScore(metaJson: Record<string, unknown> | undefined) {
-    const conditions = this.getConditions(metaJson);
+  private specificityScoreRow(selectorJson: Record<string, unknown> | undefined) {
+    const conditions = this.getRowConditions(selectorJson);
     if (!conditions) return 0;
     let score = 0;
     if (conditions.countryCodes?.length) score += 1;
@@ -121,17 +136,17 @@ export class PriceService {
     return score;
   }
 
-  private selectCandidate(candidates: ProductPrice[], context?: PricingContext) {
+  private selectRowCandidate(candidates: PriceRow[], context?: PricingContext) {
     if (!candidates.length) return null;
     if (!context) return candidates[0];
 
-    let best: ProductPrice | null = null;
+    let best: PriceRow | null = null;
     let bestScore = -1;
     let bestMin = -1;
 
     for (const candidate of candidates) {
-      if (!this.matchesContext(candidate.metaJson, context)) continue;
-      const score = this.specificityScore(candidate.metaJson);
+      if (!this.matchesRowContext(candidate.selectorJson, context)) continue;
+      const score = this.specificityScoreRow(candidate.selectorJson);
       if (!best) {
         best = candidate;
         bestScore = score;
@@ -150,10 +165,7 @@ export class PriceService {
       }
     }
 
-    if (best) return best;
-
-    const fallback = candidates.find((candidate) => this.isUnconditional(candidate.metaJson));
-    return fallback ?? null;
+    return best;
   }
 
   private async selectPriceList(options: { priceListId?: string; currencyCode?: string }) {
@@ -163,47 +175,27 @@ export class PriceService {
       return p;
     }
 
-    const now = new Date();
-
+    const order = { priority: 'DESC' as const, createdAt: 'DESC' as const };
     if (options.currencyCode) {
-      const lists = await this.priceListRepository.find({ where: { currencyCode: options.currencyCode, isActive: true } });
-      if (lists && lists.length > 0) {
-        lists.sort((a, b) => {
-          const pa = (a.metaJson as any)?.priority ?? 0;
-          const pb = (b.metaJson as any)?.priority ?? 0;
-          if (pb === pa) {
-            const da = a.validFrom ? new Date(a.validFrom).getTime() : 0;
-            const db = b.validFrom ? new Date(b.validFrom).getTime() : 0;
-            return db - da;
-          }
-          return pb - pa;
-        });
-        const chosen = lists.find((l) => {
-          if (l.validFrom && l.validFrom > now) return false;
-          if (l.validTo && l.validTo < now) return false;
-          return true;
-        });
-        if (chosen) return chosen;
-        return lists[0];
-      }
+      return this.priceListRepository.findOne({ where: { currency: options.currencyCode, status: 'active' }, order });
     }
 
-    const any = (await this.priceListRepository.find({ where: { isActive: true }, take: 1 }))?.[0];
+    const any = await this.priceListRepository.findOne({ where: { status: 'active' }, order });
     if (any) return any;
     return null;
   }
 
   async findActivePriceListByCurrency(currencyCode: string) {
-    return this.priceListRepository.findOne({ where: { currencyCode, isActive: true } });
+    return this.priceListRepository.findOne({ where: { currency: currencyCode, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
   }
 
   async findPriceListById(id: string) {
     return this.priceListRepository.findOne({ where: { id } });
   }
 
-  async resolveVariantPrice(options: {
+  async resolveSkuPrice(options: {
     productId?: string;
-    productVariantId?: string;
+    productSkuId?: string;
     quantity?: number;
     priceListId?: string;
     currencyCode?: string;
@@ -212,7 +204,7 @@ export class PriceService {
     const quantity = options.quantity ?? 1;
     const cacheKey = this.getCacheKey({
       productId: options.productId,
-      productVariantId: options.productVariantId,
+      productSkuId: options.productSkuId,
       quantity,
       priceListId: options.priceListId,
       currencyCode: options.currencyCode,
@@ -227,8 +219,10 @@ export class PriceService {
           throw new NotFoundException('No active price list available');
         }
 
+        const precision = await this.getCurrencyPrecision(priceList.currency);
+
         const now = new Date();
-        const attemptFind = async (pl: PriceList, scope: { productId?: string; productVariantId?: string }) => {
+        const attemptFindRows = async (pl: PriceList, scope: { productId?: string; productSkuId?: string }) => {
           const where: Record<string, unknown> = {
             priceListId: pl.id,
             minQuantity: Raw((alias) => `${alias} <= :q`, { q: quantity }),
@@ -237,67 +231,59 @@ export class PriceService {
             validTo: Raw((alias) => `(${alias} IS NULL OR ${alias} >= :now)`, { now }),
           };
 
-          if (scope.productVariantId) {
-            where.productVariantId = scope.productVariantId;
+          if (scope.productSkuId) {
+            where.targetType = 'SKU';
+            where.targetId = scope.productSkuId;
           }
           if (scope.productId) {
-            where.productId = scope.productId;
+            where.targetType = 'PRODUCT';
+            where.targetId = scope.productId;
           }
 
-          const candidates = await this.productPriceRepository.find({
+          const candidates = await this.priceRowRepository.find({
             where,
             order: { minQuantity: 'DESC', createdAt: 'DESC' },
           });
 
-          return this.selectCandidate(candidates, options.context);
+          return this.selectRowCandidate(candidates, options.context);
         };
 
-        let found: ProductPrice | null = null;
-        if (options.productVariantId) {
-          found = await attemptFind(priceList, { productVariantId: options.productVariantId });
+        let foundRow: PriceRow | null = null;
+        if (options.productSkuId) {
+          foundRow = await attemptFindRows(priceList, { productSkuId: options.productSkuId });
         }
-        if (!found && options.productId) {
-          found = await attemptFind(priceList, { productId: options.productId });
+        if (!foundRow && options.productId) {
+          foundRow = await attemptFindRows(priceList, { productId: options.productId });
         }
 
-        if (!found && !options.priceListId) {
-          const others = await this.priceListRepository.find({ where: { currencyCode: priceList.currencyCode, isActive: true } });
-          others.sort((a, b) => {
-            const pa = (a.metaJson as any)?.priority ?? 0;
-            const pb = (b.metaJson as any)?.priority ?? 0;
-            if (pb === pa) {
-              const da = a.validFrom ? new Date(a.validFrom).getTime() : 0;
-              const db = b.validFrom ? new Date(b.validFrom).getTime() : 0;
-              return db - da;
-            }
-            return pb - pa;
-          });
+        if (!foundRow && !options.priceListId) {
+          const others = await this.priceListRepository.find({ where: { currency: priceList.currency, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
 
           for (const pl of others) {
             if (pl.id === priceList.id) continue;
-            if (options.productVariantId) {
-              found = await attemptFind(pl, { productVariantId: options.productVariantId });
+            if (options.productSkuId) {
+              foundRow = await attemptFindRows(pl, { productSkuId: options.productSkuId });
             }
-            if (!found && options.productId) {
-              found = await attemptFind(pl, { productId: options.productId });
+            if (!foundRow && options.productId) {
+              foundRow = await attemptFindRows(pl, { productId: options.productId });
             }
-            if (found) {
+            if (foundRow) {
               priceList = pl;
               break;
             }
           }
         }
 
-        if (!found) {
+        if (!foundRow) {
           throw new NotFoundException('Price for product not found');
         }
 
         return {
-          priceId: found.id,
+          priceId: foundRow.id,
           priceListId: priceList.id,
-          currencyCode: priceList.currencyCode,
-          unitPrice: found.unitPrice,
-          compareAtPrice: found.compareAtPrice,
+          currencyCode: foundRow.currencyCode ?? priceList.currency,
+          unitPrice: this.formatMinorUnits(foundRow.unitAmount, precision),
+          compareAtPrice: foundRow.compareAtAmount ? this.formatMinorUnits(foundRow.compareAtAmount, precision) : undefined,
         };
       },
       { ttlSeconds: this.cacheTtlSeconds },

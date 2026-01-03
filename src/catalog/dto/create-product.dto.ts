@@ -11,9 +11,10 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { ProductAvailabilityDto } from './product-availability.dto';
-import { CreateProductVariationDto } from './create-product-variant.dto';
+import { CreateProductSkuDto } from './create-product-sku.dto';
 import { ProductTranslationDto } from './product-translation.dto';
 import { CreateProductPriceDto } from './create-product-price.dto';
+import { ProductOptionDefinitionDto } from './product-option-definition.dto';
 
 export enum ProductStatus {
   DRAFT = 'draft',
@@ -58,6 +59,12 @@ export class CreateProductDto {
   @IsUUID('4', { each: true })
   categoryIds?: string[];
 
+  @ApiPropertyOptional({ description: 'Product option definitions (used to validate SKU options)', type: () => ProductOptionDefinitionDto, isArray: true })
+  @IsOptional()
+  @ValidateNested({ each: true })
+  @Type(() => ProductOptionDefinitionDto)
+  optionDefinitions?: ProductOptionDefinitionDto[];
+
   @ApiPropertyOptional({ description: 'Availability configuration', type: () => ProductAvailabilityDto })
   @IsOptional()
   @ValidateNested()
@@ -76,11 +83,11 @@ export class CreateProductDto {
   @Type(() => ProductTranslationDto)
   translations?: ProductTranslationDto[];
 
-  @ApiPropertyOptional({ description: 'Variations', type: () => CreateProductVariationDto, isArray: true })
+  @ApiPropertyOptional({ description: 'SKUs', type: () => CreateProductSkuDto, isArray: true })
   @IsOptional()
   @ValidateNested({ each: true })
-  @Type(() => CreateProductVariationDto)
-  variations?: CreateProductVariationDto[];
+  @Type(() => CreateProductSkuDto)
+  skus?: CreateProductSkuDto[];
 
   @ApiPropertyOptional({ description: 'Product-level prices', type: () => CreateProductPriceDto, isArray: true })
   @IsOptional()

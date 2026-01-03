@@ -20,9 +20,7 @@ export class ProductTranslation {
   @Column({ name: 'product_id', type: 'uuid' })
   productId: string;
 
-  @ManyToOne(() => Product, (product) => product.translations, {
-    onDelete: 'CASCADE',
-  })
+  @ManyToOne(() => Product, (product) => product.translations, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 

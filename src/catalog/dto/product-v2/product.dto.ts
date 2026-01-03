@@ -73,7 +73,7 @@ export interface ProductDTO {
   // --------------------------------------------------
   overrides?: ContextualOverrideDTO[];
 
-  variants?: Array<{
+  skus?: Array<{
     id: ID;
     code: string;
     name?: LocalizedText;

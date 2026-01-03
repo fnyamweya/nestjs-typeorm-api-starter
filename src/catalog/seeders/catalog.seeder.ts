@@ -4,9 +4,10 @@ import { Repository } from 'typeorm';
 import { Taxonomy } from '../entities/taxonomy.entity';
 import { Category } from '../entities/category.entity';
 import { Product } from '../entities/product.entity';
-import { ProductVariant } from '../entities/product-variant.entity';
+import { ProductSku } from '../entities/product-sku.entity';
 import { Currency } from '../entities/currency.entity';
 import { PriceList } from '../entities/price-list.entity';
+import { PriceRow } from '../entities/price-row.entity';
 import { ProductStatus } from '../dto/create-product.dto';
 import { CategoryService } from '../services/category.service';
 import { ProductService } from '../services/product.service';
@@ -23,12 +24,14 @@ export class CatalogSeeder {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
-    @InjectRepository(ProductVariant)
-    private readonly variantRepository: Repository<ProductVariant>,
+    @InjectRepository(ProductSku)
+    private readonly skuRepository: Repository<ProductSku>,
     @InjectRepository(Currency)
     private readonly currencyRepository: Repository<Currency>,
     @InjectRepository(PriceList)
     private readonly priceListRepository: Repository<PriceList>,
+    @InjectRepository(PriceRow)
+    private readonly priceRowRepository: Repository<PriceRow>,
     @InjectRepository(Brand)
     private readonly brandRepository: Repository<Brand>,
     private readonly categoryService: CategoryService,
@@ -52,10 +55,12 @@ export class CatalogSeeder {
   }
 
   private async resetCatalogData(): Promise<void> {
-    await this.productRepository.delete({});
-    await this.categoryRepository.delete({});
-    await this.taxonomyRepository.delete({});
-    await this.brandRepository.delete({});
+    await this.priceRowRepository.createQueryBuilder().delete().from(PriceRow).execute();
+    await this.skuRepository.createQueryBuilder().delete().from(ProductSku).execute();
+    await this.productRepository.createQueryBuilder().delete().from(Product).execute();
+    await this.categoryRepository.createQueryBuilder().delete().from(Category).execute();
+    await this.taxonomyRepository.createQueryBuilder().delete().from(Taxonomy).execute();
+    await this.brandRepository.createQueryBuilder().delete().from(Brand).execute();
   }
 
   private async ensureDefaultTaxonomy(): Promise<Taxonomy> {
@@ -163,9 +168,13 @@ export class CatalogSeeder {
       priceList = this.priceListRepository.create({
         code: 'retail-kes',
         name: 'Retail (KES)',
-        currencyCode: 'KES',
-        isActive: true,
-        metaJson: { priority: 1 },
+        currency: 'KES',
+        status: 'active',
+        priority: 1,
+        scope: {},
+        stackingPolicy: 'EXCLUSIVE',
+        matchPolicy: 'HIGHEST_PRIORITY',
+        stopAfterMatch: true,
       });
       priceList = await this.priceListRepository.save(priceList);
       this.logger.log('Created price list retail-kes');
@@ -206,7 +215,7 @@ export class CatalogSeeder {
         { locale: 'en', title: 'Nova X Phone', description: 'Flagship smartphone with pro-grade camera.' },
         { locale: 'sw', title: 'Simu ya Nova X', description: 'Simu ya kisasa yenye kamera bora.' },
       ],
-      variations: [
+      skus: [
         {
           title: 'Black / 128 GB',
           sku: 'PHONE-001',
@@ -240,23 +249,6 @@ export class CatalogSeeder {
       metaJson: { tags: ['smartphone', 'nova', 'flagship'] },
     });
 
-    const defaultVariant = phone.variants?.find((v) => v.isDefault) ?? phone.variants?.[0];
-    if (defaultVariant) {
-      const promoStart = new Date();
-      promoStart.setDate(promoStart.getDate() - 1);
-      const promoEnd = new Date();
-      promoEnd.setDate(promoEnd.getDate() + 14);
-
-      await this.productService.addVariationPrice(phone.id, defaultVariant.id, {
-        priceListId: payload.priceList.id,
-        unitPrice: 119999,
-        compareAtPrice: 129999,
-        validFrom: promoStart.toISOString(),
-        validTo: promoEnd.toISOString(),
-        metaJson: { reason: 'launch-promo' },
-      });
-    }
-
     await this.productService.create({
       title: 'Acme Fast Charger',
       description: 'Compact USB-C charger with fast charging support.',
@@ -282,7 +274,7 @@ export class CatalogSeeder {
           minQuantity: 1,
         },
       ],
-      variations: [
+      skus: [
         {
           title: 'Standard',
           sku: 'ACME-CHG-STD',
@@ -311,7 +303,7 @@ export class CatalogSeeder {
         { locale: 'en', title: 'Solar Lantern', description: 'Portable lantern with long-lasting light.' },
         { locale: 'sw', title: 'Taa ya Jua', description: 'Taa inayochajiwa kwa jua.' },
       ],
-      variations: [
+      skus: [
         {
           title: 'Rechargeable',
           sku: 'SOL-LANT-REC',

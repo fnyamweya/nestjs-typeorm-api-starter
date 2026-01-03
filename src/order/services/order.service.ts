@@ -8,7 +8,7 @@ import { OrderLevelCharge } from '../entities/order-level-charge.entity';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { PriceService } from '../../catalog/services/price.service';
 import { PromotionService } from '../../promotion/services/promotion.service';
-import { ProductVariant } from '../../catalog/entities/product-variant.entity';
+import { ProductSku } from '../../catalog/entities/product-sku.entity';
 import { Product } from '../../catalog/entities/product.entity';
 import { ProductCategory } from '../../catalog/entities/product-category.entity';
 import { Category } from '../../catalog/entities/category.entity';
@@ -19,6 +19,7 @@ import { ShippingMatrixService } from '../../shipping/services/shipping-matrix.s
 import { OrderShippingAddress } from '../entities/order-shipping-address.entity';
 import { User } from '../../user/entities/user.entity';
 import { CatalogShippingContextService } from '../../shipping/services/catalog-shipping-context.service';
+import { Location } from '../../location/entities/location.entity';
 
 @Injectable()
 export class OrderService {
@@ -27,8 +28,8 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
-    @InjectRepository(ProductVariant)
-    private readonly productVariantRepository: Repository<ProductVariant>,
+    @InjectRepository(ProductSku)
+    private readonly productSkuRepository: Repository<ProductSku>,
     @InjectRepository(Product)
     private readonly productRepository: Repository<Product>,
     @InjectRepository(ProductCategory)
@@ -45,6 +46,8 @@ export class OrderService {
     private readonly orderLevelChargeRepository: Repository<OrderLevelCharge>,
     @InjectRepository(OrderShippingAddress)
     private readonly orderShippingAddressRepository: Repository<OrderShippingAddress>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
     private readonly priceService: PriceService,
     private readonly promotionService: PromotionService,
     private readonly shippingMatrixService: ShippingMatrixService,
@@ -73,7 +76,7 @@ export class OrderService {
       customerEmail: customer.email,
       customerName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || undefined,
       priceListId: priceList?.id ?? (await this.priceService.findActivePriceListByCurrency('KES'))?.id,
-      currencyCode: priceList?.currencyCode ?? (await this.priceService.findActivePriceListByCurrency('KES'))?.currencyCode,
+      currencyCode: priceList?.currency ?? (await this.priceService.findActivePriceListByCurrency('KES'))?.currency ?? 'KES',
       itemsSubtotal: '0',
       discountTotal: '0',
       feeTotal: '0',
@@ -91,6 +94,17 @@ export class OrderService {
 
     const resolvedShippingLocationId: string | undefined = payload.shippingLocationId;
 
+    const pricingContext = payload.shippingLocationId
+      ? {
+          countryCode: (
+            await this.locationRepository.findOne({
+              where: { id: payload.shippingLocationId },
+              select: { id: true, countryCode: true },
+            })
+          )?.countryCode,
+        }
+      : undefined;
+
     // Persist an order-level shipping snapshot if locationId is provided.
     if (payload.shippingLocationId) {
       await this.orderShippingAddressRepository.save(
@@ -107,19 +121,20 @@ export class OrderService {
     const productIds = new Set<string>();
 
     for (const item of payload.orderItems) {
-      const variant = await this.productVariantRepository.findOne({ where: { id: item.productVariantId } });
-      if (!variant) {
-        throw new NotFoundException('Product variant not found');
+      const sku = await this.productSkuRepository.findOne({ where: { id: item.productSkuId } });
+      if (!sku) {
+        throw new NotFoundException('Product SKU not found');
       }
 
-      productIds.add(variant.productId);
+      productIds.add(sku.productId);
 
-      const resolved = await this.priceService.resolveVariantPrice({
-        productVariantId: item.productVariantId,
-        productId: variant.productId,
+      const resolved = await this.priceService.resolveSkuPrice({
+        productSkuId: item.productSkuId,
+        productId: sku.productId,
         priceListId: priceList?.id ?? savedOrder.priceListId,
         currencyCode: savedOrder.currencyCode,
         quantity: item.quantity,
+        context: pricingContext,
       });
 
       const unitPrice = parseFloat(resolved.unitPrice);
@@ -130,12 +145,12 @@ export class OrderService {
 
       const orderItem = this.orderItemRepository.create({
         orderId: savedOrder.id,
-        productId: variant.productId,
-        productVariantId: variant.id,
-        sku: variant.sku,
-        productName: variant.title,
-        variantTitle: variant.title,
-        variantOptionsJson: {},
+        productId: sku.productId,
+        productSkuId: sku.id,
+        sku: sku.sku,
+        productName: sku.title,
+        skuTitle: sku.title,
+        skuOptionsJson: {},
         attributesJson: {},
         quantity: item.quantity,
         priceListId: resolved.priceListId,
@@ -146,11 +161,11 @@ export class OrderService {
         feeTotal: '0',
         taxTotal: '0',
         total: baseSubtotal.toFixed(4),
-        requiresShipping: variant.requiresShipping,
+        requiresShipping: sku.requiresShipping,
         fulfillmentStatus: 'unfulfilled',
         pricingSnapshotJson: { resolved },
-        // Persist the variant weight so later total weight calculation can read it from the order item
-        metaJson: { weight: variant.weight },
+        // Persist the SKU weight so later total weight calculation can read it from the order item
+        metaJson: { weight: (sku.attributes as any)?.weight },
       });
 
       await this.orderItemRepository.save(orderItem);
@@ -160,7 +175,7 @@ export class OrderService {
     savedOrder.itemCount = totalItemCount;
 
     // Shipping calculation using the ShippingMatrixService (select best candidate)
-    // compute total weight from items (attempt to use variant.weight if set)
+    // compute total weight from items (attempt to use SKU weight if set)
     let totalWeight = 0;
     const items = await this.orderItemRepository.find({ where: { orderId: savedOrder.id } });
     for (const it of items) {
@@ -286,7 +301,7 @@ export class OrderService {
       const pid = it.productId;
       return {
         productId: pid,
-        productVariantId: it.productVariantId,
+        productSkuId: it.productSkuId,
         quantity: it.quantity,
         categoryIds: pid ? Array.from(categoryIdsByProductId.get(pid) ?? []) : [],
         taxonomyIds: pid ? Array.from(taxonomyIdsByProductId.get(pid) ?? []) : [],

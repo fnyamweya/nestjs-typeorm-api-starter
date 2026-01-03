@@ -21,8 +21,8 @@ export class AttributeDefinition {
   @Column({ name: 'is_searchable', type: 'boolean', default: false })
   isSearchable: boolean;
 
-  @Column({ name: 'is_variant_axis', type: 'boolean', default: false })
-  isVariantAxis: boolean;
+  @Column({ name: 'is_sku_axis', type: 'boolean', default: false })
+  isSkuAxis: boolean;
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;

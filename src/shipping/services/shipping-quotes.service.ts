@@ -1,18 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { ProductVariant } from '../../catalog/entities/product-variant.entity';
+import { ProductSku } from '../../catalog/entities/product-sku.entity';
 import { PriceService } from '../../catalog/services/price.service';
 import { ShippingMatrixService } from './shipping-matrix.service';
 import { CatalogShippingContextService } from './catalog-shipping-context.service';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import { Location } from '../../location/entities/location.entity';
 
 @Injectable()
 export class ShippingQuotesService {
   constructor(
-    @InjectRepository(ProductVariant)
-    private readonly productVariantRepository: Repository<ProductVariant>,
+    @InjectRepository(ProductSku)
+    private readonly productSkuRepository: Repository<ProductSku>,
+    @InjectRepository(Location)
+    private readonly locationRepository: Repository<Location>,
     private readonly priceService: PriceService,
     private readonly shippingMatrixService: ShippingMatrixService,
     private readonly catalogShippingContextService: CatalogShippingContextService,
@@ -21,17 +24,17 @@ export class ShippingQuotesService {
 
   async getQuotes(payload: {
     shippingLocationId: string;
-    orderItems: Array<{ productVariantId: string; quantity: number }>;
+    orderItems: Array<{ productSkuId: string; quantity: number }>;
     priceListId?: string;
     currencyCode?: string;
   }) {
     const normalizedItems = (payload.orderItems ?? [])
       .map((i) => ({
-        productVariantId: String(i.productVariantId),
+        productSkuId: String(i.productSkuId),
         quantity: Number(i.quantity ?? 0),
       }))
-      .filter((i) => i.productVariantId && i.quantity > 0)
-      .sort((a, b) => a.productVariantId.localeCompare(b.productVariantId));
+      .filter((i) => i.productSkuId && i.quantity > 0)
+      .sort((a, b) => a.productSkuId.localeCompare(b.productSkuId));
 
     const rawKey = cacheKeyFromParts('shipping', 'quotes', {
       shippingLocationId: payload.shippingLocationId,
@@ -56,10 +59,17 @@ export class ShippingQuotesService {
 
   private async computeQuotes(payload: {
     shippingLocationId: string;
-    orderItems: Array<{ productVariantId: string; quantity: number }>;
+    orderItems: Array<{ productSkuId: string; quantity: number }>;
     priceListId?: string;
     currencyCode?: string;
   }) {
+    const countryCode = (
+      await this.locationRepository.findOne({
+        where: { id: payload.shippingLocationId },
+        select: { id: true, countryCode: true },
+      })
+    )?.countryCode;
+
     const productIds = new Set<string>();
     let itemsSubtotal = 0;
     let totalItemCount = 0;
@@ -67,28 +77,29 @@ export class ShippingQuotesService {
     let anyRequiresShipping = false;
 
     for (const item of payload.orderItems) {
-      const variant = await this.productVariantRepository.findOne({ where: { id: item.productVariantId } });
-      if (!variant) throw new NotFoundException('Product variant not found');
+      const sku = await this.productSkuRepository.findOne({ where: { id: item.productSkuId } });
+      if (!sku) throw new NotFoundException('Product SKU not found');
 
-      productIds.add(variant.productId);
+      productIds.add(sku.productId);
       totalItemCount += item.quantity;
 
-      anyRequiresShipping = anyRequiresShipping || Boolean(variant.requiresShipping);
+      anyRequiresShipping = anyRequiresShipping || Boolean(sku.requiresShipping);
 
       // subtotal via PriceService
-      const resolved = await this.priceService.resolveVariantPrice({
-        productVariantId: variant.id,
-        productId: variant.productId,
+      const resolved = await this.priceService.resolveSkuPrice({
+        productSkuId: sku.id,
+        productId: sku.productId,
         priceListId: payload.priceListId,
         currencyCode: payload.currencyCode,
         quantity: item.quantity,
+        context: countryCode ? { countryCode } : undefined,
       });
 
       const unitPrice = parseFloat(resolved.unitPrice);
       itemsSubtotal += unitPrice * item.quantity;
 
       // weight (best effort)
-      const weight = Number((variant as any).weight || 0);
+      const weight = Number((sku as any).attributes?.weight ?? (sku as any).weight ?? 0);
       totalWeight += (weight || 0) * item.quantity;
     }
 

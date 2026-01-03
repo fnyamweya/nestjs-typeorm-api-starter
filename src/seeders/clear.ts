@@ -1,14 +1,24 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from '../app.module';
+import baseDataSource from '../data-source';
 import { DataSource } from 'typeorm';
+
+const dataSource = new DataSource({
+  ...(baseDataSource.options as any),
+  // db:clear should never modify schema; only truncate data.
+  migrationsRun: false,
+  synchronize: false,
+  logging: false,
+});
 
 async function clearDatabase() {
   console.log('🧹 Starting database cleanup...');
 
-  const app = await NestFactory.createApplicationContext(AppModule);
-  const dataSource = app.get(DataSource);
+  let exitCode = 0;
 
   try {
+    if (!dataSource.isInitialized) {
+      await dataSource.initialize();
+    }
+
     console.log('🗑️ Truncating all tables...');
 
     // Get all table names
@@ -16,7 +26,7 @@ async function clearDatabase() {
       SELECT tablename FROM pg_tables 
       WHERE schemaname = 'public' 
       AND tablename NOT LIKE 'pg_%' 
-      AND tablename != 'information_schema'
+      AND tablename NOT IN ('information_schema', 'migrations', 'typeorm_metadata')
     `);
 
     if (!tables.length) {
@@ -33,9 +43,15 @@ async function clearDatabase() {
     console.log('🎉 All tables truncated successfully!');
   } catch (error) {
     console.error('❌ Database cleanup failed:', error);
-    process.exit(1);
+    exitCode = 1;
   } finally {
-    await app.close();
+    try {
+      if (dataSource.isInitialized) {
+        await dataSource.destroy();
+      }
+    } finally {
+      process.exit(exitCode);
+    }
   }
 }
 

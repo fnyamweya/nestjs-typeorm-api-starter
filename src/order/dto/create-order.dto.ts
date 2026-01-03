@@ -16,7 +16,7 @@ export class CreateOrderDto {
     type: CreateOrderItemDto,
     isArray: true,
     example: [
-      { productVariantId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 },
+      { productSkuId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 },
     ],
   })
   @ValidateNested({ each: true })

@@ -13,6 +13,7 @@ import { OrderShippingAddress } from './entities/order-shipping-address.entity';
 import { OrderService } from './services/order.service';
 import { OrderController } from './controllers/order.controller';
 import { User } from '../user/entities/user.entity';
+import { Location } from '../location/entities/location.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { User } from '../user/entities/user.entity';
       OrderItemCharge,
       OrderShippingAddress,
       User,
+      Location,
     ]),
     CatalogModule,
     PromotionModule,

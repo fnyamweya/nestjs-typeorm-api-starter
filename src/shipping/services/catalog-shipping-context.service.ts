@@ -127,7 +127,7 @@ export class CatalogShippingContextService {
         ? taxonomyById.get(category.taxonomyId)
         : undefined;
 
-      const prodMeta: any = product.metaJson || {};
+      const prodMeta: any = (product as any).metaJson || {};
       const catMeta: any = category?.metaJson || {};
       const taxMeta: any = taxonomy?.metaJson || {};
 

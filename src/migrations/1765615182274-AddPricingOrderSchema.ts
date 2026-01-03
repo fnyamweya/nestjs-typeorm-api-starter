@@ -20,11 +20,35 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "category" ALTER COLUMN "meta_json" SET DEFAULT '{}'::jsonb`);
         await queryRunner.query(`ALTER TABLE "product" ALTER COLUMN "meta_json" SET DEFAULT '{}'::jsonb`);
         await queryRunner.query(`ALTER TABLE "product_variant" ALTER COLUMN "meta_json" SET DEFAULT '{}'::jsonb`);
-        await queryRunner.query(`ALTER TABLE "product_variant_price" ALTER COLUMN "meta_json" SET DEFAULT '{}'::jsonb`);
+                await queryRunner.query(`
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_schema = 'public'
+                                AND table_name = 'product_variant_price'
+                        ) THEN
+                            ALTER TABLE "product_variant_price" ALTER COLUMN "meta_json" SET DEFAULT '{}'::jsonb;
+                        END IF;
+                    END $$;
+                `);
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`ALTER TABLE "product_variant_price" ALTER COLUMN "meta_json" SET DEFAULT '{}'`);
+                await queryRunner.query(`
+                    DO $$
+                    BEGIN
+                        IF EXISTS (
+                            SELECT 1
+                            FROM information_schema.tables
+                            WHERE table_schema = 'public'
+                                AND table_name = 'product_variant_price'
+                        ) THEN
+                            ALTER TABLE "product_variant_price" ALTER COLUMN "meta_json" SET DEFAULT '{}';
+                        END IF;
+                    END $$;
+                `);
         await queryRunner.query(`ALTER TABLE "product_variant" ALTER COLUMN "meta_json" SET DEFAULT '{}'`);
         await queryRunner.query(`ALTER TABLE "product" ALTER COLUMN "meta_json" SET DEFAULT '{}'`);
         await queryRunner.query(`ALTER TABLE "category" ALTER COLUMN "meta_json" SET DEFAULT '{}'`);

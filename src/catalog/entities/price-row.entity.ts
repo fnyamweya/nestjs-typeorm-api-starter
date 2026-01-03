@@ -9,12 +9,12 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { PriceList } from './price-list.entity';
-import { Product } from './product.entity';
-import { ProductVariant } from './product-variant.entity';
 
-@Entity('product_price')
-@Index('idx_product_price_lookup', ['priceListId', 'productId', 'productVariantId'])
-export class ProductPrice {
+export type PriceRowTargetType = 'SKU' | 'PRODUCT' | 'CATEGORY' | 'BRAND';
+
+@Entity('price_row')
+@Index('idx_price_row_lookup', ['priceListId', 'targetType', 'targetId', 'minQuantity'])
+export class PriceRow {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -25,25 +25,24 @@ export class ProductPrice {
   @JoinColumn({ name: 'price_list_id' })
   priceList: PriceList;
 
-  @Column({ name: 'product_id', type: 'uuid' })
-  productId: string;
+  @Column({ name: 'target_type', type: 'text' })
+  targetType: PriceRowTargetType;
 
-  @ManyToOne(() => Product, (product) => product.prices, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'product_id' })
-  product: Product;
+  @Column({ name: 'target_id', type: 'uuid' })
+  targetId: string;
 
-  @Column({ name: 'product_variant_id', type: 'uuid', nullable: true })
-  productVariantId?: string;
+  @Column({ name: 'selector_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  selectorJson: Record<string, unknown>;
 
-  @ManyToOne(() => ProductVariant, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'product_variant_id' })
-  productVariant?: ProductVariant;
+  @Column({ name: 'currency_code', type: 'char', length: 3, nullable: true })
+  currencyCode?: string;
 
-  @Column({ name: 'unit_price', type: 'numeric', precision: 18, scale: 4 })
-  unitPrice: string;
+  // Stored in minor units (integer), e.g. cents.
+  @Column({ name: 'unit_amount', type: 'bigint' })
+  unitAmount: string;
 
-  @Column({ name: 'compare_at_price', type: 'numeric', precision: 18, scale: 4, nullable: true })
-  compareAtPrice?: string;
+  @Column({ name: 'compare_at_amount', type: 'bigint', nullable: true })
+  compareAtAmount?: string;
 
   @Column({ name: 'min_quantity', type: 'int', default: 1 })
   minQuantity: number;
@@ -56,6 +55,9 @@ export class ProductPrice {
 
   @Column({ name: 'valid_to', type: 'timestamptz', nullable: true })
   validTo?: Date;
+
+  @Column({ name: 'tiers_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  tiersJson: unknown[];
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   metaJson: Record<string, unknown>;

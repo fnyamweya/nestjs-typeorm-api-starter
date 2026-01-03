@@ -35,7 +35,7 @@ export type PublicPromotion = {
 
 export type PromotionLineItemContext = {
   productId?: string;
-  productVariantId?: string;
+  productSkuId?: string;
   quantity?: number;
   categoryIds?: string[];
   taxonomyIds?: string[];
