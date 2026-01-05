@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, In, IsNull, Not, Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { Brackets, DataSource, EntityManager, In, IsNull, Not, Repository } from 'typeorm';
 import { randomBytes } from 'crypto';
 import { Product } from '../entities/product.entity';
 import { Brand } from '../entities/brand.entity';
@@ -93,10 +93,46 @@ export class ProductService {
     private readonly categoryRepository: Repository<Category>,
     @InjectRepository(Channel)
     private readonly channelRepository: Repository<Channel>,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
     private readonly cache: AppCacheService,
     private readonly shippingCatalogContextCacheIndex: ShippingCatalogContextCacheIndexService,
     private readonly priceService: PriceService,
   ) {}
+
+  private getRepos(manager?: EntityManager) {
+    if (!manager) {
+      return {
+        productRepository: this.productRepository,
+        brandRepository: this.brandRepository,
+        translationRepository: this.translationRepository,
+        skuRepository: this.skuRepository,
+        productCategoryRepository: this.productCategoryRepository,
+        productChannelRepository: this.productChannelRepository,
+        productContextOverrideRepository: this.productContextOverrideRepository,
+        priceRowRepository: this.priceRowRepository,
+        priceListRepository: this.priceListRepository,
+        currencyRepository: this.currencyRepository,
+        categoryRepository: this.categoryRepository,
+        channelRepository: this.channelRepository,
+      };
+    }
+
+    return {
+      productRepository: manager.getRepository(Product),
+      brandRepository: manager.getRepository(Brand),
+      translationRepository: manager.getRepository(ProductTranslation),
+      skuRepository: manager.getRepository(ProductSku),
+      productCategoryRepository: manager.getRepository(ProductCategory),
+      productChannelRepository: manager.getRepository(ProductChannel),
+      productContextOverrideRepository: manager.getRepository(ProductContextOverride),
+      priceRowRepository: manager.getRepository(PriceRow),
+      priceListRepository: manager.getRepository(PriceList),
+      currencyRepository: manager.getRepository(Currency),
+      categoryRepository: manager.getRepository(Category),
+      channelRepository: manager.getRepository(Channel),
+    };
+  }
 
   private toMinorUnits(value: number, precision: number) {
     const p = Math.max(0, precision ?? 2);
@@ -123,44 +159,49 @@ export class ProductService {
   }
 
   async create(payload: CreateProductDto): Promise<Product> {
-    if (payload.brandId) {
-      const exists = await this.brandRepository.exist({ where: { id: payload.brandId } });
-      if (!exists) throw new NotFoundException('Brand not found');
-    }
+    const productId = await this.dataSource.transaction(async (manager) => {
+      const { brandRepository, productRepository } = this.getRepos(manager);
 
-    const slugBase = payload.slug?.trim() || this.slugify(payload.title);
-    if (!slugBase) throw new BadRequestException('slug/title is required');
+      if (payload.brandId) {
+        const exists = await brandRepository.exist({ where: { id: payload.brandId } });
+        if (!exists) throw new NotFoundException('Brand not found');
+      }
 
-    const slug = await this.ensureUniqueSlug(slugBase);
-    const availability = this.normalizeAvailability(payload.availability);
+      const slugBase = payload.slug?.trim() || this.slugify(payload.title);
+      if (!slugBase) throw new BadRequestException('slug/title is required');
 
-    const product = this.productRepository.create({
-      title: payload.title,
-      description: payload.description,
-      status: payload.status ?? ProductStatus.DRAFT,
-      slug,
-      externalRef: payload.externalRef,
-      brandId: payload.brandId,
-      availabilityJson: availability as any,
-      imagesJson: this.normalizeImages(payload.images),
-      optionDefinitionsJson: (payload.optionDefinitions ?? []) as any,
-      metaJson: payload.metaJson ?? {},
+      const slug = await this.ensureUniqueSlug(slugBase, undefined, manager);
+      const availability = this.normalizeAvailability(payload.availability);
+
+      const product = productRepository.create({
+        title: payload.title,
+        description: payload.description,
+        status: payload.status ?? ProductStatus.DRAFT,
+        slug,
+        externalRef: payload.externalRef,
+        brandId: payload.brandId,
+        availabilityJson: availability as any,
+        imagesJson: this.normalizeImages(payload.images),
+        optionDefinitionsJson: (payload.optionDefinitions ?? []) as any,
+        metaJson: payload.metaJson ?? {},
+      });
+
+      const saved = await productRepository.save(product);
+
+      await this.persistTranslations(saved.id, payload, saved.title, saved.description, manager);
+      const { skus, inputs } = await this.persistSkus(saved.id, saved.slug, payload.skus, payload.optionDefinitions ?? [], manager);
+      await this.persistPrices(saved.id, payload.prices, skus, inputs, manager);
+
+      if (payload.categoryIds?.length) {
+        await this.attachCategories(saved.id, payload.categoryIds, manager);
+      }
+
+      await this.syncChannels(saved.id, availability.channels, manager);
+      return saved.id;
     });
 
-    const saved = await this.productRepository.save(product);
-
-    await this.persistTranslations(saved.id, payload, saved.title, saved.description);
-  const { skus, inputs } = await this.persistSkus(saved.id, saved.slug, payload.skus, payload.optionDefinitions ?? []);
-  await this.persistPrices(saved.id, payload.prices, skus, inputs);
-
-    if (payload.categoryIds?.length) {
-      await this.attachCategories(saved.id, payload.categoryIds);
-    }
-
-    await this.syncChannels(saved.id, availability.channels);
-
-    await this.clearProductCaches(saved.id);
-    return this.findOne(saved.id);
+    await this.clearProductCaches(productId);
+    return this.findOne(productId);
   }
 
   async findAll(filters: FilterProductDto): Promise<PaginatedProducts> {
@@ -235,7 +276,6 @@ export class ProductService {
             'productCategories.category',
             'productChannels',
             'productChannels.channel',
-            'prices',
           ],
         }),
       { ttlSeconds: 180 },
@@ -783,7 +823,9 @@ export class ProductService {
     payload: CreateProductDto | UpdateProductDto,
     fallbackTitle: string,
     fallbackDescription?: string,
+    manager?: EntityManager,
   ) {
+    const { translationRepository } = this.getRepos(manager);
     const translations = payload.translations?.length
       ? payload.translations
       : [
@@ -795,9 +837,9 @@ export class ProductService {
           },
         ];
 
-    await this.translationRepository.save(
+    await translationRepository.save(
       translations.map((t) =>
-        this.translationRepository.create({
+        translationRepository.create({
           productId,
           locale: t.locale,
           title: t.title,
@@ -813,7 +855,9 @@ export class ProductService {
     slug: string,
     skus?: CreateProductSkuDto[],
     optionDefinitions?: Array<{ key: string; allowedValues?: string[]; required?: boolean }>,
+    manager?: EntityManager,
   ): Promise<{ skus: ProductSku[]; inputs: CreateProductSkuDto[] }> {
+    const { skuRepository } = this.getRepos(manager);
     const normalized: CreateProductSkuDto[] = skus?.length
       ? skus
       : [
@@ -855,13 +899,13 @@ export class ProductService {
 
     const skuEntities: ProductSku[] = [];
     for (const [index, v] of normalized.entries()) {
-      const sku = v.sku?.trim() || (await this.generateSku(slug, index));
+      const sku = v.sku?.trim() || (await this.generateSku(slug, index, manager));
 
       const options = (v.options ?? v.attributes ?? {}) as Record<string, unknown>;
       validateOptions(options);
 
       skuEntities.push(
-        this.skuRepository.create({
+        skuRepository.create({
           productId,
           title: v.title,
           sku,
@@ -884,7 +928,7 @@ export class ProductService {
       );
     }
 
-    const saved = await this.skuRepository.save(skuEntities);
+    const saved = await skuRepository.save(skuEntities);
     return { skus: saved, inputs: normalized };
   }
 
@@ -893,7 +937,9 @@ export class ProductService {
     prices: CreateProductPriceDto[] | undefined,
     skus: ProductSku[],
     skuInputs: CreateProductSkuDto[] | undefined,
+    manager?: EntityManager,
   ) {
+    const { priceListRepository, currencyRepository, priceRowRepository } = this.getRepos(manager);
     const rows: PriceRow[] = [];
 
     const allPriceListIds = new Set<string>();
@@ -901,13 +947,13 @@ export class ProductService {
     for (const skuInput of skuInputs ?? []) for (const p of skuInput?.prices ?? []) allPriceListIds.add(p.priceListId);
 
     const lists = allPriceListIds.size
-      ? await this.priceListRepository.find({ where: { id: In(Array.from(allPriceListIds)) } })
+      ? await priceListRepository.find({ where: { id: In(Array.from(allPriceListIds)) } })
       : [];
     const listById = new Map(lists.map((l) => [l.id, l] as const));
 
     const currencyCodes = Array.from(new Set(lists.map((l) => l.currency)));
     const currencies = currencyCodes.length
-      ? await this.currencyRepository.find({ where: { code: In(currencyCodes) } })
+      ? await currencyRepository.find({ where: { code: In(currencyCodes) } })
       : [];
     const precisionByCode = new Map(currencies.map((c) => [c.code, c.precision] as const));
 
@@ -922,7 +968,7 @@ export class ProductService {
         const precision = getPrecisionForList(p.priceListId);
         const conditions = (p.metaJson as any)?.conditions ?? {};
         rows.push(
-          this.priceRowRepository.create({
+          priceRowRepository.create({
             priceListId: p.priceListId,
             targetType: 'PRODUCT',
             targetId: productId,
@@ -948,7 +994,7 @@ export class ProductService {
         const precision = getPrecisionForList(p.priceListId);
         const conditions = (p.metaJson as any)?.conditions ?? {};
         rows.push(
-          this.priceRowRepository.create({
+          priceRowRepository.create({
             priceListId: p.priceListId,
             targetType: 'SKU',
             targetId: sku.id,
@@ -968,7 +1014,7 @@ export class ProductService {
     }
 
     if (rows.length) {
-      await this.priceRowRepository.save(rows);
+      await priceRowRepository.save(rows);
       await this.cache.delByPrefix('price:resolve:');
     }
   }
@@ -1005,13 +1051,14 @@ export class ProductService {
     return (images ?? []).map((i) => String(i ?? '').trim()).filter(Boolean);
   }
 
-  private async ensureUniqueSlug(baseSlug: string, excludeId?: string): Promise<string> {
+  private async ensureUniqueSlug(baseSlug: string, excludeId?: string, manager?: EntityManager): Promise<string> {
+    const { productRepository } = this.getRepos(manager);
     const slugCandidate = this.slugify(baseSlug);
     let slug = slugCandidate;
     let suffix = 1;
 
     while (
-      await this.productRepository.exist({
+      await productRepository.exist({
         where: excludeId ? { slug, id: Not(excludeId) } : { slug },
       })
     ) {
@@ -1034,35 +1081,38 @@ export class ProductService {
       .replace(/-+$/, '');
   }
 
-  private async generateSku(slug: string, index: number): Promise<string> {
+  private async generateSku(slug: string, index: number, manager?: EntityManager): Promise<string> {
+    const { skuRepository } = this.getRepos(manager);
     const base = slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-');
     const suffix = randomBytes(2).toString('hex').toUpperCase();
     const candidate = `${base}-${String(index + 1).padStart(2, '0')}-${suffix}`;
 
-    const exists = await this.skuRepository.exist({ where: { sku: candidate } });
+    const exists = await skuRepository.exist({ where: { sku: candidate } });
     if (!exists) return candidate;
     return `${candidate}-${randomBytes(1).toString('hex').toUpperCase()}`;
   }
 
-  private async attachCategories(productId: string, categoryIds: string[]) {
+  private async attachCategories(productId: string, categoryIds: string[], manager?: EntityManager) {
+    const { productCategoryRepository } = this.getRepos(manager);
     const categories = categoryIds.map((categoryId, index) =>
-      this.productCategoryRepository.create({
+      productCategoryRepository.create({
         productId,
         categoryId,
         isPrimary: index === 0,
         sortOrder: index,
       }),
     );
-    await this.productCategoryRepository.save(categories);
+    await productCategoryRepository.save(categories);
   }
 
-  private async syncChannels(productId: string, channelCodes: string[]): Promise<void> {
+  private async syncChannels(productId: string, channelCodes: string[], manager?: EntityManager): Promise<void> {
+    const { productChannelRepository, channelRepository } = this.getRepos(manager);
     const normalized = Array.from(new Set((channelCodes ?? []).map((c) => c.toUpperCase())));
-    await this.productChannelRepository.delete({ productId } as any);
+    await productChannelRepository.delete({ productId } as any);
 
     if (!normalized.length) return;
 
-    const channels = await this.channelRepository.find({ where: { code: In(normalized), isActive: true } as any });
+    const channels = await channelRepository.find({ where: { code: In(normalized), isActive: true } as any });
     const foundCodes = new Set(channels.map((c) => c.code.toUpperCase()));
 
     const missing = normalized.filter((code) => !foundCodes.has(code));
@@ -1070,7 +1120,7 @@ export class ProductService {
       throw new BadRequestException(`Unknown or inactive channel(s): ${missing.join(', ')}`);
     }
 
-    await this.productChannelRepository.insert(
+    await productChannelRepository.insert(
       channels.map((c) => ({ productId, channelId: c.id, isActive: true })) as any,
     );
   }
