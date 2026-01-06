@@ -5,10 +5,14 @@ import {
   Index,
   JoinColumn,
   ManyToOne,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { PaymentProvider } from 'src/payment-provider/entities/payment-provider.entity';
+import { PaymentMethodChannel } from './payment-method-channel.entity';
+import { PaymentMethodCountryConfig } from './payment-method-country-config.entity';
+import { PaymentMethodCurrency } from './payment-method-currency.entity';
 
 @Entity('payment_method')
 export class PaymentMethod {
@@ -37,13 +41,14 @@ export class PaymentMethod {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  // Channel codes (e.g. WEB, MOBILE, WHATSAPP). Stored as a field for flexible routing.
-  @Column({
-    type: 'text',
-    array: true,
-    default: () => 'ARRAY[]::text[]',
-  })
-  channels: string[];
+  @OneToMany(() => PaymentMethodChannel, (link) => link.paymentMethod)
+  channelLinks?: PaymentMethodChannel[];
+
+  @OneToMany(() => PaymentMethodCountryConfig, (link) => link.paymentMethod)
+  countryLinks?: PaymentMethodCountryConfig[];
+
+  @OneToMany(() => PaymentMethodCurrency, (link) => link.paymentMethod)
+  currencyLinks?: PaymentMethodCurrency[];
 
   @Column({ name: 'config_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   configJson: Record<string, unknown>;

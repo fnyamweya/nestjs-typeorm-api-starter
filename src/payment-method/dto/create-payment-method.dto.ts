@@ -37,7 +37,7 @@ export class CreatePaymentMethodDto {
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Channel codes that may use this payment method',
+    description: 'Channel codes that may use this payment method (preferred field)',
     example: ['WEB', 'MOBILE', 'WHATSAPP'],
     type: [String],
   })
@@ -45,7 +45,41 @@ export class CreatePaymentMethodDto {
   @IsArray()
   @ArrayUnique()
   @IsString({ each: true })
+  channelCodes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Channel codes that may use this payment method (deprecated alias of channelCodes)',
+    example: ['WEB', 'MOBILE', 'WHATSAPP'],
+    type: [String],
+    deprecated: true,
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
   channels?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Optional country scoping (ISO-3166 alpha-2). Empty means not restricted.',
+    example: ['KE'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  countryCodes?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Optional currency scoping (ISO-4217). Empty means not restricted.',
+    example: ['KES'],
+    type: [String],
+  })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsString({ each: true })
+  currencyCodes?: string[];
 
   @ApiPropertyOptional({
     description: 'Arbitrary configuration JSON (dynamic)',

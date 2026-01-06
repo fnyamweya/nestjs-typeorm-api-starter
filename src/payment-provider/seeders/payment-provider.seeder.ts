@@ -32,6 +32,20 @@ export class PaymentProviderSeeder {
         isActive: true,
         metadata: { seededBy: 'PaymentProviderSeeder', seedKey: 'safaricom' },
       },
+      {
+        code: 'OFFLINE',
+        name: 'Offline/Manual',
+        description: 'Cash or manual settlement provider',
+        isActive: true,
+        metadata: { seededBy: 'PaymentProviderSeeder', seedKey: 'offline' },
+      },
+      {
+        code: 'CARD',
+        name: 'Card Gateway',
+        description: 'Generic card payment provider',
+        isActive: true,
+        metadata: { seededBy: 'PaymentProviderSeeder', seedKey: 'card' },
+      },
     ];
   }
 

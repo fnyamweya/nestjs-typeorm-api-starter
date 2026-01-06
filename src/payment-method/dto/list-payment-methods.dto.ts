@@ -28,4 +28,14 @@ export class ListPaymentMethodsDto {
   @IsOptional()
   @IsString()
   channel?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by country code (ISO-3166 alpha-2, e.g. KE)' })
+  @IsOptional()
+  @IsString()
+  countryCode?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by currency code (ISO-4217, e.g. KES)' })
+  @IsOptional()
+  @IsString()
+  currencyCode?: string;
 }
