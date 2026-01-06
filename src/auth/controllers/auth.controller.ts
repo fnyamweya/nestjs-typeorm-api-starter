@@ -41,17 +41,22 @@ import { AdminRegisterDto } from '../dto/admin-register.dto';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
 import {
   ApiBadRequestResponse,
-    ApiCreatedResponse,
+  ApiCreatedResponse,
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
+  ApiExtraModels,
   ApiForbiddenResponse,
   ApiOkResponse,
   ApiOperation,
   ApiExcludeEndpoint,
   ApiTags,
   ApiUnauthorizedResponse,
+  getSchemaPath,
 } from '@nestjs/swagger';
+import { AuthTokensDto } from '../dto/auth-tokens.dto';
+import { TwoFactorRequiredDto } from '../dto/two-factor-required.dto';
+import { PasswordResetVerifiedDto } from '../dto/password-reset-verified.dto';
 import { RequireRoles } from '../decorators/roles.decorator';
 import { RequirePermissions } from '../decorators/permissions.decorator';
 import { PermissionsGuard } from '../guards/permissions.guard';
@@ -63,6 +68,7 @@ import { DeclineUserInviteDto } from '../dto/decline-user-invite.dto';
 
 @Controller('auth')
 @ApiTags('Authentication')
+@ApiExtraModels(AuthTokensDto, TwoFactorRequiredDto, PasswordResetVerifiedDto)
 export class AuthController {
   constructor(
     private authService: AuthService,
@@ -73,7 +79,24 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   @ApiOperation({ summary: 'Authenticate a user and obtain access tokens' })
-  @ApiOkResponse({ description: 'Login successful' })
+  @ApiOkResponse({
+    description: 'Login successful, or 2FA step-up required',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Login successful' },
+        data: {
+          oneOf: [
+            { $ref: getSchemaPath(AuthTokensDto) },
+            { $ref: getSchemaPath(TwoFactorRequiredDto) },
+          ],
+        },
+        timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async login(@Body() loginDto: LoginDto, @Req() request: Request) {
@@ -86,7 +109,24 @@ export class AuthController {
   @ApiOperation({
     summary: 'Customer login with email or phone and password',
   })
-  @ApiOkResponse({ description: 'Customer login successful' })
+  @ApiOkResponse({
+    description: 'Customer login successful, or 2FA step-up required',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Customer login successful' },
+        data: {
+          oneOf: [
+            { $ref: getSchemaPath(AuthTokensDto) },
+            { $ref: getSchemaPath(TwoFactorRequiredDto) },
+          ],
+        },
+        timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async loginCustomer(
@@ -123,7 +163,24 @@ export class AuthController {
     description:
       'Seeded accounts: superadmin@gmail.com / passwordD123!@# (Super Admin), admin@example.com / AdminP@ss123 (Admin).',
   })
-  @ApiOkResponse({ description: 'Admin login successful' })
+  @ApiOkResponse({
+    description: 'Admin login successful, or 2FA step-up required',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Admin login successful' },
+        data: {
+          oneOf: [
+            { $ref: getSchemaPath(AuthTokensDto) },
+            { $ref: getSchemaPath(TwoFactorRequiredDto) },
+          ],
+        },
+        timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({ description: 'Invalid credentials' })
   async loginAdmin(
@@ -422,13 +479,24 @@ export class AuthController {
     return ResponseUtil.success(null, 'Profile deleted successfully');
   }
 
-  @ApiExcludeEndpoint()
   @Post('verify-2fa')
   @HttpCode(200)
   @ApiOperation({
     summary: 'Verify a two-factor authentication code and sign in the user',
   })
-  @ApiOkResponse({ description: 'Two-factor authentication successful' })
+  @ApiOkResponse({
+    description: 'Two-factor authentication successful',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Two-factor authentication successful' },
+        data: { $ref: getSchemaPath(AuthTokensDto) },
+        timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({
     description: 'Invalid or expired verification code',
@@ -438,8 +506,11 @@ export class AuthController {
     @Req() request: Request,
   ) {
     const result = await this.authService.verifyTwoFactorAndLogin(
-      verifyTwoFactorDto.userId,
-      verifyTwoFactorDto.code,
+      {
+        userId: verifyTwoFactorDto.userId,
+        twoFactorToken: verifyTwoFactorDto.twoFactorToken,
+        code: verifyTwoFactorDto.code,
+      },
       request,
     );
     return ResponseUtil.success(result, 'Two-factor authentication successful');
@@ -559,14 +630,26 @@ export class AuthController {
     );
     return ResponseUtil.success(
       result,
-      'Forgot password reset OTP code sent to your email',
+      'Forgot password reset OTP code queued for delivery',
     );
   }
 
   @Post('otp/verify/forgot-password')
   @HttpCode(200)
   @ApiOperation({ summary: 'Verify the password reset OTP code' })
-  @ApiOkResponse({ description: 'Password reset code verified successfully' })
+  @ApiOkResponse({
+    description: 'Password reset code verified successfully',
+    schema: {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        statusCode: { type: 'number', example: 200 },
+        message: { type: 'string', example: 'Successfully verify password reset code' },
+        data: { $ref: getSchemaPath(PasswordResetVerifiedDto) },
+        timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
+      },
+    },
+  })
   @ApiBadRequestResponse({ description: 'Validation failed' })
   @ApiUnauthorizedResponse({
     description: 'Invalid or expired verification code',
