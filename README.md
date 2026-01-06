@@ -328,7 +328,77 @@ npm run db:seed
 
 ### Two-Factor Authentication
 
-- Email OTP-based 2FA (default)
+This project uses an **OTP-based step-up** 2FA flow.
+
+- 2FA is enforced only when `user.twoFactorEnabled === true`.
+- OTP delivery is **queued** (BullMQ) and can be delivered via **email + WhatsApp**, with **SMS fallback**.
+- OTP send endpoints are rate limited to reduce abuse.
+
+#### Login flow (step-up)
+
+1) Call a login endpoint:
+- `POST /api/auth/login`
+- `POST /api/auth/customer/login`
+- `POST /api/auth/admin/login`
+
+2) If the user has 2FA enabled and no `twoFactorCode` was supplied, the response is:
+
+```json
+{
+  "requiresTwoFactor": true,
+  "userId": "...",
+  "twoFactorToken": "...",
+  "message": "Two-factor authentication code queued for delivery"
+}
+```
+
+3) Verify the OTP:
+- `POST /api/auth/verify-2fa` with `{ "twoFactorToken": "...", "code": "123456" }`
+
+4) On success, the API returns auth tokens:
+
+```json
+{
+  "accessToken": "...",
+  "refreshToken": "..."
+}
+```
+
+Notes:
+- You may also provide `twoFactorCode` directly in the login request to complete login in a single call.
+- `twoFactorToken` is the recommended verification mechanism; `userId` exists for legacy compatibility.
+
+#### Rate limiting
+
+OTP sends are rate limited (per user/email):
+- Cooldown: max 1 request / 30 seconds
+- Burst: max 3 requests / 10 minutes
+
+If exceeded, the API returns HTTP `429`.
+
+### Password Reset (step-up)
+
+Password reset is aligned with the same step-up pattern:
+
+1) Request an OTP:
+- `POST /api/auth/otp/send/forgot-password` with `{ "email": "user@example.com" }`
+
+2) Verify the OTP:
+- `POST /api/auth/otp/verify/forgot-password` with `{ "userId": "...", "code": "123456" }`
+
+Response includes a short-lived `resetToken`:
+
+```json
+{
+  "userId": "...",
+  "resetToken": "..."
+}
+```
+
+3) Reset the password:
+- `POST /api/auth/reset-password` with `{ "resetToken": "...", "newPassword": "N3wP@ssw0rd" }`
+
+`accessToken` is still accepted as a deprecated alias for `resetToken`.
 
 ### Admin OAuth Providers
 

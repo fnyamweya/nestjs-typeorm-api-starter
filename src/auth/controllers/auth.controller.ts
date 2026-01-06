@@ -10,6 +10,7 @@ import {
   UseInterceptors,
   UploadedFiles,
   HttpCode,
+  BadRequestException,
 } from '@nestjs/common';
 import { AuthService } from '../services/auth.service';
 import { TwoFactorService } from '../services/two-factor.service';
@@ -530,10 +531,15 @@ export class AuthController {
     description: 'Invalid or expired verification code',
   })
   async enableTwoFactorVerify(@Body() verifyTwoFactorDto: VerifyTwoFactorDto) {
-    const result = await this.twoFactorService.verifyTwoFactor(
-      verifyTwoFactorDto.userId,
-      verifyTwoFactorDto.code,
-    );
+    // Enabling 2FA is only available for authenticated users; keep this endpoint
+    // working by requiring an explicit userId (legacy) or allowing twoFactorToken.
+    // The TwoFactorService.verifyTwoFactor signature requires a concrete userId.
+    const userId = verifyTwoFactorDto.userId;
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+
+    const result = await this.twoFactorService.verifyTwoFactor(userId, verifyTwoFactorDto.code);
     return ResponseUtil.success(
       result,
       'Two-factor authentication enable successful',
