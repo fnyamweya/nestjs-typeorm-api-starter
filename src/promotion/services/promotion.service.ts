@@ -16,6 +16,7 @@ import { CreatePromotionDto } from '../dto/create-promotion.dto';
 import { UpdatePromotionDto } from '../dto/update-promotion.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import { CurrencyService } from 'src/currency/currency.service';
 
 export interface AppliedPromotion {
   code: string;
@@ -71,7 +72,17 @@ export class PromotionService {
     @InjectRepository(PromotionRedemption)
     private readonly redemptionRepo: Repository<PromotionRedemption>,
     private readonly cache: AppCacheService,
+    private readonly currencyService: CurrencyService,
   ) {}
+
+  private async normalizeAndValidateEmbeddedCurrency(params: Record<string, unknown> | undefined): Promise<Record<string, unknown>> {
+    const p = (params ?? {}) as Record<string, unknown>;
+    const raw = (p as any).currency;
+    if (typeof raw === 'undefined' || raw === null || raw === '') return p;
+
+    const currency = await this.currencyService.assertExists(raw);
+    return { ...p, currency };
+  }
 
   async listPromotions(): Promise<Promotion[]> {
     return this.cache.remember(
@@ -168,23 +179,31 @@ export class PromotionService {
         metadata: dto.metadata ?? {},
       });
 
-      promotion.actions = dto.actions.map((a) =>
-        actionRepo.create({
-          type: a.type,
-          params: a.params ?? {},
-          target: a.target ?? {},
-          promotion,
-        }),
-      );
+      promotion.actions = [];
+      for (const a of dto.actions) {
+        const params = await this.normalizeAndValidateEmbeddedCurrency((a as any).params as any);
+        promotion.actions.push(
+          actionRepo.create({
+            type: a.type,
+            params,
+            target: a.target ?? {},
+            promotion,
+          }),
+        );
+      }
 
-      promotion.conditions = (dto.conditions ?? []).map((c) =>
-        conditionRepo.create({
-          type: c.type,
-          operator: c.operator,
-          params: c.params ?? {},
-          promotion,
-        }),
-      );
+      promotion.conditions = [];
+      for (const c of dto.conditions ?? []) {
+        const params = await this.normalizeAndValidateEmbeddedCurrency((c as any).params as any);
+        promotion.conditions.push(
+          conditionRepo.create({
+            type: c.type,
+            operator: c.operator,
+            params,
+            promotion,
+          }),
+        );
+      }
 
       const saved = await promoRepo.save(promotion);
       return promoRepo.findOneOrFail({ where: { id: saved.id }, relations: ['conditions', 'actions'] });
@@ -221,14 +240,18 @@ export class PromotionService {
       // Replace nested relations when provided
       if (typeof dto.conditions !== 'undefined') {
         await conditionRepo.delete({ promotionId: id });
-        promotion.conditions = (dto.conditions ?? []).map((c) =>
-          conditionRepo.create({
-            type: c.type,
-            operator: c.operator,
-            params: c.params ?? {},
-            promotion,
-          }),
-        );
+        promotion.conditions = [];
+        for (const c of dto.conditions ?? []) {
+          const params = await this.normalizeAndValidateEmbeddedCurrency((c as any).params as any);
+          promotion.conditions.push(
+            conditionRepo.create({
+              type: c.type,
+              operator: c.operator,
+              params,
+              promotion,
+            }),
+          );
+        }
       }
 
       if (typeof dto.actions !== 'undefined') {
@@ -236,14 +259,18 @@ export class PromotionService {
           throw new BadRequestException('At least one action is required');
         }
         await actionRepo.delete({ promotionId: id });
-        promotion.actions = (dto.actions ?? []).map((a) =>
-          actionRepo.create({
-            type: a.type,
-            params: a.params ?? {},
-            target: a.target ?? {},
-            promotion,
-          }),
-        );
+        promotion.actions = [];
+        for (const a of dto.actions ?? []) {
+          const params = await this.normalizeAndValidateEmbeddedCurrency((a as any).params as any);
+          promotion.actions.push(
+            actionRepo.create({
+              type: a.type,
+              params,
+              target: a.target ?? {},
+              promotion,
+            }),
+          );
+        }
       }
 
       await promoRepo.save(promotion);

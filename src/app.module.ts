@@ -20,10 +20,15 @@ import { MpesaModule } from './mpesa/mpesa.module';
 import { SmsModule } from './sms/sms.module';
 import { AddressModule } from './address/address.module';
 import { CustomerAddressModule } from './customer-address/customer-address.module';
+import { CustomerShippingAddressModule } from './customer-shipping-address/customer-shipping-address.module';
 import { LocationModule } from './location/location.module';
 import { WhatsappModule } from './whatsapp/whatsapp.module';
 import { ChannelsModule } from './channels/channels.module';
 import { CustomerTierModule } from './customer-tier/customer-tier.module';
+import { BannerModule } from './banner/banner.module';
+import { PricingModule } from './pricing/pricing.module';
+import { CurrencyModule } from './currency/currency.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -33,6 +38,7 @@ import { CustomerTierModule } from './customer-tier/customer-tier.module';
     }),
     TypeOrmModule.forRoot({
       ...dataSource.options,
+      autoLoadEntities: true,
     }),
     AuthModule,
     UserModule,
@@ -48,9 +54,14 @@ import { CustomerTierModule } from './customer-tier/customer-tier.module';
     WhatsappModule,
     AddressModule,
     CustomerAddressModule,
+    CustomerShippingAddressModule,
     LocationModule,
     ChannelsModule,
     CustomerTierModule,
+    BannerModule,
+    PricingModule,
+    CurrencyModule,
+    CheckoutModule,
   ],
   controllers: [AppController],
   providers: [

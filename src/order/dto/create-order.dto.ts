@@ -1,7 +1,8 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, ValidateNested, IsOptional, IsUUID } from 'class-validator';
+import { IsArray, ValidateNested, IsOptional, IsUUID, IsString, IsNotEmpty } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
+import { UpsertAddressDto } from '../../address/dto/upsert-address.dto';
 
 export class CreateOrderDto {
   @ApiProperty({
@@ -29,6 +30,16 @@ export class CreateOrderDto {
   @IsUUID()
   priceListId?: string;
 
+  @ApiPropertyOptional({
+    description:
+      'Shipping address created at checkout. This will be saved as the customer\'s shipping address and snapshotted onto the order so the order remains immutable.',
+    type: UpsertAddressDto,
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => UpsertAddressDto)
+  shippingAddress?: UpsertAddressDto;
+
   // Shipping destination fields (optional for digital-only orders)
   @ApiPropertyOptional({
     description:
@@ -38,4 +49,14 @@ export class CreateOrderDto {
   @IsOptional()
   @IsUUID()
   shippingLocationId?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Chosen shipping method code for this order (e.g. "standard", "express"). Obtain candidates via POST /api/v1/shipping/quotes for the destination zone.',
+    example: 'standard',
+  })
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  shippingMethodCode?: string;
 }

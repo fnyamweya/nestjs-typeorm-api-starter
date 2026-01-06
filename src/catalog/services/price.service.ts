@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Raw, Repository } from 'typeorm';
 import { Currency } from '../entities/currency.entity';
@@ -62,6 +62,19 @@ export class PriceService {
   private async getCurrencyPrecision(currencyCode: string) {
     const c = await this.currencyRepository.findOne({ where: { code: currencyCode } });
     return c?.precision ?? 2;
+  }
+
+  private async normalizeAndValidateCurrencyCode(currencyCode?: string): Promise<string | undefined> {
+    if (!currencyCode) return undefined;
+    const normalized = currencyCode.trim().toUpperCase();
+    if (!/^[A-Z]{3}$/.test(normalized)) {
+      throw new BadRequestException('currencyCode must be a 3-letter ISO code');
+    }
+    const exists = await this.currencyRepository.exist({ where: { code: normalized } });
+    if (!exists) {
+      throw new BadRequestException(`Unknown currency code: ${normalized}`);
+    }
+    return normalized;
   }
 
   private getCacheKey(opts: {
@@ -186,7 +199,9 @@ export class PriceService {
   }
 
   async findActivePriceListByCurrency(currencyCode: string) {
-    return this.priceListRepository.findOne({ where: { currency: currencyCode, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
+    const normalized = await this.normalizeAndValidateCurrencyCode(currencyCode);
+    if (!normalized) throw new BadRequestException('currencyCode is required');
+    return this.priceListRepository.findOne({ where: { currency: normalized, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
   }
 
   async findPriceListById(id: string) {
@@ -201,20 +216,21 @@ export class PriceService {
     currencyCode?: string;
     context?: PricingContext;
   }): Promise<ResolvedPrice> {
+    const normalizedCurrencyCode = await this.normalizeAndValidateCurrencyCode(options.currencyCode);
     const quantity = options.quantity ?? 1;
     const cacheKey = this.getCacheKey({
       productId: options.productId,
       productSkuId: options.productSkuId,
       quantity,
       priceListId: options.priceListId,
-      currencyCode: options.currencyCode,
+      currencyCode: normalizedCurrencyCode,
       context: options.context,
     });
 
     return this.cache.remember(
       cacheKey,
       async () => {
-        let priceList = await this.selectPriceList({ priceListId: options.priceListId, currencyCode: options.currencyCode });
+        let priceList = await this.selectPriceList({ priceListId: options.priceListId, currencyCode: normalizedCurrencyCode });
         if (!priceList) {
           throw new NotFoundException('No active price list available');
         }

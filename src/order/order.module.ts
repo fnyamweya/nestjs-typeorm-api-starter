@@ -14,6 +14,8 @@ import { OrderService } from './services/order.service';
 import { OrderController } from './controllers/order.controller';
 import { User } from '../user/entities/user.entity';
 import { Location } from '../location/entities/location.entity';
+import { CurrencyModule } from '../currency/currency.module';
+import { CustomerShippingAddressModule } from '../customer-shipping-address/customer-shipping-address.module';
 
 @Module({
   imports: [
@@ -32,6 +34,8 @@ import { Location } from '../location/entities/location.entity';
     SettingModule,
     // Shipping module provides the shipping matrix
     ShippingModule,
+    CurrencyModule,
+    CustomerShippingAddressModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, TaxService],

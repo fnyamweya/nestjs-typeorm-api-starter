@@ -30,7 +30,7 @@ import {
   ApiCreatedResponse,
 } from '@nestjs/swagger';
 
-@Controller('/api/activity-logs')
+@Controller('activity-logs')
 @UseGuards(JwtAuthGuard, RolesGuard, PermissionsGuard)
 @ApiTags('Activity Logs')
 @ApiBearerAuth('access-token')

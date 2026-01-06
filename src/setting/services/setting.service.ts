@@ -11,6 +11,10 @@ import { CreateWhatsappSettingDto } from '../dto/create-whatsapp-setting.dto';
 import { WhatsappResponseDto } from '../dto/whatsapp-response.dto';
 import { UpdateWhatsappSecretsDto } from '../dto/update-whatsapp-secrets.dto';
 import { WhatsappSecretsResponseDto } from '../dto/whatsapp-secrets-response.dto';
+import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
+import { S3ResponseDto } from '../dto/s3-response.dto';
+import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
+import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { SettingCryptoService } from 'src/common/utils/setting-crypto.service';
 
@@ -113,8 +117,187 @@ export class SettingService {
       key === 'sms_at_username' ||
       key === 'whatsapp_access_token' ||
       key === 'whatsapp_app_secret' ||
-      key === 'whatsapp_webhook_verify_token'
+      key === 'whatsapp_webhook_verify_token' ||
+      key === 's3_access_key_id' ||
+      key === 's3_secret_access_key'
     );
+  }
+
+  async createS3Settings(dto: CreateS3SettingDto): Promise<S3ResponseDto> {
+    const entries: Array<{ key: string; value: string }> = [
+      { key: 's3_endpoint', value: dto.s3Endpoint?.trim() || '' },
+      { key: 's3_public_base_url', value: dto.s3PublicBaseUrl?.trim() || '' },
+      {
+        key: 's3_public_dev_base_url',
+        value: dto.s3PublicDevBaseUrl?.trim() || '',
+      },
+      { key: 's3_region', value: dto.s3Region.trim() },
+      { key: 's3_bucket_name', value: dto.bucketName.trim() },
+      {
+        key: 's3_force_path_style',
+        value: (dto.forcePathStyle ?? true).toString(),
+      },
+      { key: 's3_enabled', value: (dto.s3Enabled ?? true).toString() },
+    ];
+
+    if (dto.accessKeyId !== undefined) {
+      entries.push({
+        key: 's3_access_key_id',
+        value: this.crypto.encrypt(dto.accessKeyId),
+      });
+    }
+
+    if (dto.secretAccessKey !== undefined) {
+      entries.push({
+        key: 's3_secret_access_key',
+        value: this.crypto.encrypt(dto.secretAccessKey),
+      });
+    }
+
+    for (const entry of entries) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: entry.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = entry.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(entry);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    await this.cache.del('settings:s3');
+    await this.cache.del('settings:s3:internal');
+
+    return this.getS3Settings();
+  }
+
+  async getS3Settings(): Promise<S3ResponseDto> {
+    const data = await this.cache.remember(
+      'settings:s3',
+      async () => {
+        const keys = [
+          's3_endpoint',
+          's3_public_base_url',
+          's3_public_dev_base_url',
+          's3_region',
+          's3_bucket_name',
+          's3_force_path_style',
+          's3_enabled',
+          's3_access_key_id',
+          's3_secret_access_key',
+        ];
+
+        const settings = await this.settingRepository.find({
+          where: keys.map((key) => ({ key })),
+        });
+
+        if (settings.length === 0) {
+          throw new NotFoundException('S3 settings not found');
+        }
+
+        const getRaw = (key: string) => settings.find((s) => s.key === key)?.value || '';
+
+        const endpoint = getRaw('s3_endpoint');
+        const s3PublicBaseUrl = getRaw('s3_public_base_url');
+        const s3PublicDevBaseUrl = getRaw('s3_public_dev_base_url');
+        const region = getRaw('s3_region');
+        const bucketName = getRaw('s3_bucket_name');
+        const forcePathStyle = (getRaw('s3_force_path_style') || 'true') === 'true';
+        const s3Enabled = (getRaw('s3_enabled') || 'true') === 'true';
+
+        const accessKeyIdStored = getRaw('s3_access_key_id');
+        const secretKeyStored = getRaw('s3_secret_access_key');
+
+        return {
+          s3Endpoint: endpoint,
+          s3PublicBaseUrl: s3PublicBaseUrl || undefined,
+          s3PublicDevBaseUrl: s3PublicDevBaseUrl || undefined,
+          s3Region: region,
+          bucketName,
+          forcePathStyle,
+          s3Enabled,
+          hasAccessKeyId: Boolean(accessKeyIdStored),
+          hasSecretAccessKey: Boolean(secretKeyStored),
+          createdAt: settings[0]?.createdAt,
+          updatedAt: settings[0]?.updatedAt,
+        };
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(S3ResponseDto, data);
+  }
+
+  async updateS3Secrets(payload: UpdateS3SecretsDto): Promise<S3SecretsResponseDto> {
+    const entries: Array<{ key: string; value: string }> = [];
+
+    if (payload.accessKeyId !== undefined) {
+      entries.push({
+        key: 's3_access_key_id',
+        value: this.crypto.encrypt(payload.accessKeyId),
+      });
+    }
+
+    if (payload.secretAccessKey !== undefined) {
+      entries.push({
+        key: 's3_secret_access_key',
+        value: this.crypto.encrypt(payload.secretAccessKey),
+      });
+    }
+
+    if (entries.length === 0) {
+      const existing = await this.settingRepository.find({
+        where: [{ key: 's3_access_key_id' }, { key: 's3_secret_access_key' }],
+      });
+
+      const accessKeyStored = existing.find((s) => s.key === 's3_access_key_id')?.value;
+      const secretKeyStored = existing.find((s) => s.key === 's3_secret_access_key')?.value;
+
+      return {
+        hasAccessKeyId: Boolean(accessKeyStored),
+        hasSecretAccessKey: Boolean(secretKeyStored),
+        updatedAt: existing
+          .map((s) => s.updatedAt)
+          .filter((d): d is Date => Boolean(d))
+          .sort((a, b) => b.getTime() - a.getTime())[0],
+      };
+    }
+
+    for (const entry of entries) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: entry.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = entry.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(entry);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    await this.cache.del('settings:s3');
+    await this.cache.del('settings:s3:internal');
+
+    const updated = await this.settingRepository.find({
+      where: [{ key: 's3_access_key_id' }, { key: 's3_secret_access_key' }],
+    });
+
+    const accessKeyStored = updated.find((s) => s.key === 's3_access_key_id')?.value;
+    const secretKeyStored = updated.find((s) => s.key === 's3_secret_access_key')?.value;
+
+    return {
+      hasAccessKeyId: Boolean(accessKeyStored),
+      hasSecretAccessKey: Boolean(secretKeyStored),
+      updatedAt: updated
+        .map((s) => s.updatedAt)
+        .filter((d): d is Date => Boolean(d))
+        .sort((a, b) => b.getTime() - a.getTime())[0],
+    };
   }
 
   async createSMSSettings(

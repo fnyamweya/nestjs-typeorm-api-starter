@@ -1,10 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   Post,
+  Param,
+  HttpCode,
+  HttpStatus,
   UseGuards,
   UseInterceptors,
-  UploadedFile,
   UploadedFiles,
   ValidationPipe,
   UsePipes,
@@ -14,36 +17,136 @@ import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
 import { PermissionModule } from 'src/auth/entities/permission.entity';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
-import { UploadFileDto } from '../dto/upload-file.dto';
+import { FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+import { UploadFileDto, UploadFileType } from '../dto/upload-file.dto';
 import { S3ClientUtils } from '../utils/s3-client.utils';
 import { ResponseUtil } from '../utils/response.util';
+import { existsSync, mkdirSync } from 'fs';
+import { QueueService } from 'src/queue/queue.service';
+import { UPLOADS_JOB, UPLOADS_QUEUE } from '../uploads/upload-worker.service';
+import { ApiResponse } from '../interfaces/api-response.interface';
+import { UploadFilesJobResult } from '../uploads/upload-jobs.types';
 import { randomUUID } from 'crypto';
+import { PresignObjectDto } from '../dto/presign-object.dto';
 import {
   ApiBearerAuth,
   ApiBody,
   ApiConsumes,
-  ApiCreatedResponse,
+  ApiAcceptedResponse,
   ApiBadRequestResponse,
   ApiOperation,
   ApiTags,
   ApiUnauthorizedResponse,
+  ApiOkResponse,
 } from '@nestjs/swagger';
 
-@Controller('api/common')
+@Controller('common')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }))
 @ApiTags('Common Uploads')
 @ApiBearerAuth('access-token')
 export class CommonUploadController {
-  constructor(private readonly s3: S3ClientUtils) {}
+  constructor(
+    private readonly s3: S3ClientUtils,
+    private readonly queueService: QueueService,
+  ) {}
+
+  private resolveFolder(dto: UploadFileDto): string {
+    const filetype = dto.filetype?.trim() as UploadFileType | undefined;
+
+    if (filetype) {
+      const mapping: Record<UploadFileType, string> = {
+        image: 'images',
+        document: 'documents',
+        video: 'videos',
+        audio: 'audio',
+        avatar: 'avatars',
+        other: 'uploads',
+      };
+
+      return mapping[filetype] || 'uploads';
+    }
+
+    const folder = dto.folder?.trim() || 'uploads';
+
+    // Keep backward compatibility, but block obviously unsafe paths.
+    if (
+      folder.startsWith('/') ||
+      folder.includes('..') ||
+      !/^[a-zA-Z0-9/_-]{1,128}$/.test(folder)
+    ) {
+      throw new BadRequestException('Invalid folder');
+    }
+
+    return folder;
+  }
+
+  private assertMimeAllowed(filetype: UploadFileType | undefined, mimeType: string) {
+    const ft = filetype?.trim() as UploadFileType | undefined;
+
+    if (!ft) return;
+    if (!mimeType) {
+      throw new BadRequestException('Invalid file: missing mimetype');
+    }
+
+    const allowed: Record<UploadFileType, Array<string | RegExp>> = {
+      image: [/^image\//],
+      avatar: [/^image\//],
+      video: [/^video\//],
+      audio: [/^audio\//],
+      document: [
+        'application/pdf',
+        'text/plain',
+        'text/csv',
+        'application/json',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'application/vnd.ms-excel',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'application/vnd.ms-powerpoint',
+        'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      ],
+      other: [],
+    };
+
+    const rules = allowed[ft] ?? [];
+    if (rules.length === 0) return;
+
+    const ok = rules.some((rule) =>
+      typeof rule === 'string' ? rule === mimeType : rule.test(mimeType),
+    );
+
+    if (!ok) {
+      throw new BadRequestException(
+        `Invalid file type: filetype '${ft}' does not allow mimetype '${mimeType}'`,
+      );
+    }
+  }
 
   @Post('upload')
   @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
+  @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
+    FilesInterceptor('files', 20, {
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          try {
+            const dir = process.env.UPLOAD_STAGING_DIR || '/tmp/qtech-uploads';
+            if (!existsSync(dir)) {
+              mkdirSync(dir, { recursive: true });
+            }
+            cb(null, dir);
+          } catch (e) {
+            cb(e as any, '');
+          }
+        },
+        filename: (req, file, cb) => {
+          const original = file.originalname?.trim() || 'file';
+          const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          cb(null, `${Date.now()}-${sanitized}`);
+        },
+      }),
       limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (req, file, cb) => {
         if (!file.mimetype)
@@ -52,7 +155,11 @@ export class CommonUploadController {
       },
     }),
   )
-  @ApiOperation({ summary: 'Upload a single file to object storage' })
+  @ApiOperation({
+    summary: 'Queue upload of one or multiple files (async)',
+    description:
+      'Accepts multipart form-data and returns 202 with a jobId. A background worker performs the actual S3 uploads.',
+  })
   @ApiConsumes('multipart/form-data')
   @ApiBody({
     description:
@@ -60,15 +167,29 @@ export class CommonUploadController {
     schema: {
       type: 'object',
       properties: {
-        file: { type: 'string', format: 'binary' },
+        files: {
+          type: 'array',
+          items: { type: 'string', format: 'binary' },
+        },
+        filetype: {
+          type: 'string',
+          example: 'image',
+          description:
+            'Optional category used to choose the upload directory. If provided, it takes precedence over folder.',
+        },
         folder: { type: 'string', example: 'avatars' },
-        filenameOverride: { type: 'string', example: 'profile-picture.png' },
+        isPublic: {
+          type: 'boolean',
+          example: true,
+          description:
+            'If true, the worker will return a permanent publicUrl/url when a public base URL is configured. If false, it will prefer returning a signed URL.',
+        },
         generateSignedUrl: { type: 'boolean', example: true },
       },
-      required: ['file'],
+      required: ['files'],
     },
   })
-  @ApiCreatedResponse({ description: 'File uploaded successfully' })
+  @ApiAcceptedResponse({ description: 'Upload job accepted' })
   @ApiBadRequestResponse({
     description: 'Invalid file payload or validation failed',
   })
@@ -76,56 +197,88 @@ export class CommonUploadController {
     description: 'Missing or invalid authentication token',
   })
   async upload(
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
     @Body() dto: UploadFileDto,
   ) {
-    if (!file) {
-      throw new BadRequestException('File is required');
+    if (!files || files.length === 0) {
+      throw new BadRequestException('Files are required');
     }
 
-    const folder = dto.folder?.trim() || 'uploads';
-    const original = file.originalname?.trim() || 'file';
-    const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-    const key = dto.filenameOverride?.trim() || `${randomUUID()}-${sanitized}`;
+    const folder = this.resolveFolder(dto);
+    const generateSignedUrl = dto.generateSignedUrl ?? true;
 
-    try {
-      const res = await this.s3.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: folder,
-        metadata: { filename: original },
-      });
+    // If not explicitly provided, default public-ness by filetype.
+    const isPublic =
+      dto.isPublic ??
+      (dto.filetype === 'image' || dto.filetype === 'avatar' ? true : false);
 
-      if (!res.success) {
-        throw new BadRequestException(res.error || 'Upload failed');
+    const invalid: Array<{ filename: string; error: string }> = [];
+    for (const f of files) {
+      try {
+        this.assertMimeAllowed(dto.filetype, f.mimetype);
+      } catch (e) {
+        invalid.push({
+          filename: f.originalname || 'file',
+          error: (e as any)?.message || 'Invalid file type',
+        });
       }
-
-      const signedUrl = dto.generateSignedUrl
-        ? await this.s3.generatePresignedUrl(res.key!)
-        : null;
-
-      return ResponseUtil.created(
-        {
-          key: res.key,
-          url: signedUrl,
-          size: file.size,
-          mimeType: file.mimetype,
-          filename: original,
-        },
-        'File uploaded successfully',
-      );
-    } catch (error) {
-      console.log(error, ' image upload failed ');
-      throw new BadRequestException(error?.message || 'Upload failed');
     }
+    if (invalid.length > 0) {
+      throw new BadRequestException({ message: 'Invalid file type', invalid });
+    }
+
+    const job = await this.queueService.addJob(
+      UPLOADS_QUEUE,
+      UPLOADS_JOB,
+      {
+        folder,
+        filetype: dto.filetype,
+        generateSignedUrl,
+        isPublic,
+        files: files.map((f) => ({
+          path: f.path,
+          originalName: f.originalname,
+          mimeType: f.mimetype,
+          size: f.size,
+        })),
+      },
+      {
+        jobId: randomUUID(),
+        removeOnComplete: false,
+        removeOnFail: false,
+      },
+    );
+
+    return ResponseUtil.success(
+      { jobId: job.id, count: files.length },
+      'Upload job accepted',
+      HttpStatus.ACCEPTED,
+    );
   }
 
   @Post('upload/multi')
   @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
+  @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(
     FilesInterceptor('files', 20, {
-      storage: memoryStorage(),
+      storage: diskStorage({
+        destination: (req, file, cb) => {
+          try {
+            const dir = process.env.UPLOAD_STAGING_DIR || '/tmp/qtech-uploads';
+            if (!existsSync(dir)) {
+              mkdirSync(dir, { recursive: true });
+            }
+            cb(null, dir);
+          } catch (e) {
+            cb(e as any, '');
+          }
+        },
+        filename: (req, file, cb) => {
+          const original = file.originalname?.trim() || 'file';
+          const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
+          cb(null, `${Date.now()}-${sanitized}`);
+        },
+      }),
       limits: { fileSize: 10 * 1024 * 1024 },
       fileFilter: (req, file, cb) => {
         if (!file.mimetype)
@@ -134,91 +287,74 @@ export class CommonUploadController {
       },
     }),
   )
-  @ApiOperation({ summary: 'Upload multiple files to object storage' })
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    description:
-      'Multipart request containing files array and optional upload metadata',
-    schema: {
-      type: 'object',
-      properties: {
-        files: {
-          type: 'array',
-          items: { type: 'string', format: 'binary' },
-        },
-        folder: { type: 'string', example: 'documents' },
-        generateSignedUrl: { type: 'boolean', example: false },
-      },
-      required: ['files'],
-    },
-  })
-  @ApiCreatedResponse({ description: 'Files uploaded successfully' })
-  @ApiBadRequestResponse({
-    description: 'Validation failed or uploads unsuccessful',
-  })
-  @ApiUnauthorizedResponse({
-    description: 'Missing or invalid authentication token',
+  @ApiOperation({
+    summary: 'Deprecated: use POST /api/v1/common/upload with files[]',
   })
   async uploadMany(
-    @UploadedFiles() files: Express.Multer.File[],
+    @UploadedFiles() files: Express.Multer.File[] | undefined,
     @Body() dto: UploadFileDto,
   ) {
-    if (!files || files.length === 0) {
-      throw new BadRequestException('Files are required');
+    return this.upload(files, dto);
+  }
+
+  @Get('upload/jobs/:jobId')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'Get async upload job status/result' })
+  @ApiOkResponse({ description: 'Upload job status' })
+  async getUploadJob(
+    @Param('jobId') jobId: string,
+  ): Promise<ApiResponse<any>> {
+    const queue = this.queueService.getQueue(UPLOADS_QUEUE);
+    const job = await queue.getJob(jobId);
+    if (!job) {
+      throw new BadRequestException('Job not found');
     }
 
-    const folder = dto.folder?.trim() || 'uploads';
+    const state = await job.getState();
 
-    const uploaded: Array<{
-      key: string | undefined;
-      url: string | null;
-      size: number;
-      mimeType: string;
-      filename: string;
-    }> = [];
-    const failed: Array<{ filename: string; error: string }> = [];
-
-    for (const file of files) {
-      const original = file.originalname?.trim() || 'file';
-      const sanitized = original.replace(/[^a-zA-Z0-9_.-]/g, '_');
-      const key = `${randomUUID()}-${sanitized}`;
-
-      const res = await this.s3.uploadFile({
-        key,
-        body: file.buffer,
-        contentType: file.mimetype,
-        path: folder,
-        metadata: { filename: original },
-      });
-
-      if (!res.success) {
-        failed.push({
-          filename: original,
-          error: res.error || 'Upload failed',
-        });
-        continue;
-      }
-
-      const signedUrl = dto.generateSignedUrl
-        ? await this.s3.generatePresignedUrl(res.key!)
-        : null;
-
-      uploaded.push({
-        key: res.key,
-        url: signedUrl,
-        size: file.size,
-        mimeType: file.mimetype,
-        filename: original,
-      });
-    }
-
-    if (uploaded.length === 0) {
-      throw new BadRequestException(failed[0]?.error || 'All uploads failed');
-    }
-
-    return ResponseUtil.created(
-      { uploaded, failed },
-      'Files uploaded successfully',
+    return ResponseUtil.success(
+      {
+        id: job.id,
+        name: job.name,
+        state,
+        progress: job.progress,
+        result: (job.returnvalue as UploadFilesJobResult | undefined) ?? null,
+        failedReason: job.failedReason ?? null,
+        timestamp: job.timestamp,
+        finishedOn: job.finishedOn ?? null,
+        processedOn: job.processedOn ?? null,
+      },
+      'Upload job status',
     );
+  }
+
+  @Get('upload/job/:jobId')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'Alias: Get async upload job status/result' })
+  @ApiOkResponse({ description: 'Upload job status' })
+  async getUploadJobAlias(
+    @Param('jobId') jobId: string,
+  ): Promise<ApiResponse<any>> {
+    return this.getUploadJob(jobId);
+  }
+
+  @Post('files/presign')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({
+    summary: 'Generate a signed URL for a stored object key (private access)',
+    description:
+      'Production-grade pattern for private files (e.g. invoices): store objectKey and generate short-lived URLs when needed.',
+  })
+  @ApiOkResponse({ description: 'Signed URL generated' })
+  async presign(@Body() dto: PresignObjectDto): Promise<ApiResponse<any>> {
+    const objectKey = dto.objectKey?.trim();
+    if (!objectKey) {
+      throw new BadRequestException('objectKey is required');
+    }
+    const url = await this.s3.generatePresignedUrl(objectKey, dto.expiresIn ?? 3600);
+    if (!url) {
+      throw new BadRequestException('Failed to generate signed URL');
+    }
+    return ResponseUtil.success({ objectKey, signedUrl: url }, 'Signed URL generated');
   }
 }

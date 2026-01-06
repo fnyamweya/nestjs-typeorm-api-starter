@@ -183,8 +183,10 @@ export class CustomerTierService {
       const tier = await this.tierRepository.findOne({ where: { code: normalized, isActive: true } as any });
       if (!tier) throw new BadRequestException('Unknown or inactive tier');
       profile.tierOverrideCode = normalized;
+      profile.tierId = tier.id;
     } else {
       profile.tierOverrideCode = null;
+      profile.tierId = null;
     }
 
     await this.customerProfileRepository.save(profile);
@@ -200,10 +202,37 @@ export class CustomerTierService {
     const profile = user.customerProfile;
 
     // Manual override (if active)
+    const overrideTierId = profile?.tierId ?? null;
+    if (overrideTierId) {
+      const tier = await this.tierRepository.findOne({ where: { id: overrideTierId, isActive: true } as any });
+      if (tier) {
+        // Keep the legacy code field in sync for backwards compatibility/visibility
+        if (profile && profile.tierOverrideCode !== tier.code) {
+          try {
+            profile.tierOverrideCode = tier.code;
+            await this.customerProfileRepository.save(profile);
+          } catch {
+            // ignore
+          }
+        }
+        return { tierCode: tier.code, source: 'manual' };
+      }
+    }
+
+    // Legacy override fallback (no tier_id yet)
     const overrideCode = profile?.tierOverrideCode ?? null;
     if (overrideCode) {
       const tier = await this.tierRepository.findOne({ where: { code: overrideCode, isActive: true } as any });
       if (tier) {
+        // Best-effort backfill tier_id for future lookups
+        if (profile && !profile.tierId) {
+          try {
+            profile.tierId = tier.id;
+            await this.customerProfileRepository.save(profile);
+          } catch {
+            // ignore
+          }
+        }
         return { tierCode: tier.code, source: 'manual' };
       }
     }

@@ -1,6 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Length } from 'class-validator';
-import { LocationType } from '../entities/location.entity';
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+
+function normalizeType(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  return value.toLowerCase();
+}
 
 export class CreateLocationDto {
   @ApiProperty({ description: 'Country ISO2 code', example: 'KE' })
@@ -9,9 +14,15 @@ export class CreateLocationDto {
   @Length(2, 2)
   countryCode: string;
 
-  @ApiProperty({ enum: LocationType, description: 'Location type' })
-  @IsEnum(LocationType)
-  type: LocationType;
+  @ApiProperty({
+    description:
+      'Location type (country-configurable). Must match the country locationChain (case-insensitive).',
+    example: 'county',
+  })
+  @Transform(({ value }) => normalizeType(value))
+  @IsString()
+  @IsNotEmpty()
+  type: string;
 
   @ApiProperty({ description: 'Location name', example: 'Nairobi' })
   @IsString()

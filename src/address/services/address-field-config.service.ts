@@ -61,23 +61,21 @@ export class AddressFieldConfigService {
     return this.repo.save(row);
   }
 
-  async getLocationChain(countryCode: string): Promise<LocationType[]> {
+  async getLocationChain(countryCode: string): Promise<string[]> {
     const active = await this.getActive(countryCode);
     const schemaJson = (active as any)?.schemaJson as Record<string, unknown> | undefined;
     const raw = (schemaJson?.locationChain as unknown) ?? [];
 
-    const chain = Array.isArray(raw) ? raw : [];
-    const allowed = new Set(Object.values(LocationType));
-
     // If not configured, fall back to a sensible default for KE (and generic otherwise)
-    const fallback: LocationType[] = (countryCode || 'KE').toUpperCase() === 'KE'
+    const fallback: string[] = (countryCode || 'KE').toUpperCase() === 'KE'
       ? [LocationType.COUNTRY, LocationType.COUNTY, LocationType.SUB_COUNTY, LocationType.WARD, LocationType.TOWN]
       : [LocationType.COUNTRY];
 
+    const chain = Array.isArray(raw) ? raw : [];
     const normalized = chain
       .map((t) => String(t))
-      .map((t) => t.trim())
-      .filter((t) => allowed.has(t as LocationType)) as LocationType[];
+      .map((t) => t.trim().toLowerCase())
+      .filter((t) => !!t);
 
     return normalized.length ? normalized : fallback;
   }

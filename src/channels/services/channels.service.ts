@@ -7,16 +7,27 @@ import { UpdateChannelDto } from '../dto/update-channel.dto';
 import { ListChannelsDto } from '../dto/list-channels.dto';
 import { PublicListChannelsDto } from '../dto/public-list-channels.dto';
 import { PublicChannelDto } from '../dto/public-channel.dto';
+import { CurrencyService } from 'src/currency/currency.service';
 
 @Injectable()
 export class ChannelsService {
   constructor(
     @InjectRepository(Channel)
     private readonly channelRepo: Repository<Channel>,
+    private readonly currencyService: CurrencyService,
   ) {}
 
   private normalizeCode(code: string): string {
     return (code || '').trim().toUpperCase();
+  }
+
+  private async normalizeAndValidateConfigCurrency(configJson: Record<string, unknown> | undefined): Promise<Record<string, unknown> | undefined> {
+    if (!configJson) return configJson;
+    const raw = (configJson as any).currencyCode;
+    if (typeof raw === 'undefined') return configJson;
+
+    const currencyCode = await this.currencyService.assertExists(raw);
+    return { ...configJson, currencyCode };
   }
 
   async list(params: ListChannelsDto): Promise<Channel[]> {
@@ -101,7 +112,7 @@ export class ChannelsService {
       name: payload.name,
       description: payload.description,
       isActive: payload.isActive ?? true,
-      configJson: payload.configJson ?? {},
+      configJson: (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ?? {},
       metadata: payload.metadata ?? {},
     });
 
@@ -125,7 +136,9 @@ export class ChannelsService {
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
     if (typeof payload.description !== 'undefined') existing.description = payload.description;
     if (typeof payload.isActive !== 'undefined') existing.isActive = payload.isActive;
-    if (typeof payload.configJson !== 'undefined') existing.configJson = payload.configJson ?? {};
+    if (typeof payload.configJson !== 'undefined') {
+      existing.configJson = (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ?? {};
+    }
     if (typeof payload.metadata !== 'undefined') existing.metadata = payload.metadata ?? {};
 
     return this.channelRepo.save(existing);

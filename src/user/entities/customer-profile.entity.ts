@@ -3,11 +3,13 @@ import {
   CreateDateColumn,
   Entity,
   JoinColumn,
+  ManyToOne,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { User } from './user.entity';
+import { CustomerTier } from '../../customer-tier/entities/customer-tier.entity';
 
 @Entity('customer_profiles')
 export class CustomerProfile {
@@ -37,6 +39,13 @@ export class CustomerProfile {
 
   @Column({ name: 'tier_override_code', type: 'text', nullable: true })
   tierOverrideCode?: string | null;
+
+  @Column({ name: 'tier_id', type: 'uuid', nullable: true })
+  tierId?: string | null;
+
+  @ManyToOne(() => CustomerTier, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'tier_id' })
+  tier?: CustomerTier | null;
 
   @Column({ name: 'tier_resolved_code', type: 'text', nullable: true })
   tierResolvedCode?: string | null;

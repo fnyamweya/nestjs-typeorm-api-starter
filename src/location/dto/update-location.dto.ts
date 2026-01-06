@@ -1,6 +1,11 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Length } from 'class-validator';
-import { LocationType } from '../entities/location.entity';
+import { Transform } from 'class-transformer';
+import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+
+function normalizeType(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  return value.toLowerCase();
+}
 
 export class UpdateLocationDto {
   @ApiPropertyOptional({ description: 'Country ISO2 code', example: 'KE' })
@@ -16,10 +21,16 @@ export class UpdateLocationDto {
   @IsNotEmpty()
   name?: string;
 
-  @ApiPropertyOptional({ enum: LocationType, description: 'Location type' })
+  @ApiPropertyOptional({
+    description:
+      'Location type (country-configurable). Must match the country locationChain (case-insensitive).',
+    example: 'sub_county',
+  })
   @IsOptional()
-  @IsEnum(LocationType)
-  type?: LocationType;
+  @Transform(({ value }) => normalizeType(value))
+  @IsString()
+  @IsNotEmpty()
+  type?: string;
 
   @ApiPropertyOptional({ description: 'Parent location id (UUID). Set null to make root.' })
   @IsOptional()

@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { In } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
+import { OrderItemCharge } from '../entities/order-item-charge.entity';
 import { OrderLevelCharge } from '../entities/order-level-charge.entity';
 import { CreateOrderDto } from '../dto/create-order.dto';
 import { PriceService } from '../../catalog/services/price.service';
@@ -20,6 +21,8 @@ import { OrderShippingAddress } from '../entities/order-shipping-address.entity'
 import { User } from '../../user/entities/user.entity';
 import { CatalogShippingContextService } from '../../shipping/services/catalog-shipping-context.service';
 import { Location } from '../../location/entities/location.entity';
+import { CurrencyService } from 'src/currency/currency.service';
+import { CustomerShippingAddressService } from '../../customer-shipping-address/services/customer-shipping-address.service';
 
 @Injectable()
 export class OrderService {
@@ -28,6 +31,8 @@ export class OrderService {
     private readonly orderRepository: Repository<Order>,
     @InjectRepository(OrderItem)
     private readonly orderItemRepository: Repository<OrderItem>,
+    @InjectRepository(OrderItemCharge)
+    private readonly orderItemChargeRepository: Repository<OrderItemCharge>,
     @InjectRepository(ProductSku)
     private readonly productSkuRepository: Repository<ProductSku>,
     @InjectRepository(Product)
@@ -53,13 +58,108 @@ export class OrderService {
     private readonly shippingMatrixService: ShippingMatrixService,
     private readonly taxService: TaxService,
     private readonly catalogShippingContextService: CatalogShippingContextService,
+    private readonly currencyService: CurrencyService,
+    private readonly customerShippingAddressService: CustomerShippingAddressService,
   ) {}
+
+  private allocateProportionally(total: number, bases: number[], decimals = 4): number[] {
+    const n = bases.length;
+    if (n === 0) return [];
+    if (!Number.isFinite(total) || total <= 0) return Array.from({ length: n }, () => 0);
+
+    const safeBases = bases.map((b) => (Number.isFinite(b) && b > 0 ? b : 0));
+    const sumBases = safeBases.reduce((a, b) => a + b, 0);
+    if (sumBases <= 0) return Array.from({ length: n }, () => 0);
+
+    const factor = 10 ** decimals;
+    const rounded: number[] = [];
+    let running = 0;
+
+    for (let i = 0; i < n; i++) {
+      const raw = (total * safeBases[i]) / sumBases;
+      const r = Math.round(raw * factor) / factor;
+      rounded.push(r);
+      running += r;
+    }
+
+    const diff = Math.round((total - running) * factor) / factor;
+    if (Math.abs(diff) > 0) {
+      // Adjust the largest-base item to absorb rounding diff.
+      let idx = 0;
+      let best = safeBases[0] ?? 0;
+      for (let i = 1; i < n; i++) {
+        if ((safeBases[i] ?? 0) > best) {
+          best = safeBases[i] ?? 0;
+          idx = i;
+        }
+      }
+      rounded[idx] = Math.round((rounded[idx] + diff) * factor) / factor;
+    }
+
+    return rounded;
+  }
 
   async create(payload: CreateOrderDto) {
     // Resolve customer identity (orders store email/name snapshot for reporting/receipts)
     const customer = await this.userRepository.findOne({ where: { id: payload.customerId } });
     if (!customer) throw new NotFoundException('Customer not found');
     if (!customer.email) throw new BadRequestException('Customer email is missing');
+
+    // Customer shipping address is editable/reusable and is snapshotted onto the order (immutable).
+    // If shippingAddress is provided at checkout, we upsert it into the customer's shipping address.
+    let customerShippingAddress = await this.customerShippingAddressService
+      .getOptionalForUser(payload.customerId)
+      .catch(() => null);
+
+    if (payload.shippingAddress) {
+      if (!payload.shippingAddress.locationId) {
+        throw new BadRequestException('shippingAddress.locationId is required');
+      }
+      customerShippingAddress = await this.customerShippingAddressService.upsertForUser(
+        payload.customerId,
+        payload.shippingAddress,
+      );
+    }
+
+    // Backward-compat: if the client only provides shippingLocationId and the customer has no shipping address yet,
+    // create a minimal customer shipping address so it can be reused/edited later.
+    if (!customerShippingAddress && payload.shippingLocationId) {
+      const loc = await this.locationRepository.findOne({
+        where: { id: payload.shippingLocationId },
+        select: { id: true, countryCode: true } as any,
+      });
+
+      if (!loc?.countryCode) {
+        throw new BadRequestException('Invalid shippingLocationId');
+      }
+
+      customerShippingAddress = await this.customerShippingAddressService.upsertForUser(
+        payload.customerId,
+        {
+          countryCode: String(loc.countryCode).toUpperCase(),
+          locationId: payload.shippingLocationId,
+        } as any,
+      );
+    }
+
+    const shippingAddress = customerShippingAddress?.address;
+    if (shippingAddress && !shippingAddress.locationId) {
+      throw new BadRequestException('Customer shipping address must include locationId');
+    }
+
+    const resolvedShippingLocationId: string | undefined =
+      shippingAddress?.locationId ?? payload.shippingLocationId;
+
+    const shippingSnapshot = shippingAddress
+      ? {
+          firstName: shippingAddress.firstName ?? customer.firstName,
+          lastName: shippingAddress.lastName ?? customer.lastName,
+          phone: shippingAddress.phone ?? (customer as any).phone,
+          countryCode: shippingAddress.countryCode,
+          locationId: shippingAddress.locationId,
+          fieldsJson: shippingAddress.fieldsJson ?? {},
+        }
+      : undefined;
 
     // Resolve price list if provided
     let priceList: PriceList | null = null;
@@ -70,13 +170,30 @@ export class OrderService {
       }
     }
 
+    let resolvedPriceList: PriceList | null = priceList;
+    if (!resolvedPriceList) {
+      const defaultCurrency = await this.currencyService.getDefaultCurrencyCode();
+      resolvedPriceList = await this.priceService.findActivePriceListByCurrency(defaultCurrency);
+
+      if (!resolvedPriceList) {
+        resolvedPriceList = await this.priceListRepository.findOne({
+          where: { status: 'active' as any },
+          order: { priority: 'DESC' as any, createdAt: 'DESC' as any },
+        });
+      }
+
+      if (!resolvedPriceList) {
+        throw new NotFoundException('No active price list available');
+      }
+    }
+
     const order = this.orderRepository.create({
       orderNumber: await this.generateOrderNumber(),
       customerId: payload.customerId,
       customerEmail: customer.email,
       customerName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || undefined,
-      priceListId: priceList?.id ?? (await this.priceService.findActivePriceListByCurrency('KES'))?.id,
-      currencyCode: priceList?.currency ?? (await this.priceService.findActivePriceListByCurrency('KES'))?.currency ?? 'KES',
+      priceListId: resolvedPriceList.id,
+      currencyCode: await this.currencyService.assertExists(resolvedPriceList.currency),
       itemsSubtotal: '0',
       discountTotal: '0',
       feeTotal: '0',
@@ -92,26 +209,28 @@ export class OrderService {
 
     const savedOrder = await this.orderRepository.save(order);
 
-    const resolvedShippingLocationId: string | undefined = payload.shippingLocationId;
-
-    const pricingContext = payload.shippingLocationId
+    const pricingContext = resolvedShippingLocationId
       ? {
           countryCode: (
             await this.locationRepository.findOne({
-              where: { id: payload.shippingLocationId },
+              where: { id: resolvedShippingLocationId },
               select: { id: true, countryCode: true },
             })
           )?.countryCode,
         }
       : undefined;
 
-    // Persist an order-level shipping snapshot if locationId is provided.
-    if (payload.shippingLocationId) {
+    // Persist an order-level shipping snapshot (so the order is immutable even if the customer address changes).
+    if (shippingSnapshot || resolvedShippingLocationId) {
       await this.orderShippingAddressRepository.save(
         this.orderShippingAddressRepository.create({
           orderId: savedOrder.id,
-          locationId: payload.shippingLocationId,
-          fieldsJson: {},
+          firstName: shippingSnapshot?.firstName,
+          lastName: shippingSnapshot?.lastName,
+          phone: shippingSnapshot?.phone,
+          countryCode: shippingSnapshot?.countryCode,
+          locationId: shippingSnapshot?.locationId ?? resolvedShippingLocationId,
+          fieldsJson: shippingSnapshot?.fieldsJson ?? {},
         }),
       );
     }
@@ -187,21 +306,37 @@ export class OrderService {
       Array.from(productIds),
     );
 
-    const quotes = await this.shippingMatrixService.getQuotes({
-      locationId: resolvedShippingLocationId,
-      subtotal: itemsSubtotal,
-      totalWeight,
-      itemCount: totalItemCount,
-      currencyCode: savedOrder.currencyCode,
-      allowedMethodCodes: catalogShipping.allowedMethodCodes,
-      excludedMethodCodes: catalogShipping.excludedMethodCodes,
-      ratePriorityBoost: catalogShipping.ratePriorityBoost,
-      productIds: catalogShipping.productIds,
-      categoryIds: catalogShipping.categoryIds,
-      taxonomyIds: catalogShipping.taxonomyIds,
-    });
+    const quotes = resolvedShippingLocationId
+      ? await this.shippingMatrixService.getQuotes({
+          locationId: resolvedShippingLocationId,
+          subtotal: itemsSubtotal,
+          totalWeight,
+          itemCount: totalItemCount,
+          currencyCode: savedOrder.currencyCode,
+          allowedMethodCodes: catalogShipping.allowedMethodCodes,
+          excludedMethodCodes: catalogShipping.excludedMethodCodes,
+          ratePriorityBoost: catalogShipping.ratePriorityBoost,
+          productIds: catalogShipping.productIds,
+          categoryIds: catalogShipping.categoryIds,
+          taxonomyIds: catalogShipping.taxonomyIds,
+        })
+      : [];
 
-    const best = quotes[0];
+    let best = quotes[0];
+    if (payload.shippingMethodCode) {
+      const code = String(payload.shippingMethodCode).trim();
+      const candidates = quotes.filter((q) => q.method?.code === code);
+      if (!candidates.length) {
+        throw new BadRequestException('Selected shipping method is not available for this destination');
+      }
+
+      candidates.sort(
+        (a, b) =>
+          (b.effectivePriority ?? 0) - (a.effectivePriority ?? 0) ||
+          (a.amount ?? 0) - (b.amount ?? 0),
+      );
+      best = candidates[0];
+    }
     const shippingFee = best ? best.amount : 0;
 
     if (shippingFee !== 0) {
@@ -321,6 +456,45 @@ export class OrderService {
     const totalDiscount = Number(promoResult.totalDiscount || '0');
     const shippingDiscount = Number((promoResult as any).shippingDiscount || '0');
 
+    // Allocate order-level promotion discount to items and persist per-item charges.
+    if (totalDiscount > 0 && items.length) {
+      const itemBases = items.map((it) => Number(it.baseSubtotal || '0'));
+      const allocations = this.allocateProportionally(totalDiscount, itemBases, 4);
+
+      const discountCharges: OrderItemCharge[] = [];
+      for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        const allocated = allocations[i] ?? 0;
+        if (!allocated) continue;
+
+        it.discountTotal = allocated.toFixed(4);
+
+        discountCharges.push(
+          this.orderItemChargeRepository.create({
+            orderItemId: it.id,
+            chargeKind: 'discount',
+            code: promoResult.applied?.map((a) => a.code).join(',') || undefined,
+            displayName: 'Promotion Discount',
+            calculationType: 'fixed',
+            baseAmount: it.baseSubtotal,
+            quantityBasis: it.quantity,
+            amount: (-allocated).toFixed(4),
+            isIncludedInPrice: false,
+            sourceType: 'promotion',
+            sourceReference: promoResult.applied?.map((a) => a.promotionId).join(',') || undefined,
+            metaJson: {
+              applied: promoResult.applied ?? [],
+              allocationBasis: 'base_subtotal',
+            },
+          }),
+        );
+      }
+
+      if (discountCharges.length) {
+        await this.orderItemChargeRepository.save(discountCharges);
+      }
+    }
+
     if (totalDiscount > 0) {
       // Persist an order-level charge representing the promotion discount
       const charge = this.orderLevelChargeRepository.create({
@@ -358,40 +532,117 @@ export class OrderService {
       await this.orderLevelChargeRepository.save(shippingDiscCharge);
     }
 
-    savedOrder.discountTotal = totalDiscount.toFixed(2);
-    savedOrder.shippingDiscount = shippingDiscount.toFixed(2);
+    savedOrder.discountTotal = totalDiscount.toFixed(4);
+    savedOrder.shippingDiscount = shippingDiscount.toFixed(4);
 
     // Tax calculation using TaxService for configurable tax rate
-    const taxable = itemsSubtotal - totalDiscount + (shippingFee - shippingDiscount);
+    const shippingNet = Math.max(0, shippingFee - shippingDiscount);
+    const taxable = itemsSubtotal - totalDiscount + shippingNet;
     const taxResult = await this.taxService.calculateTax({ taxableAmount: taxable, currencyCode: savedOrder.currencyCode });
 
-    const taxAmount = taxResult.amount;
+    const taxAmount = Number(taxResult.amount || 0);
 
-    const taxCharge = this.orderLevelChargeRepository.create({
-      orderId: savedOrder.id,
-      chargeKind: 'tax',
-      displayName: 'Tax',
-      calculationType: taxResult.rate ? 'percentage' : 'fixed',
-      rate: (taxResult.rate || 0).toFixed(6) as any,
-      baseAmount: taxable.toFixed(4),
-      amount: taxAmount.toFixed(4),
-      isIncludedInPrice: false,
-      appliesToShipping: false,
-      sourceType: 'tax',
-      metaJson: taxResult.meta || {},
-    });
+    // Allocate tax between items and shipping (so order.taxTotal represents item tax, order.shippingTax represents shipping tax).
+    const itemTaxableBases = items.map((it) =>
+      Math.max(0, Number(it.baseSubtotal || '0') - Number(it.discountTotal || '0')),
+    );
+    const basesWithShipping = [...itemTaxableBases, shippingNet];
+    const taxAllocations = this.allocateProportionally(taxAmount, basesWithShipping, 4);
 
-    await this.orderLevelChargeRepository.save(taxCharge);
+    const taxCharges: OrderItemCharge[] = [];
+    let itemTaxSum = 0;
+    for (let i = 0; i < items.length; i++) {
+      const it = items[i];
+      const allocated = taxAllocations[i] ?? 0;
+      it.taxTotal = allocated.toFixed(4);
+      itemTaxSum += allocated;
 
-    savedOrder.taxTotal = taxAmount.toFixed(4);
-    savedOrder.shippingTax = taxAmount.toFixed(4); // for clarity keep the same value under shippingTax
-    savedOrder.shippingTotal = (shippingFee - shippingDiscount + taxAmount).toFixed(4);
+      if (allocated > 0) {
+        taxCharges.push(
+          this.orderItemChargeRepository.create({
+            orderItemId: it.id,
+            chargeKind: 'tax',
+            displayName: 'Tax',
+            calculationType: taxResult.rate ? 'percentage' : 'fixed',
+            rate: (taxResult.rate || 0).toFixed(6) as any,
+            baseAmount: Math.max(0, itemTaxableBases[i] ?? 0).toFixed(4),
+            quantityBasis: it.quantity,
+            amount: allocated.toFixed(4),
+            isIncludedInPrice: false,
+            sourceType: 'tax',
+            metaJson: taxResult.meta || {},
+          }),
+        );
+      }
+    }
+
+    const shippingTax = taxAllocations[items.length] ?? 0;
+
+    if (taxCharges.length) {
+      await this.orderItemChargeRepository.save(taxCharges);
+    }
+
+    // Update per-item totals now that discounts/tax are known.
+    for (const it of items) {
+      const base = Number(it.baseSubtotal || '0');
+      const discount = Number(it.discountTotal || '0');
+      const fee = Number(it.feeTotal || '0');
+      const tax = Number(it.taxTotal || '0');
+      it.total = (base - discount + fee + tax).toFixed(4);
+    }
+    await this.orderItemRepository.save(items);
+
+    // Persist order-level tax charges (split items vs shipping).
+    if (itemTaxSum > 0) {
+      const taxChargeItems = this.orderLevelChargeRepository.create({
+        orderId: savedOrder.id,
+        chargeKind: 'tax',
+        displayName: 'Tax',
+        calculationType: taxResult.rate ? 'percentage' : 'fixed',
+        rate: (taxResult.rate || 0).toFixed(6) as any,
+        baseAmount: (itemsSubtotal - totalDiscount).toFixed(4),
+        amount: itemTaxSum.toFixed(4),
+        isIncludedInPrice: false,
+        appliesToShipping: false,
+        sourceType: 'tax',
+        metaJson: taxResult.meta || {},
+      });
+      await this.orderLevelChargeRepository.save(taxChargeItems);
+    }
+
+    if (shippingTax > 0) {
+      const taxChargeShipping = this.orderLevelChargeRepository.create({
+        orderId: savedOrder.id,
+        chargeKind: 'tax',
+        displayName: 'Shipping Tax',
+        calculationType: taxResult.rate ? 'percentage' : 'fixed',
+        rate: (taxResult.rate || 0).toFixed(6) as any,
+        baseAmount: shippingNet.toFixed(4),
+        amount: shippingTax.toFixed(4),
+        isIncludedInPrice: false,
+        appliesToShipping: true,
+        sourceType: 'tax',
+        metaJson: taxResult.meta || {},
+      });
+      await this.orderLevelChargeRepository.save(taxChargeShipping);
+    }
+
+    savedOrder.taxTotal = itemTaxSum.toFixed(4);
+    savedOrder.shippingTax = shippingTax.toFixed(4);
+    savedOrder.shippingTotal = (shippingNet + shippingTax).toFixed(4);
 
     // Grand total: itemsSubtotal - discounts + shipping + tax
-    savedOrder.grandTotal = (itemsSubtotal - totalDiscount + (shippingFee - shippingDiscount) + taxAmount).toFixed(4);
+    savedOrder.grandTotal = (itemsSubtotal - totalDiscount + shippingNet + taxAmount).toFixed(4);
 
     const updated = await this.orderRepository.save(savedOrder);
-    return updated;
+
+    // Return hydrated order so clients can see item charges + order level charges in one response.
+    const hydrated = await this.orderRepository.findOne({
+      where: { id: updated.id },
+      relations: ['items', 'items.itemCharges', 'orderLevelCharges'],
+    } as any);
+
+    return hydrated ?? updated;
   }
 
   private async generateOrderNumber() {

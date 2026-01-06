@@ -9,6 +9,14 @@ export type TestApp = {
 };
 
 export async function createTestApp(): Promise<TestApp> {
+  process.env.NODE_ENV = process.env.NODE_ENV ?? 'test';
+
+  // Ensure auth/JWT infrastructure can bootstrap in e2e.
+  // These defaults are only used if the environment doesn't provide them.
+  process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'e2e_jwt_secret';
+  process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? 'e2e_jwt_refresh_secret';
+  process.env.SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL ?? 'superadmin@gmail.com';
+
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
   const app = moduleRef.createNestApplication({
     // Needed for webhook signature verification tests.

@@ -8,6 +8,7 @@ import { LocationSeeder } from '../location/seeders/location.seeder';
 import { ChannelsSeeder } from '../channels/seeders/channels.seeder';
 import { CustomerTierSeeder } from '../customer-tier/seeders/customer-tier.seeder';
 import { WhatsappTemplateSeeder } from '../whatsapp/seeders/whatsapp-template.seeder';
+import { CurrencySeeder } from '../currency/seeders/currency.seeder';
 
 async function runSeeders() {
   // eslint-disable-next-line no-console
@@ -24,12 +25,19 @@ async function runSeeders() {
     const channelsSeeder = app.get(ChannelsSeeder);
     const customerTierSeeder = app.get(CustomerTierSeeder);
     const whatsappTemplateSeeder = app.get(WhatsappTemplateSeeder);
+    const currencySeeder = app.get(CurrencySeeder);
 
     // eslint-disable-next-line no-console
     console.log('⚙️ Seeding application settings...');
     await settingSeeder.seed();
     // eslint-disable-next-line no-console
     console.log('✅ Settings seeding completed');
+
+    // eslint-disable-next-line no-console
+    console.log('💱 Seeding currencies (KES, USD, EUR, ...)...');
+    await currencySeeder.seed();
+    // eslint-disable-next-line no-console
+    console.log('✅ Currencies seeding completed');
 
     // eslint-disable-next-line no-console
     console.log('🗺️ Seeding locations (Kenya)...');

@@ -15,6 +15,7 @@ describe('PriceService', () => {
   };
   const currencyRepo = {
     findOne: jest.fn(),
+    exist: jest.fn(),
   };
   const priceRowRepo = {
     find: jest.fn(),
@@ -56,6 +57,7 @@ describe('PriceService', () => {
   it('resolves price for SKU using provided price list', async () => {
     const pl = { id: '1', currency: 'KES', status: 'active', priority: 0 } as PriceList;
     priceListRepo.findOne.mockResolvedValue(pl);
+    currencyRepo.exist.mockResolvedValue(true);
     currencyRepo.findOne.mockResolvedValueOnce({ code: 'KES', precision: 2 } as Currency);
     priceRowRepo.find.mockResolvedValueOnce([
       {
@@ -76,6 +78,7 @@ describe('PriceService', () => {
   it('selects price list by currency precedence (priority)', async () => {
     const high = { id: '2', code: 'high', currency: 'KES', status: 'active', priority: 10, createdAt: new Date(), updatedAt: new Date() } as PriceList;
     priceListRepo.findOne.mockResolvedValueOnce(high);
+    currencyRepo.exist.mockResolvedValue(true);
     currencyRepo.findOne.mockResolvedValueOnce({ code: 'KES', precision: 2 } as Currency);
     priceRowRepo.find.mockResolvedValueOnce([
       { id: 'r2', unitAmount: '20000', compareAtAmount: '25000', minQuantity: 1, selectorJson: {} } as unknown as PriceRow,
@@ -89,6 +92,7 @@ describe('PriceService', () => {
   it('caches resolved price', async () => {
     const pl = { id: '3', code: 'pl3', currency: 'KES', status: 'active', priority: 0, createdAt: new Date(), updatedAt: new Date() } as PriceList;
     priceListRepo.findOne.mockResolvedValueOnce(pl);
+    currencyRepo.exist.mockResolvedValue(true);
     currencyRepo.findOne.mockResolvedValueOnce({ code: 'KES', precision: 2 } as Currency);
     priceRowRepo.find.mockResolvedValueOnce([
       { id: 'r3', unitAmount: '10000', minQuantity: 1, selectorJson: {} } as unknown as PriceRow,
@@ -105,6 +109,7 @@ describe('PriceService', () => {
   it('prefers context-matched prices over generic ones', async () => {
     const pl = { id: 'ctx', currency: 'KES', status: 'active', priority: 0 } as PriceList;
     priceListRepo.findOne.mockResolvedValue(pl);
+    currencyRepo.exist.mockResolvedValue(true);
     currencyRepo.findOne.mockResolvedValueOnce({ code: 'KES', precision: 2 } as Currency);
     priceRowRepo.find.mockResolvedValueOnce([
       {

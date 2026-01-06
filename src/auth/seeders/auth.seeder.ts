@@ -14,6 +14,7 @@ import { RolePermission } from '../entities/role-permission.entity';
 import { User } from 'src/user/entities/user.entity';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
+import { buildPasswordSetLink } from 'src/auth/utils/password-set-link.util';
 import { CacheKey, CacheKeyService, CacheKeyStatus } from '../entities/cache-key.entity';
 
 interface RoleConfig {
@@ -247,13 +248,12 @@ export class AuthSeeder {
       }),
     );
 
-    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
-    const passwordSetPath = this.configService.get<string>(
-      'PASSWORD_SET_PATH',
-      '/auth/password-set',
-    );
-    const base = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
-    const link = `${base}${passwordSetPath}?token=${token}`;
+    const link = buildPasswordSetLink({
+      configService: this.configService,
+      token,
+      audience: 'admin',
+      roleName: role.name,
+    });
 
     try {
       await this.emailServiceUtils.sendSetPasswordLink({
@@ -263,6 +263,7 @@ export class AuthSeeder {
         expiresInMinutes: Math.round(
           (expiresAt.getTime() - Date.now()) / 60000,
         ),
+        audience: 'admin',
       });
     } catch (err) {
       // In many dev environments SMTP is not configured.

@@ -40,6 +40,7 @@ import { ProductDTO, ProductViewDTO } from '../dto/product-v2/product.dto';
 import { AvailabilityDTO, ContextualOverrideDTO, LocalizedString } from '../dto/product-v2/product.types';
 import { applyContextualOverrides, ProductViewContext } from '../utils/contextual-overrides.util';
 import { PriceService } from './price.service';
+import { CurrencyService } from 'src/currency/currency.service';
 
 interface PaginatedProducts {
   data: Product[];
@@ -98,7 +99,13 @@ export class ProductService {
     private readonly cache: AppCacheService,
     private readonly shippingCatalogContextCacheIndex: ShippingCatalogContextCacheIndexService,
     private readonly priceService: PriceService,
+    private readonly currencyService: CurrencyService,
   ) {}
+
+  private async normalizeAndValidateCurrencyCode(currencyCode?: string): Promise<string | undefined> {
+    if (!currencyCode) return undefined;
+    return this.currencyService.assertExists(currencyCode);
+  }
 
   private getRepos(manager?: EntityManager) {
     if (!manager) {
@@ -362,6 +369,8 @@ export class ProductService {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
 
+    const currencyCode = await this.normalizeAndValidateCurrencyCode(filters.currencyCode);
+
     const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'list', {
       page,
       limit,
@@ -374,7 +383,7 @@ export class ProductService {
       location: filters.location,
       locale: filters.locale,
       priceListId: filters.priceListId,
-      currencyCode: filters.currencyCode,
+      currencyCode,
     });
     const key = `public:catalog:products:list:${cacheKeyHash(rawKey)}`;
 
@@ -436,7 +445,7 @@ export class ProductService {
               locale: filters.locale,
               includeSkus: false,
               priceListId: filters.priceListId,
-              currencyCode: filters.currencyCode,
+              currencyCode,
             }),
           ),
         );
@@ -448,7 +457,8 @@ export class ProductService {
   }
 
   async findOnePublic(id: string, opts?: { locale?: string; priceListId?: string; currencyCode?: string }): Promise<PublicProductDto> {
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'one', { id, locale: opts?.locale, priceListId: opts?.priceListId, currencyCode: opts?.currencyCode });
+    const currencyCode = await this.normalizeAndValidateCurrencyCode(opts?.currencyCode);
+    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'one', { id, locale: opts?.locale, priceListId: opts?.priceListId, currencyCode });
     const key = `public:catalog:products:${cacheKeyHash(rawKey)}`;
 
     const product = await this.cache.remember(
@@ -474,7 +484,7 @@ export class ProductService {
       locale: opts?.locale,
       includeSkus: true,
       priceListId: opts?.priceListId,
-      currencyCode: opts?.currencyCode,
+      currencyCode,
     });
   }
 
@@ -1373,9 +1383,10 @@ export class ProductService {
     const defaultSku = (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
     const resolvedPrice = await this.resolvePriceForSku(product.id, defaultSku, opts);
     const basePrice = resolvedPrice?.unitPrice ? Number(resolvedPrice.unitPrice) : undefined;
+    const dynamicCurrency = opts?.currencyCode ?? (await this.currencyService.getDefaultCurrencyCode());
     const pricing = resolvedPrice
       ? ({ currency: resolvedPrice.currencyCode, pricingType: 'FIXED' as const, basePrice } as any)
-      : ({ currency: opts?.currencyCode ?? 'USD', pricingType: 'DYNAMIC' as const } as any);
+      : ({ currency: dynamicCurrency, pricingType: 'DYNAMIC' as const } as any);
 
     const availability = this.buildAvailabilityDto(product.availabilityJson as Record<string, unknown>);
 

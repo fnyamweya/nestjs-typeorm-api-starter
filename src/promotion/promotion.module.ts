@@ -7,9 +7,10 @@ import { PromotionRedemption } from './entities/promotion-redemption.entity';
 import { PromotionService } from './services/promotion.service';
 import { PromotionController } from './controllers/promotion.controller';
 import { PublicPromotionController } from './controllers/public-promotion.controller';
+import { CurrencyModule } from 'src/currency/currency.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promotion, PromotionCondition, PromotionAction, PromotionRedemption])],
+  imports: [TypeOrmModule.forFeature([Promotion, PromotionCondition, PromotionAction, PromotionRedemption]), CurrencyModule],
   controllers: [PromotionController, PublicPromotionController],
   providers: [PromotionService],
   exports: [PromotionService],

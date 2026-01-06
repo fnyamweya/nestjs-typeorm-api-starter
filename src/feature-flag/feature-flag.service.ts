@@ -325,6 +325,10 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
   }
 
   private initializeRedis(): Redis | undefined {
+    if (process.env.NODE_ENV === 'test') {
+      return undefined;
+    }
+
     const options = this.buildRedisOptions();
     try {
       const client = new Redis(options);

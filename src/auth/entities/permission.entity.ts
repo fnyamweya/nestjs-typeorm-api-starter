@@ -35,12 +35,14 @@ export enum PermissionModule {
   ORDERS = 'Orders',
   PROMOTIONS = 'Promotions',
   CHANNELS = 'Channels',
+  PRICING = 'Pricing',
   CUSTOMER_TIERS = 'Customer Tiers',
   SHIPPING = 'Shipping',
   TAX = 'Tax',
 
   // Catalog / content
   CATALOG = 'Catalog',
+  CURRENCIES = 'Currencies',
   LOCATIONS = 'Locations',
   ADDRESSES = 'Addresses',
   ADDRESS_CONFIG = 'Address Config',

@@ -40,7 +40,7 @@ export class Location {
   code?: string;
 
   @Column({ type: 'text' })
-  type: LocationType;
+  type: string;
 
   @TreeParent()
   @JoinColumn({ name: 'parent_id' })

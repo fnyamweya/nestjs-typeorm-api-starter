@@ -34,6 +34,7 @@ import { BrandService } from './services/brand.service';
 import { CatalogSeeder } from './seeders/catalog.seeder';
 import { PriceService } from './services/price.service';
 import { CustomerTierModule } from '../customer-tier/customer-tier.module';
+import { CurrencyModule } from '../currency/currency.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { CustomerTierModule } from '../customer-tier/customer-tier.module';
       Channel,
     ]),
     CustomerTierModule,
+    CurrencyModule,
   ],
   controllers: [
     TaxonomyController,

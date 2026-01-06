@@ -32,9 +32,17 @@ export class AddProductOptionsAndPriceRow20260111_1768700000000 implements Migra
     );
 
     await queryRunner.query(`
-      UPDATE "price_list"
-      SET "priority" = COALESCE(NULLIF(("meta_json"->>'priority')::text, '')::int, "priority")
-      WHERE "meta_json" ? 'priority'
+      DO $$
+      BEGIN
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema='public' AND table_name='price_list' AND column_name='meta_json'
+        ) THEN
+          UPDATE "price_list"
+          SET "priority" = COALESCE(NULLIF(("meta_json"->>'priority')::text, '')::int, "priority")
+          WHERE "meta_json" ? 'priority';
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(`

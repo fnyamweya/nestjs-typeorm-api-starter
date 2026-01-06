@@ -8,10 +8,27 @@ export type CacheRememberOptions = {
 @Injectable()
 export class AppCacheService {
   private readonly logger = new Logger(AppCacheService.name);
+  private readonly inMemory = new Map<string, { value: string; expiresAt: number }>();
+  private readonly useMemory = process.env.NODE_ENV === 'test';
 
   constructor(private readonly redisService: RedisService) {}
 
   async get<T>(key: string): Promise<T | null> {
+    if (this.useMemory) {
+      const entry = this.inMemory.get(key);
+      if (!entry) return null;
+      if (entry.expiresAt <= Date.now()) {
+        this.inMemory.delete(key);
+        return null;
+      }
+      try {
+        return JSON.parse(entry.value) as T;
+      } catch {
+        this.inMemory.delete(key);
+        return null;
+      }
+    }
+
     try {
       const redis = this.redisService.getClient();
       const value = await redis.get(key);
@@ -24,6 +41,14 @@ export class AppCacheService {
   }
 
   async set<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
+    if (this.useMemory) {
+      this.inMemory.set(key, {
+        value: JSON.stringify(value),
+        expiresAt: Date.now() + ttlSeconds * 1000,
+      });
+      return;
+    }
+
     try {
       const redis = this.redisService.getClient();
       await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
@@ -33,6 +58,11 @@ export class AppCacheService {
   }
 
   async del(key: string): Promise<void> {
+    if (this.useMemory) {
+      this.inMemory.delete(key);
+      return;
+    }
+
     try {
       const redis = this.redisService.getClient();
       await redis.del(key);
@@ -42,6 +72,13 @@ export class AppCacheService {
   }
 
   async delByPrefix(prefix: string): Promise<void> {
+    if (this.useMemory) {
+      for (const k of this.inMemory.keys()) {
+        if (k.startsWith(prefix)) this.inMemory.delete(k);
+      }
+      return;
+    }
+
     const redis = this.redisService.getClient();
     const pattern = `${prefix}*`;
 

@@ -5,9 +5,10 @@ import { ChannelsService } from './services/channels.service';
 import { ChannelsController } from './controllers/channels.controller';
 import { PublicChannelsController } from './controllers/public-channels.controller';
 import { ChannelsSeeder } from './seeders/channels.seeder';
+import { CurrencyModule } from 'src/currency/currency.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Channel])],
+  imports: [TypeOrmModule.forFeature([Channel]), CurrencyModule],
   providers: [ChannelsService, ChannelsSeeder],
   controllers: [ChannelsController, PublicChannelsController],
   exports: [ChannelsService, ChannelsSeeder, TypeOrmModule],

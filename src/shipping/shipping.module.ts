@@ -14,12 +14,14 @@ import { CatalogModule } from '../catalog/catalog.module';
 import { CatalogShippingContextService } from './services/catalog-shipping-context.service';
 import { ShippingController } from './controllers/shipping.controller';
 import { ShippingQuotesService } from './services/shipping-quotes.service';
+import { CurrencyModule } from '../currency/currency.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([ShippingZone, ShippingZoneLocation, ShippingMethod, ShippingRate, Location]),
     SettingModule,
     CatalogModule,
+    CurrencyModule,
   ],
   controllers: [AdminShippingController, ShippingController],
   providers: [

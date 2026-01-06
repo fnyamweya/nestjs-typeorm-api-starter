@@ -24,6 +24,10 @@ import { CreateWhatsappSettingDto } from '../dto/create-whatsapp-setting.dto';
 import { WhatsappResponseDto } from '../dto/whatsapp-response.dto';
 import { UpdateWhatsappSecretsDto } from '../dto/update-whatsapp-secrets.dto';
 import { WhatsappSecretsResponseDto } from '../dto/whatsapp-secrets-response.dto';
+import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
+import { S3ResponseDto } from '../dto/s3-response.dto';
+import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
+import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -255,5 +259,92 @@ export class SettingController {
   ): Promise<ApiResponse<WhatsappSecretsResponseDto>> {
     const data = await this.settingService.updateWhatsappSecrets(payload);
     return ResponseUtil.success(data, 'WhatsApp webhook secrets updated successfully');
+  }
+
+  @Post('s3')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'create',
+  })
+  @LogActivity({
+    action: ActivityAction.CREATE,
+    description: 'S3 settings setup successfully',
+    resourceType: 's3-settings',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update S3 (object storage) configuration' })
+  @ApiBody({ type: CreateS3SettingDto })
+  @ApiCreatedResponse({
+    description: 'S3 settings setup successfully',
+    type: S3ResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to manage settings',
+  })
+  async createS3Settings(
+    @Body() dto: CreateS3SettingDto,
+  ): Promise<ApiResponse<S3ResponseDto>> {
+    const data = await this.settingService.createS3Settings(dto);
+    return ResponseUtil.created(data, 'S3 settings setup successfully');
+  }
+
+  @Get('s3')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve configured S3 (object storage) settings' })
+  @ApiOkResponse({
+    description: 'S3 settings retrieved successfully',
+    type: S3ResponseDto,
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to view settings',
+  })
+  async getS3Settings(): Promise<ApiResponse<S3ResponseDto>> {
+    const data = await this.settingService.getS3Settings();
+    return ResponseUtil.success(data, 'S3 settings retrieved successfully');
+  }
+
+  @Post('s3/secrets')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'S3 credentials updated successfully',
+    resourceType: 's3-secrets',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update S3 credentials (access key + secret key)',
+    description:
+      'Stores secrets encrypted at rest. Values are never returned in responses; only presence booleans.',
+  })
+  @ApiBody({ type: UpdateS3SecretsDto })
+  @ApiOkResponse({
+    description: 'S3 credentials updated successfully',
+    type: S3SecretsResponseDto,
+  })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to manage settings',
+  })
+  async updateS3Secrets(
+    @Body() payload: UpdateS3SecretsDto,
+  ): Promise<ApiResponse<S3SecretsResponseDto>> {
+    const data = await this.settingService.updateS3Secrets(payload);
+    return ResponseUtil.success(data, 'S3 credentials updated successfully');
   }
 }

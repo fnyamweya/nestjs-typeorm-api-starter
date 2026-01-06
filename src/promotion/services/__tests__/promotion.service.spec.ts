@@ -13,6 +13,7 @@ import {
   PromotionStatus,
   StackingPolicy,
 } from '../../entities/promotion.enums';
+import { CurrencyService } from '../../../currency/currency.service';
 
 describe('PromotionService', () => {
   let service: PromotionService;
@@ -36,6 +37,12 @@ describe('PromotionService', () => {
         { provide: getRepositoryToken(PromotionCondition), useValue: conditionRepo },
         { provide: getRepositoryToken(PromotionAction), useValue: actionRepo },
         { provide: getRepositoryToken(PromotionRedemption), useValue: redemptionRepo },
+        {
+          provide: CurrencyService,
+          useValue: {
+            assertExists: jest.fn(),
+          },
+        },
         {
           provide: AppCacheService,
           useValue: {

@@ -8,6 +8,7 @@ import { CatalogShippingContextService } from './catalog-shipping-context.servic
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
 import { Location } from '../../location/entities/location.entity';
+import { CurrencyService } from 'src/currency/currency.service';
 
 @Injectable()
 export class ShippingQuotesService {
@@ -20,6 +21,7 @@ export class ShippingQuotesService {
     private readonly shippingMatrixService: ShippingMatrixService,
     private readonly catalogShippingContextService: CatalogShippingContextService,
     private readonly cache: AppCacheService,
+    private readonly currencyService: CurrencyService,
   ) {}
 
   async getQuotes(payload: {
@@ -28,6 +30,10 @@ export class ShippingQuotesService {
     priceListId?: string;
     currencyCode?: string;
   }) {
+    const currencyCode = payload.currencyCode
+      ? await this.currencyService.assertExists(payload.currencyCode)
+      : await this.currencyService.getDefaultCurrencyCode();
+
     const normalizedItems = (payload.orderItems ?? [])
       .map((i) => ({
         productSkuId: String(i.productSkuId),
@@ -39,7 +45,7 @@ export class ShippingQuotesService {
     const rawKey = cacheKeyFromParts('shipping', 'quotes', {
       shippingLocationId: payload.shippingLocationId,
       priceListId: payload.priceListId,
-      currencyCode: payload.currencyCode ?? 'KES',
+      currencyCode,
       items: normalizedItems,
     });
     const key = `shipping:quotes:${cacheKeyHash(rawKey)}`;
@@ -51,7 +57,7 @@ export class ShippingQuotesService {
           shippingLocationId: payload.shippingLocationId,
           orderItems: normalizedItems,
           priceListId: payload.priceListId,
-          currencyCode: payload.currencyCode,
+          currencyCode,
         }),
       { ttlSeconds: 30 },
     );
@@ -105,7 +111,7 @@ export class ShippingQuotesService {
 
     if (!anyRequiresShipping) return [];
 
-    const currencyCode = payload.currencyCode || 'KES';
+    const currencyCode = payload.currencyCode ?? (await this.currencyService.getDefaultCurrencyCode());
 
     const catalogShipping = await this.catalogShippingContextService.resolveCatalogShippingContext(
       Array.from(productIds),

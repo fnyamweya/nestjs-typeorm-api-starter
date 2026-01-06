@@ -20,18 +20,18 @@ export class LocationService {
     return (countryCode || '').toUpperCase();
   }
 
-  private async getChain(countryCode: string): Promise<LocationType[]> {
+  private async getChain(countryCode: string): Promise<string[]> {
     return this.addressFieldConfigService.getLocationChain(countryCode);
   }
 
-  private allowedChildTypesFromChain(chain: LocationType[], parentType: LocationType): LocationType[] {
+  private allowedChildTypesFromChain(chain: string[], parentType: string): string[] {
     const idx = chain.indexOf(parentType);
     if (idx < 0) return [];
     const next = chain[idx + 1];
     return next ? [next] : [];
   }
 
-  async getAllowedChildTypes(params: { countryCode: string; parentType?: LocationType; parentId?: string }) {
+  async getAllowedChildTypes(params: { countryCode: string; parentType?: string; parentId?: string }) {
     const countryCode = this.normalizeCountryCode(params.countryCode);
     const chain = await this.getChain(countryCode);
 
@@ -71,6 +71,16 @@ export class LocationService {
   }
 
   async list(params: ListLocationsDto): Promise<Location[]> {
+    // Optional guardrails: if caller provides countryCode + type, ensure the type is in that country's chain.
+    if (params.countryCode && params.type) {
+      const chain = await this.getChain(this.normalizeCountryCode(params.countryCode));
+      if (chain.length && !chain.includes(params.type)) {
+        throw new BadRequestException(
+          `Invalid type '${params.type}' for country '${params.countryCode}'. Allowed: ${chain.join(', ')}`,
+        );
+      }
+    }
+
     const where: any = {
       ...(params.countryCode ? { countryCode: params.countryCode } : {}),
       ...(params.type ? { type: params.type } : {}),

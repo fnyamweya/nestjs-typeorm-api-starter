@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { LocationType } from 'src/location/entities/location.entity';
 import { GooglePlaceDetails } from 'src/common/google-places/google-places.service';
 import { CountryConfig } from './entities/country-config.entity';
+import { CurrencyService } from 'src/currency/currency.service';
 
 export type GoogleAdminComponentType =
   | 'country'
@@ -38,6 +39,7 @@ export class CountryConfigService {
   constructor(
     @InjectRepository(CountryConfig)
     private readonly repo: Repository<CountryConfig>,
+    private readonly currencyService: CurrencyService,
   ) {}
 
   /**
@@ -151,6 +153,19 @@ export class CountryConfigService {
     }
   }
 
+  private async normalizeAndValidateCurrencies(configJson: Record<string, unknown>) {
+    const currencies = (configJson as any).currencies;
+    if (!Array.isArray(currencies)) return configJson;
+
+    const normalized: string[] = [];
+    for (const c of currencies) {
+      const code = await this.currencyService.assertExists(c);
+      normalized.push(code);
+    }
+
+    return { ...configJson, currencies: Array.from(new Set(normalized)) };
+  }
+
   async getActive(countryCode: string) {
     const code = (countryCode || 'KE').toUpperCase();
 
@@ -174,14 +189,16 @@ export class CountryConfigService {
 
     this.validateConfigJson(configJson);
 
+    const normalizedConfig = await this.normalizeAndValidateCurrencies(configJson);
+
     let row = await this.repo.findOne({
       where: { countryCode: code, isActive: true },
     });
 
     if (!row) {
-      row = this.repo.create({ countryCode: code, isActive: true, configJson });
+      row = this.repo.create({ countryCode: code, isActive: true, configJson: normalizedConfig });
     } else {
-      row.configJson = configJson;
+      row.configJson = normalizedConfig;
     }
 
     return this.repo.save(row);
