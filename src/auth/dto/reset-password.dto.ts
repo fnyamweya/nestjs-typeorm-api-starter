@@ -1,14 +1,27 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: 'Time limited access token provided after OTP verification',
+    description:
+      'Short-lived reset token returned after OTP verification (preferred).',
     example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
   })
-  @IsString({ message: 'Access Token must be a string' })
-  @IsNotEmpty({ message: 'Access Token is required' })
-  accessToken: string;
+  @ValidateIf((o) => !o.accessToken)
+  @IsString({ message: 'Reset token must be a string' })
+  @IsNotEmpty({ message: 'Reset token is required' })
+  resetToken?: string;
+
+  @ApiProperty({
+    description:
+      'Deprecated: use resetToken. Time-limited token provided after OTP verification.',
+    example: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...',
+    deprecated: true,
+  })
+  @ValidateIf((o) => !o.resetToken)
+  @IsString({ message: 'Access token must be a string' })
+  @IsNotEmpty({ message: 'Access token is required' })
+  accessToken?: string;
 
   @ApiProperty({
     description: 'New password to set for the account',

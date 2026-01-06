@@ -25,6 +25,7 @@ import { ChangePasswordDto } from '../dto/change-password.dto';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
 import { ForgotPasswordSendOTPDto } from '../dto/forgot-password-send-otp.dto';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
+import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 import * as crypto from 'crypto';
 import {
   CacheKey,
@@ -51,6 +52,14 @@ import { DeclineUserInviteDto } from '../dto/decline-user-invite.dto';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 import { FeatureFlagService } from 'src/feature-flag/feature-flag.service';
 import { mergeProfilePreferences } from 'src/user/profile-preferences';
+import { WhatsappMessageService } from 'src/whatsapp/services/whatsapp-message.service';
+import { buildPasswordSetLink } from 'src/auth/utils/password-set-link.util';
+import { RateLimitService } from 'src/common/security/rate-limit.service';
+import {
+  AUTH_OTP_JOB_SEND_RESET_PASSWORD,
+  AUTH_OTP_QUEUE,
+} from '../workers/auth-otp.worker';
+import { QueueService } from 'src/queue/queue.service';
 
 @Injectable()
 export class AuthService {
@@ -78,8 +87,67 @@ export class AuthService {
     private twoFactorService: TwoFactorService,
     private s3ClientUtils: S3ClientUtils,
     private emailServiceUtils: EmailServiceUtils,
+    private smsServiceUtils: SmsServiceUtils,
     private featureFlagService: FeatureFlagService,
+    private whatsappMessageService: WhatsappMessageService,
+    private readonly rateLimitService: RateLimitService,
+    private readonly queueService: QueueService,
   ) {}
+
+  private signTwoFactorLoginToken(userId: string): string {
+    return this.jwtService.sign(
+      {
+        sub: userId,
+        userId,
+        type: 'LOGIN_2FA',
+      },
+      { expiresIn: '10m' },
+    );
+  }
+
+  private signResetPasswordToken(userId: string): string {
+    return this.jwtService.sign(
+      {
+        sub: userId,
+        userId,
+        type: CacheKeyService.RESET_PASSWORD,
+      },
+      { expiresIn: '10m' },
+    );
+  }
+
+  private async resolveTwoFactorUserId({
+    userId,
+    twoFactorToken,
+  }: {
+    userId?: string;
+    twoFactorToken?: string;
+  }): Promise<string> {
+    if (twoFactorToken) {
+      try {
+        await this.jwtService.verifyAsync(twoFactorToken);
+      } catch {
+        throw new UnauthorizedException('Two-factor token verification failed');
+      }
+
+      const decoded: any = this.jwtService.decode(twoFactorToken);
+      if (!decoded?.userId || decoded?.type !== 'LOGIN_2FA') {
+        throw new BadRequestException('Invalid two-factor token');
+      }
+      return decoded.userId as string;
+    }
+
+    if (!userId) {
+      throw new BadRequestException('User ID or twoFactorToken is required');
+    }
+
+    return userId;
+  }
+
+  private normalizeWhatsappTo(value: string): string {
+    // Whatsapp provider expects international-format digits (no +, spaces, dashes)
+    return (value || '').replace(/\D/g, '');
+  }
 
   private async ensureAdminProfile(userId: string) {
     const existingProfile = await this.adminProfileRepository.findOne({
@@ -140,13 +208,26 @@ export class AuthService {
     );
 
     if (is2FAEnabled) {
-      await this.twoFactorService.sendVerificationCode(user.id);
+      if (loginDto.twoFactorCode) {
+        const isValidCode = await this.twoFactorService.validateLoginCode(
+          user.id,
+          loginDto.twoFactorCode,
+        );
 
-      return {
-        requiresTwoFactor: true,
-        userId: user.id,
-        message: 'Two-factor authentication code sent to your email',
-      };
+        if (!isValidCode) {
+          throw new UnauthorizedException('Invalid or expired verification code');
+        }
+      } else {
+        await this.twoFactorService.sendVerificationCode(user.id);
+
+        return {
+          requiresTwoFactor: true,
+          userId: user.id,
+          twoFactorToken: this.signTwoFactorLoginToken(user.id),
+          message:
+            'Two-factor authentication code queued for delivery',
+        };
+      }
     }
 
     const fullUser = await this.userRepository.findOne({
@@ -370,25 +451,67 @@ export class AuthService {
         userId: pendingUser.id,
       }),
     );
+    const roleName = (targetRole.name || '').toLowerCase();
+    const emailAudience = roleName.includes('customer')
+      ? 'customer'
+      : roleName.includes('admin')
+        ? 'admin'
+        : 'user';
 
-    const appUrl = this.configService.get<string>('APP_URL', 'http://localhost:3000');
-    const passwordSetPath = this.configService.get<string>(
-      'PASSWORD_SET_PATH',
-      '/auth/password-set',
-    );
-    const base = appUrl.endsWith('/') ? appUrl.slice(0, -1) : appUrl;
-    const inviteLink = `${base}${passwordSetPath}?token=${invite.token}`;
+    const inviteLink = buildPasswordSetLink({
+      configService: this.configService,
+      token: invite.token,
+      audience: emailAudience,
+      roleName: targetRole.name,
+    });
 
     await this.emailServiceUtils.sendSetPasswordLink({
       email,
       link: inviteLink,
       appName: this.configService.get<string>('APP_NAME', 'Application'),
       expiresInMinutes: Math.round((expiresAt.getTime() - Date.now()) / 60000),
+      audience: emailAudience,
     });
+
+    // Ensure CustomerProfile exists for invited customer roles so they show up in /customers lists.
+    try {
+      const roleName = (targetRole.name || '').toLowerCase();
+      if (roleName.includes('customer')) {
+        const existingProfile = await this.customerProfileRepository.findOne({
+          where: { userId: pendingUser.id } as any,
+        });
+        if (!existingProfile) {
+          await this.customerProfileRepository.save(
+            this.customerProfileRepository.create({ userId: pendingUser.id }),
+          );
+        }
+      }
+    } catch {
+      // best-effort
+    }
+
+    // Best-effort WhatsApp invite (do not fail invite if WhatsApp is unavailable)
+    let whatsappSent = false;
+    try {
+      const to = this.normalizeWhatsappTo(phone);
+      if (to) {
+        const appName = this.configService.get<string>('APP_NAME', 'Application');
+        await this.whatsappMessageService.send({
+          to,
+          type: 'text',
+          text: `You're invited to join ${appName}. Set your password: ${inviteLink}`,
+        });
+        whatsappSent = true;
+      }
+    } catch {
+      // best-effort
+    }
 
     return {
       token: invite.token,
       expiresAt: invite.expiresAt,
+      userId: pendingUser.id,
+      whatsappSent,
     };
   }
 
@@ -520,13 +643,26 @@ export class AuthService {
     );
 
     if (is2FAEnabled) {
-      await this.twoFactorService.sendVerificationCode(user.id);
+      if (customerLoginDto.twoFactorCode) {
+        const isValidCode = await this.twoFactorService.validateLoginCode(
+          user.id,
+          customerLoginDto.twoFactorCode,
+        );
 
-      return {
-        requiresTwoFactor: true,
-        userId: user.id,
-        message: 'Two-factor authentication code sent to your email',
-      };
+        if (!isValidCode) {
+          throw new UnauthorizedException('Invalid or expired verification code');
+        }
+      } else {
+        await this.twoFactorService.sendVerificationCode(user.id);
+
+        return {
+          requiresTwoFactor: true,
+          userId: user.id,
+          twoFactorToken: this.signTwoFactorLoginToken(user.id),
+          message:
+            'Two-factor authentication code queued for delivery',
+        };
+      }
     }
 
     return this.completeLogin(user, request);
@@ -560,7 +696,7 @@ export class AuthService {
 
     const env = this.configService.get<string>('NODE_ENV', 'development');
     const isSuperAdmin = user.role?.name?.toLowerCase() === 'super admin';
-    if (isSuperAdmin && env === 'development') {
+    if (isSuperAdmin && env === 'development' && !user.twoFactorEnabled) {
       const shouldBypass2FA = await this.featureFlagService.isEnabled(
         'auth.super_admin_skip_2fa',
         {
@@ -580,31 +716,26 @@ export class AuthService {
       user.id,
     );
 
-    if (!is2FAEnabled) {
+    if (is2FAEnabled && !adminLoginDto.twoFactorCode) {
       await this.twoFactorService.sendVerificationCode(user.id);
       return {
         requiresTwoFactor: true,
         userId: user.id,
-        message: 'Two-factor authentication code sent to your email',
+        twoFactorToken: this.signTwoFactorLoginToken(user.id),
+        message:
+          'Two-factor authentication code queued for delivery',
       };
     }
 
-    if (!adminLoginDto.twoFactorCode) {
-      await this.twoFactorService.sendVerificationCode(user.id);
-      return {
-        requiresTwoFactor: true,
-        userId: user.id,
-        message: 'Two-factor authentication code sent to your email',
-      };
-    }
+    if (is2FAEnabled && adminLoginDto.twoFactorCode) {
+      const isValidCode = await this.twoFactorService.validateLoginCode(
+        user.id,
+        adminLoginDto.twoFactorCode,
+      );
 
-    const isValidCode = await this.twoFactorService.validateLoginCode(
-      user.id,
-      adminLoginDto.twoFactorCode,
-    );
-
-    if (!isValidCode) {
-      throw new UnauthorizedException('Invalid or expired verification code');
+      if (!isValidCode) {
+        throw new UnauthorizedException('Invalid or expired verification code');
+      }
     }
 
     await this.ensureAdminProfile(user.id);
@@ -746,14 +877,18 @@ export class AuthService {
   }
 
   async verifyTwoFactorAndLogin(
-    userId: string,
-    code: string,
+    input: { userId?: string; twoFactorToken?: string; code: string },
     request: Request,
   ) {
+    const userId = await this.resolveTwoFactorUserId({
+      userId: input.userId,
+      twoFactorToken: input.twoFactorToken,
+    });
+
     // Validate the 2FA code
     const isValidCode = await this.twoFactorService.validateLoginCode(
       userId,
-      code,
+      input.code,
     );
 
     if (!isValidCode) {
@@ -1076,9 +1211,36 @@ export class AuthService {
     });
     await this.userActivityLogRepository.save(userActivityLog);
 
+    // Rate limiting: prevent password reset OTP abuse
+    const emailKey = (forgotPasswordSendOTP.email || '').trim().toLowerCase();
+    await this.rateLimitService.assertWithinLimit({
+      key: `otp:reset:cooldown:${emailKey}`,
+      windowSeconds: 30,
+      max: 1,
+    });
+    await this.rateLimitService.assertWithinLimit({
+      key: `otp:reset:burst:${emailKey}`,
+      windowSeconds: 10 * 60,
+      max: 3,
+    });
+
     // Generate verification code
     const code = this.generateVerificationCode();
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Expire any existing pending reset OTP before issuing a new one
+    const existingPending = await this.cacheKeyRepository.findOne({
+      where: {
+        userId: user.id,
+        service: CacheKeyService.RESET_PASSWORD,
+        status: CacheKeyStatus.PENDING,
+      },
+      order: { createdAt: 'DESC' },
+    });
+    if (existingPending) {
+      existingPending.status = CacheKeyStatus.EXPIRED;
+      await this.cacheKeyRepository.save(existingPending);
+    }
 
     // Create cache key record
     const cacheKey = this.cacheKeyRepository.create({
@@ -1092,19 +1254,16 @@ export class AuthService {
     });
     await this.cacheKeyRepository.save(cacheKey);
 
-    // Send Forgot password reset code
-    const displayName =
-      [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-      user.email ||
-      user.phone;
-
-    await this.emailServiceUtils.sendForgotPasswordResetCode({
-      code,
-      email: user.email,
-      userName: displayName,
-      fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
-      expiresIn: 10,
-    });
+    // Deliver via queue worker (email + optional phone channels)
+    await this.queueService.addJob(
+      AUTH_OTP_QUEUE,
+      AUTH_OTP_JOB_SEND_RESET_PASSWORD,
+      { cacheKeyId: cacheKey.id },
+      {
+        jobId: `reset:${user.id}:${cacheKey.id}`,
+        removeOnComplete: true,
+      },
+    );
 
     return {
       userId: user.id,
@@ -1153,30 +1312,29 @@ export class AuthService {
     otpVerification.status = CacheKeyStatus.VERIFIED;
     await this.cacheKeyRepository.save(otpVerification);
 
-    const payload = {
-      sub: verifyPasswordResetOTPCode.userId,
-      userId: verifyPasswordResetOTPCode.userId,
-      type: CacheKeyService.RESET_PASSWORD,
-    };
-
-    const accessToken = this.jwtService.sign(payload);
+    const resetToken = this.signResetPasswordToken(verifyPasswordResetOTPCode.userId);
 
     return {
       userId: verifyPasswordResetOTPCode.userId,
-      accessToken,
+      resetToken,
     };
   }
 
   async resetPassword(resetPasswordDto: ResetPasswordDto, request: Request) {
+    const token = resetPasswordDto.resetToken || resetPasswordDto.accessToken;
+    if (!token) {
+      throw new BadRequestException('Reset token is required');
+    }
+
     // Validate and decode access token
     try {
-      await this.jwtService.verifyAsync(resetPasswordDto.accessToken);
+      await this.jwtService.verifyAsync(token);
     } catch {
       throw new UnauthorizedException('Access token verification failed');
     }
 
     const { userId, type } = this.jwtService.decode(
-      resetPasswordDto.accessToken,
+      token,
     );
 
     const user = await this.userRepository.findOne({
