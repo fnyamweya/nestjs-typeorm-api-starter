@@ -30,6 +30,8 @@ import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
 import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 import { UserInvite } from './entities/user-invite.entity';
+import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
+import { AuthOtpWorkerService } from './workers/auth-otp.worker';
 
 @Module({
   imports: [
@@ -47,6 +49,7 @@ import { UserInvite } from './entities/user-invite.entity';
       CustomerProfile,
       AdminProfile,
     ]),
+    WhatsappModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -63,6 +66,7 @@ import { UserInvite } from './entities/user-invite.entity';
     AuthService,
     RoleService,
     TwoFactorService,
+    AuthOtpWorkerService,
     EmailServiceUtils,
     SmsServiceUtils,
     JwtStrategy,

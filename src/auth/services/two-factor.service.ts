@@ -10,6 +10,7 @@ import { User } from 'src/user/entities/user.entity';
 import * as crypto from 'crypto';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
+import { WhatsappMessageService } from 'src/whatsapp/services/whatsapp-message.service';
 import {
   CacheKey,
   CacheKeyService,
@@ -18,6 +19,12 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { verifyPassword } from 'src/common/utils/password.util';
 import { MfaChannel } from 'src/user/enums';
+import { QueueService } from 'src/queue/queue.service';
+import { RateLimitService } from 'src/common/security/rate-limit.service';
+import {
+  AUTH_OTP_JOB_SEND_TWO_FACTOR,
+  AUTH_OTP_QUEUE,
+} from '../workers/auth-otp.worker';
 
 @Injectable()
 export class TwoFactorService {
@@ -30,8 +37,15 @@ export class TwoFactorService {
     private userRepository: Repository<User>,
     private emailServiceUtils: EmailServiceUtils,
     private smsServiceUtils: SmsServiceUtils,
+    private whatsappMessageService: WhatsappMessageService,
     private configService: ConfigService,
+    private readonly queueService: QueueService,
+    private readonly rateLimitService: RateLimitService,
   ) {}
+
+  private normalizeWhatsappTo(value: string): string {
+    return (value || '').replace(/\D/g, '');
+  }
 
   async enableTwoFactor(
     userId: string,
@@ -167,13 +181,30 @@ export class TwoFactorService {
       await this.userRepository.save(user);
     }
 
-    if (channel === MfaChannel.SMS && !user.phone) {
-      throw new BadRequestException('Phone number is required for SMS-based MFA');
+    // For 2FA-enabled users we deliver codes via email AND phone (WhatsApp/SMS)
+    // when possible. At least one channel must succeed.
+    const canEmail = Boolean(user.email);
+    const canPhone = Boolean(user.phone);
+
+    if (!canEmail && !canPhone) {
+      throw new BadRequestException(
+        'A valid email or phone number is required for two-factor authentication',
+      );
     }
 
-    if (channel === MfaChannel.EMAIL && !user.email) {
-      throw new BadRequestException('Email is required for email-based MFA');
-    }
+    // Rate limiting: prevent OTP request abuse
+    // - Cooldown window: 1 per 30 seconds
+    // - Burst window: 3 per 10 minutes
+    await this.rateLimitService.assertWithinLimit({
+      key: `otp:2fa:cooldown:${userId}`,
+      windowSeconds: 30,
+      max: 1,
+    });
+    await this.rateLimitService.assertWithinLimit({
+      key: `otp:2fa:burst:${userId}`,
+      windowSeconds: 10 * 60,
+      max: 3,
+    });
 
     const existingPending = await this.cacheKeyRepository.findOne({
       where: {
@@ -203,28 +234,21 @@ export class TwoFactorService {
 
     await this.cacheKeyRepository.save(cacheKey);
 
-    if (channel === MfaChannel.SMS) {
-      await this.smsServiceUtils.sendTwoFactorCodeSMS({
-        to: user.phone,
-        code,
-        expiresIn: 10,
-      });
-    } else {
-      const displayName =
-        [user.firstName, user.lastName].filter(Boolean).join(' ').trim() ||
-        user.email ||
-        user.phone;
+    // Notifications are delivered asynchronously via queue worker.
+    await this.queueService.addJob(
+      AUTH_OTP_QUEUE,
+      AUTH_OTP_JOB_SEND_TWO_FACTOR,
+      {
+        cacheKeyId: cacheKey.id,
+        channel,
+      },
+      {
+        jobId: `2fa:${userId}:${cacheKey.id}`,
+        removeOnComplete: true,
+      },
+    );
 
-      await this.emailServiceUtils.sendTwoFactorCode({
-        code,
-        email: user.email,
-        userName: displayName,
-        fromUsername: this.configService.get<string>('EMAIL_FROM_NAME', ''),
-        expiresIn: 10,
-      });
-    }
-
-    this.logger.log(`2FA verification code sent to user ${userId} via ${channel}`);
+    this.logger.log(`2FA verification code queued for user ${userId}`);
   }
 
   async validateLoginCode(userId: string, code: string): Promise<boolean> {
