@@ -622,7 +622,8 @@ export class AuthController {
   @Post('otp/send/forgot-password')
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Send a password reset verification code to the user email',
+    summary:
+      'Send a password reset verification code to the user email or phone (identifier)',
   })
   @ApiOkResponse({ description: 'Forgot password OTP sent successfully' })
   @ApiBadRequestResponse({ description: 'Validation failed' })

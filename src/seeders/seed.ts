@@ -9,6 +9,8 @@ import { ChannelsSeeder } from '../channels/seeders/channels.seeder';
 import { CustomerTierSeeder } from '../customer-tier/seeders/customer-tier.seeder';
 import { WhatsappTemplateSeeder } from '../whatsapp/seeders/whatsapp-template.seeder';
 import { CurrencySeeder } from '../currency/seeders/currency.seeder';
+import { PaymentProviderSeeder } from '../payment-provider/seeders/payment-provider.seeder';
+import { PaymentMethodSeeder } from '../payment-method/seeders/payment-method.seeder';
 
 async function runSeeders() {
   // eslint-disable-next-line no-console
@@ -26,6 +28,8 @@ async function runSeeders() {
     const customerTierSeeder = app.get(CustomerTierSeeder);
     const whatsappTemplateSeeder = app.get(WhatsappTemplateSeeder);
     const currencySeeder = app.get(CurrencySeeder);
+    const paymentProviderSeeder = app.get(PaymentProviderSeeder);
+    const paymentMethodSeeder = app.get(PaymentMethodSeeder);
 
     // eslint-disable-next-line no-console
     console.log('⚙️ Seeding application settings...');
@@ -50,6 +54,13 @@ async function runSeeders() {
     await channelsSeeder.seed();
     // eslint-disable-next-line no-console
     console.log('✅ Channels seeding completed');
+
+    // eslint-disable-next-line no-console
+    console.log('💳 Seeding payment providers & methods (Safaricom / M-Pesa)...');
+    await paymentProviderSeeder.seed();
+    await paymentMethodSeeder.seed();
+    // eslint-disable-next-line no-console
+    console.log('✅ Payments seeding completed');
 
     // eslint-disable-next-line no-console
     console.log('💬 Seeding WhatsApp templates (order success, customer registration)...');

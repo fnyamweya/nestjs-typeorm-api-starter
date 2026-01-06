@@ -169,7 +169,10 @@ describe('AuthService (2FA + password reset)', () => {
     cacheKeyRepository.create.mockImplementation((x: any) => ({ id: 'ck1', ...x }));
     cacheKeyRepository.save.mockResolvedValueOnce({ id: 'ck1' }); // save new
 
-    await service.passwordResetOTPSend({ email: 'user@example.com' } as any, requestMock);
+    await service.passwordResetOTPSend(
+      { identifier: 'user@example.com' } as any,
+      requestMock,
+    );
 
     expect(rateLimitService.assertWithinLimit).toHaveBeenCalledTimes(2);
 
@@ -178,6 +181,29 @@ describe('AuthService (2FA + password reset)', () => {
       AUTH_OTP_JOB_SEND_RESET_PASSWORD,
       { cacheKeyId: 'ck1' },
       expect.objectContaining({ jobId: expect.stringContaining('reset:u1:ck1') }),
+    );
+  });
+
+  it('rate-limits password-reset OTP by phone identifier', async () => {
+    userRepository.findOne.mockResolvedValue({ id: 'u1', phone: '+254712345678' } as any);
+
+    userActivityLogRepository.create.mockReturnValue({} as any);
+    userActivityLogRepository.save.mockResolvedValue(undefined);
+
+    cacheKeyRepository.findOne.mockResolvedValueOnce(null);
+    cacheKeyRepository.create.mockImplementation((x: any) => ({ id: 'ck1', ...x }));
+    cacheKeyRepository.save.mockResolvedValueOnce({ id: 'ck1' });
+
+    await service.passwordResetOTPSend(
+      { identifier: '+254 712-345-678' } as any,
+      requestMock,
+    );
+
+    expect(rateLimitService.assertWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'otp:reset:cooldown:phone:254712345678' }),
+    );
+    expect(rateLimitService.assertWithinLimit).toHaveBeenCalledWith(
+      expect.objectContaining({ key: 'otp:reset:burst:phone:254712345678' }),
     );
   });
 

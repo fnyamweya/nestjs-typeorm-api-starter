@@ -13,6 +13,8 @@ import { LocationSeeder } from '../location/seeders/location.seeder';
 import { Location, LocationType } from '../location/entities/location.entity';
 import { User } from '../user/entities/user.entity';
 import { ChannelsSeeder } from '../channels/seeders/channels.seeder';
+import { PaymentProviderSeeder } from '../payment-provider/seeders/payment-provider.seeder';
+import { PaymentMethodSeeder } from '../payment-method/seeders/payment-method.seeder';
 
 const SIM_ORDER_EXTERNAL_ID = 'SIM-ORDER-001';
 const SIM_MPESA_TX_ID = 'SIMTX-001';
@@ -31,6 +33,8 @@ async function runSimulationSeed() {
     const shippingSeeder = app.get(ShippingSeeder);
     const locationSeeder = app.get(LocationSeeder);
     const channelsSeeder = app.get(ChannelsSeeder);
+    const paymentProviderSeeder = app.get(PaymentProviderSeeder);
+    const paymentMethodSeeder = app.get(PaymentMethodSeeder);
 
     const orderService = app.get(OrderService);
     const mpesaService = app.get(MpesaService);
@@ -44,6 +48,9 @@ async function runSimulationSeed() {
     await settingSeeder.seed();
     await locationSeeder.seed();
     await channelsSeeder.seed();
+
+    await paymentProviderSeeder.seed();
+    await paymentMethodSeeder.seed();
     await catalogSeeder.seed();
     try {
       await shippingSeeder.seed();

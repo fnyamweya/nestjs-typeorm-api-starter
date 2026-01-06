@@ -29,6 +29,8 @@ import { BannerModule } from './banner/banner.module';
 import { PricingModule } from './pricing/pricing.module';
 import { CurrencyModule } from './currency/currency.module';
 import { CheckoutModule } from './checkout/checkout.module';
+import { PaymentProviderModule } from './payment-provider/payment-provider.module';
+import { PaymentMethodModule } from './payment-method/payment-method.module';
 
 @Module({
   imports: [
@@ -62,6 +64,8 @@ import { CheckoutModule } from './checkout/checkout.module';
     PricingModule,
     CurrencyModule,
     CheckoutModule,
+    PaymentProviderModule,
+    PaymentMethodModule,
   ],
   controllers: [AppController],
   providers: [

@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike } from 'typeorm';
+import { Repository, ILike, Raw } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
@@ -1188,8 +1188,34 @@ export class AuthService {
     forgotPasswordSendOTP: ForgotPasswordSendOTPDto,
     request: Request,
   ) {
+    const rawIdentifier = (
+      forgotPasswordSendOTP.identifier ||
+      forgotPasswordSendOTP.email ||
+      ''
+    ).trim();
+    if (!rawIdentifier) {
+      throw new BadRequestException('Identifier is required');
+    }
+
+    const isEmailIdentifier = rawIdentifier.includes('@');
+    const normalizedEmail = isEmailIdentifier ? rawIdentifier.toLowerCase() : '';
+    const normalizedPhoneDigits = isEmailIdentifier
+      ? ''
+      : rawIdentifier.replace(/\D/g, '');
+
     const user = await this.userRepository.findOne({
-      where: { email: forgotPasswordSendOTP.email },
+      where: isEmailIdentifier
+        ? { email: normalizedEmail }
+        : [
+            { phone: rawIdentifier },
+            {
+              phone: Raw(
+                (alias) =>
+                  `regexp_replace(${alias}, '\\D', '', 'g') = :digits`,
+                { digits: normalizedPhoneDigits },
+              ),
+            },
+          ],
     });
 
     if (!user) {
@@ -1212,14 +1238,16 @@ export class AuthService {
     await this.userActivityLogRepository.save(userActivityLog);
 
     // Rate limiting: prevent password reset OTP abuse
-    const emailKey = (forgotPasswordSendOTP.email || '').trim().toLowerCase();
+    const identifierKey = isEmailIdentifier
+      ? `email:${normalizedEmail}`
+      : `phone:${normalizedPhoneDigits || rawIdentifier}`;
     await this.rateLimitService.assertWithinLimit({
-      key: `otp:reset:cooldown:${emailKey}`,
+      key: `otp:reset:cooldown:${identifierKey}`,
       windowSeconds: 30,
       max: 1,
     });
     await this.rateLimitService.assertWithinLimit({
-      key: `otp:reset:burst:${emailKey}`,
+      key: `otp:reset:burst:${identifierKey}`,
       windowSeconds: 10 * 60,
       max: 3,
     });

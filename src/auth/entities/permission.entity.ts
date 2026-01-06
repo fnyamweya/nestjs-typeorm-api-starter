@@ -50,6 +50,8 @@ export enum PermissionModule {
 
   // Payments / integrations
   MPESA = 'Mpesa',
+  PAYMENT_PROVIDERS = 'Payment Providers',
+  PAYMENT_METHODS = 'Payment Methods',
 
   // Misc
   FEATURE_FLAGS = 'Feature Flags',

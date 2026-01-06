@@ -370,7 +370,7 @@ Notes:
 
 #### Rate limiting
 
-OTP sends are rate limited (per user/email):
+OTP sends are rate limited (per identifier):
 - Cooldown: max 1 request / 30 seconds
 - Burst: max 3 requests / 10 minutes
 
@@ -381,7 +381,8 @@ If exceeded, the API returns HTTP `429`.
 Password reset is aligned with the same step-up pattern:
 
 1) Request an OTP:
-- `POST /api/auth/otp/send/forgot-password` with `{ "email": "user@example.com" }`
+- `POST /api/auth/otp/send/forgot-password` with `{ "identifier": "user@example.com" }`
+  - `identifier` can be an email address or a phone number
 
 2) Verify the OTP:
 - `POST /api/auth/otp/verify/forgot-password` with `{ "userId": "...", "code": "123456" }`

@@ -242,8 +242,8 @@ export class AuthOtpWorkerService implements OnModuleInit {
       });
     }
 
-    // If user has 2FA enabled, also deliver via phone channels (best-effort)
-    if (user.twoFactorEnabled && user.phone) {
+    // Also deliver via phone channels when phone exists (best-effort)
+    if (user.phone) {
       const appName = this.configService.get<string>('APP_NAME', 'Application');
       const to = this.normalizeWhatsappTo(user.phone);
       const phoneMessage = `Your ${appName} password reset code is ${code}. It expires in ${expiresInMinutes} minutes.`;
