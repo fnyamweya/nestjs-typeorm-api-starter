@@ -261,9 +261,8 @@ export class AuthController {
   @ApiOkResponse({ description: 'Invitation declined' })
   @ApiBadRequestResponse({ description: 'Invalid or expired invitation' })
   async declineUserInvite(@Body() declineUserInviteDto: DeclineUserInviteDto) {
-    const result = await this.authService.declineUserInvite(
-      declineUserInviteDto,
-    );
+    const result =
+      await this.authService.declineUserInvite(declineUserInviteDto);
     return ResponseUtil.success(result, 'User invitation declined');
   }
 
@@ -284,10 +283,7 @@ export class AuthController {
   @ApiOkResponse({ description: 'Admin login via Google successful' })
   async googleAdminCallback(@Req() request: Request) {
     const profile = request.user as OAuthAdminProfile;
-    const result = await this.authService.loginAdminWithOAuth(
-      profile,
-      request,
-    );
+    const result = await this.authService.loginAdminWithOAuth(profile, request);
     return ResponseUtil.success(result, 'Admin login via Google successful');
   }
 
@@ -309,10 +305,7 @@ export class AuthController {
   @ApiOkResponse({ description: 'Admin login via Apple successful' })
   async appleAdminCallback(@Req() request: Request) {
     const profile = request.user as OAuthAdminProfile;
-    const result = await this.authService.loginAdminWithOAuth(
-      profile,
-      request,
-    );
+    const result = await this.authService.loginAdminWithOAuth(profile, request);
     return ResponseUtil.success(result, 'Admin login via Apple successful');
   }
 
@@ -492,7 +485,10 @@ export class AuthController {
       properties: {
         success: { type: 'boolean', example: true },
         statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Two-factor authentication successful' },
+        message: {
+          type: 'string',
+          example: 'Two-factor authentication successful',
+        },
         data: { $ref: getSchemaPath(AuthTokensDto) },
         timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
       },
@@ -539,7 +535,10 @@ export class AuthController {
       throw new BadRequestException('User ID is required');
     }
 
-    const result = await this.twoFactorService.verifyTwoFactor(userId, verifyTwoFactorDto.code);
+    const result = await this.twoFactorService.verifyTwoFactor(
+      userId,
+      verifyTwoFactorDto.code,
+    );
     return ResponseUtil.success(
       result,
       'Two-factor authentication enable successful',
@@ -651,7 +650,10 @@ export class AuthController {
       properties: {
         success: { type: 'boolean', example: true },
         statusCode: { type: 'number', example: 200 },
-        message: { type: 'string', example: 'Successfully verify password reset code' },
+        message: {
+          type: 'string',
+          example: 'Successfully verify password reset code',
+        },
         data: { $ref: getSchemaPath(PasswordResetVerifiedDto) },
         timestamp: { type: 'string', example: '2026-01-06T12:00:00.000Z' },
       },

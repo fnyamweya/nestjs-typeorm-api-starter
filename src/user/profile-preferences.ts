@@ -85,18 +85,25 @@ function asBoolean(value: unknown, fallback: boolean): boolean {
 }
 
 function asString(value: unknown, fallback: string): string {
-  return typeof value === 'string' && value.trim().length > 0 ? value : fallback;
+  return typeof value === 'string' && value.trim().length > 0
+    ? value
+    : fallback;
 }
 
 function asThemeMode(value: unknown, fallback: ThemeMode): ThemeMode {
-  return value === 'system' || value === 'light' || value === 'dark' ? value : fallback;
+  return value === 'system' || value === 'light' || value === 'dark'
+    ? value
+    : fallback;
 }
 
 function asNewsletterFrequency(
   value: unknown,
   fallback: NewsletterFrequency,
 ): NewsletterFrequency {
-  return value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'never'
+  return value === 'daily' ||
+    value === 'weekly' ||
+    value === 'monthly' ||
+    value === 'never'
     ? value
     : fallback;
 }
@@ -105,14 +112,26 @@ export function normalizeProfilePreferences(
   input: unknown,
 ): UserProfilePreferences {
   const base = DEFAULT_PROFILE_PREFERENCES;
-  if (!isPlainObject(input)) return { ...base, notifications: { ...base.notifications, sms: { ...base.notifications.sms }, email: { ...base.notifications.email } } };
+  if (!isPlainObject(input))
+    return {
+      ...base,
+      notifications: {
+        ...base.notifications,
+        sms: { ...base.notifications.sms },
+        email: { ...base.notifications.email },
+      },
+    };
 
   const notifications = isPlainObject(input.notifications)
     ? input.notifications
     : {};
 
-  const sms = isPlainObject((notifications as any).sms) ? (notifications as any).sms : {};
-  const email = isPlainObject((notifications as any).email) ? (notifications as any).email : {};
+  const sms = isPlainObject((notifications as any).sms)
+    ? (notifications as any).sms
+    : {};
+  const email = isPlainObject((notifications as any).email)
+    ? (notifications as any).email
+    : {};
 
   const newsletters = isPlainObject(input.newsletters) ? input.newsletters : {};
   const theme = isPlainObject(input.theme) ? input.theme : {};
@@ -123,39 +142,45 @@ export function normalizeProfilePreferences(
   return {
     notifications: {
       sms: {
-        enabled: asBoolean((sms as any).enabled, base.notifications.sms.enabled),
+        enabled: asBoolean(sms.enabled, base.notifications.sms.enabled),
         orderUpdates: asBoolean(
-          (sms as any).orderUpdates,
+          sms.orderUpdates,
           base.notifications.sms.orderUpdates,
         ),
-        promotions: asBoolean((sms as any).promotions, base.notifications.sms.promotions),
+        promotions: asBoolean(
+          sms.promotions,
+          base.notifications.sms.promotions,
+        ),
         securityAlerts: asBoolean(
-          (sms as any).securityAlerts,
+          sms.securityAlerts,
           base.notifications.sms.securityAlerts,
         ),
       },
       email: {
-        enabled: asBoolean((email as any).enabled, base.notifications.email.enabled),
+        enabled: asBoolean(email.enabled, base.notifications.email.enabled),
         orderUpdates: asBoolean(
-          (email as any).orderUpdates,
+          email.orderUpdates,
           base.notifications.email.orderUpdates,
         ),
         promotions: asBoolean(
-          (email as any).promotions,
+          email.promotions,
           base.notifications.email.promotions,
         ),
         securityAlerts: asBoolean(
-          (email as any).securityAlerts,
+          email.securityAlerts,
           base.notifications.email.securityAlerts,
         ),
         newsletters: asBoolean(
-          (email as any).newsletters,
+          email.newsletters,
           base.notifications.email.newsletters,
         ),
       },
     },
     newsletters: {
-      enabled: asBoolean((newsletters as any).enabled, base.newsletters.enabled),
+      enabled: asBoolean(
+        (newsletters as any).enabled,
+        base.newsletters.enabled,
+      ),
       frequency: asNewsletterFrequency(
         (newsletters as any).frequency,
         base.newsletters.frequency,
@@ -199,7 +224,9 @@ export function mergeProfilePreferences(
     ...patch,
     notifications: {
       ...normalizedCurrent.notifications,
-      ...(isPlainObject((patch as any).notifications) ? (patch as any).notifications : {}),
+      ...(isPlainObject((patch as any).notifications)
+        ? (patch as any).notifications
+        : {}),
       sms: {
         ...normalizedCurrent.notifications.sms,
         ...(isPlainObject((patch as any).notifications?.sms)
@@ -215,7 +242,9 @@ export function mergeProfilePreferences(
     },
     newsletters: {
       ...normalizedCurrent.newsletters,
-      ...(isPlainObject((patch as any).newsletters) ? (patch as any).newsletters : {}),
+      ...(isPlainObject((patch as any).newsletters)
+        ? (patch as any).newsletters
+        : {}),
     },
     theme: {
       ...normalizedCurrent.theme,

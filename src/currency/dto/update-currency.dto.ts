@@ -7,7 +7,10 @@ export class UpdateCurrencyDto {
   @IsString()
   symbol?: string;
 
-  @ApiPropertyOptional({ description: 'Decimal precision (minor unit exponent)', example: 2 })
+  @ApiPropertyOptional({
+    description: 'Decimal precision (minor unit exponent)',
+    example: 2,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

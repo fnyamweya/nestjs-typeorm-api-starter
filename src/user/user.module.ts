@@ -10,7 +10,10 @@ import { CustomerController } from './controllers/customer.controller';
 import { AuthModule } from 'src/auth/auth.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Role, CustomerProfile, AdminProfile]), AuthModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Role, CustomerProfile, AdminProfile]),
+    AuthModule,
+  ],
   providers: [UserService],
   controllers: [UserController, CustomerController],
   exports: [UserService],

@@ -7,7 +7,10 @@ export class AcceptUserInviteDto {
   @IsNotEmpty({ message: 'token is required' })
   token: string;
 
-  @ApiProperty({ description: 'Password to activate the invited account', minLength: 8 })
+  @ApiProperty({
+    description: 'Password to activate the invited account',
+    minLength: 8,
+  })
   @IsString({ message: 'password must be a string' })
   @IsNotEmpty({ message: 'password is required' })
   @MinLength(8, { message: 'password must be at least 8 characters' })

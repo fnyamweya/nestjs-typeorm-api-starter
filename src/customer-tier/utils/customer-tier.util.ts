@@ -18,13 +18,20 @@ export interface ResolveCustomerTierResult {
   source: 'manual' | 'rule' | 'default';
 }
 
-function isWithinValidityWindow(now: Date, validFrom?: Date, validUntil?: Date): boolean {
+function isWithinValidityWindow(
+  now: Date,
+  validFrom?: Date,
+  validUntil?: Date,
+): boolean {
   if (validFrom && now < validFrom) return false;
   if (validUntil && now > validUntil) return false;
   return true;
 }
 
-function safeJsonLogicEval(rule: Record<string, unknown>, facts: CustomerTierFacts): boolean {
+function safeJsonLogicEval(
+  rule: Record<string, unknown>,
+  facts: CustomerTierFacts,
+): boolean {
   try {
     // json-logic-js returns any; coerce to boolean.
     return Boolean(jsonLogic.apply(rule as any, facts as any));
@@ -61,7 +68,11 @@ export function resolveCustomerTier(opts: {
   for (const r of candidates) {
     if (!r.ruleJson || typeof r.ruleJson !== 'object') continue;
     if (safeJsonLogicEval(r.ruleJson, opts.facts)) {
-      return { tierCode: r.tierCode.toUpperCase(), matchedRuleId: r.id, source: 'rule' };
+      return {
+        tierCode: r.tierCode.toUpperCase(),
+        matchedRuleId: r.id,
+        source: 'rule',
+      };
     }
   }
 

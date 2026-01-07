@@ -3,7 +3,9 @@ import { Transform } from 'class-transformer';
 import { IsBoolean, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ListChannelsDto {
-  @ApiPropertyOptional({ description: 'Case-insensitive search on code or name.' })
+  @ApiPropertyOptional({
+    description: 'Case-insensitive search on code or name.',
+  })
   @IsOptional()
   @IsString()
   @MaxLength(120)

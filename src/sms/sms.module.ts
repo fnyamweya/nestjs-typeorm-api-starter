@@ -9,10 +9,7 @@ import { Order } from '../order/entities/order.entity';
 import { User } from '../user/entities/user.entity';
 
 @Module({
-  imports: [
-    QueueModule,
-    TypeOrmModule.forFeature([Setting, Order, User]),
-  ],
+  imports: [QueueModule, TypeOrmModule.forFeature([Setting, Order, User])],
   providers: [SmsServiceUtils, OrderSmsService, OrderSmsListener],
   exports: [SmsServiceUtils, OrderSmsService],
 })

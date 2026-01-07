@@ -15,7 +15,11 @@ import { User } from 'src/user/entities/user.entity';
 import { AuthProviderType, MfaChannel, UserStatus } from 'src/user/enums';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { buildPasswordSetLink } from 'src/auth/utils/password-set-link.util';
-import { CacheKey, CacheKeyService, CacheKeyStatus } from '../entities/cache-key.entity';
+import {
+  CacheKey,
+  CacheKeyService,
+  CacheKeyStatus,
+} from '../entities/cache-key.entity';
 
 interface RoleConfig {
   name: string;
@@ -143,7 +147,10 @@ export class AuthSeeder {
     });
 
     if (existingRole) {
-      if (parent && (!existingRole.parent || existingRole.parent.id !== parent.id)) {
+      if (
+        parent &&
+        (!existingRole.parent || existingRole.parent.id !== parent.id)
+      ) {
         existingRole.parent = parent;
         return this.roleRepository.save(existingRole);
       }
@@ -268,10 +275,10 @@ export class AuthSeeder {
     } catch (err) {
       // In many dev environments SMTP is not configured.
       // Permissions/roles/users should still seed successfully.
-      // eslint-disable-next-line no-console
+
       console.warn(
         '⚠️ Skipping set-password email during seeding:',
-        (err as any)?.message || err,
+        err?.message || err,
       );
     }
   }

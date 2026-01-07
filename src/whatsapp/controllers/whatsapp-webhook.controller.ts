@@ -51,7 +51,10 @@ export class WhatsappWebhookController {
       throw new ForbiddenException('Webhook verify token is not configured');
     }
 
-    if (mode === 'subscribe' && this.timingSafeEqualString(verifyToken ?? '', expected)) {
+    if (
+      mode === 'subscribe' &&
+      this.timingSafeEqualString(verifyToken ?? '', expected)
+    ) {
       // Must return the challenge string verbatim.
       return challenge ?? '';
     }
@@ -79,7 +82,9 @@ export class WhatsappWebhookController {
 
     const rawBody = req.rawBody;
     if (!rawBody || !Buffer.isBuffer(rawBody)) {
-      throw new ForbiddenException('Webhook raw body is not available for signature verification');
+      throw new ForbiddenException(
+        'Webhook raw body is not available for signature verification',
+      );
     }
 
     const signatureHeaderRaw =

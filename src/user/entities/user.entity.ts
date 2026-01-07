@@ -147,10 +147,7 @@ export class User {
   @BeforeUpdate()
   async hashPassword() {
     // Only hash when a plaintext password was provided
-    if (
-      this.passwordHash &&
-      !isArgon2Hash(this.passwordHash)
-    ) {
+    if (this.passwordHash && !isArgon2Hash(this.passwordHash)) {
       this.passwordHash = await hashWithArgon(this.passwordHash);
     }
   }

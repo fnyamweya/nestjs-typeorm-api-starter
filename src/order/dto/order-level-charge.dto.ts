@@ -7,7 +7,10 @@ export class OrderLevelChargeDto {
   @ApiProperty({ example: '7b44dd5f-4cf6-44c8-baf2-5f2d3aa0c8b0' })
   orderId: string;
 
-  @ApiProperty({ example: 'shipping', description: 'e.g. shipping | discount | tax | fee' })
+  @ApiProperty({
+    example: 'shipping',
+    description: 'e.g. shipping | discount | tax | fee',
+  })
   chargeKind: string;
 
   @ApiPropertyOptional({ example: 'PROMO10' })
@@ -25,13 +28,19 @@ export class OrderLevelChargeDto {
   @ApiPropertyOptional({ example: '250.0000' })
   baseAmount?: string;
 
-  @ApiProperty({ example: '50.0000', description: 'Signed amount (discounts are negative)' })
+  @ApiProperty({
+    example: '50.0000',
+    description: 'Signed amount (discounts are negative)',
+  })
   amount: string;
 
   @ApiProperty({ example: false })
   isIncludedInPrice: boolean;
 
-  @ApiProperty({ example: false, description: 'True when this charge applies to shipping total' })
+  @ApiProperty({
+    example: false,
+    description: 'True when this charge applies to shipping total',
+  })
   appliesToShipping: boolean;
 
   @ApiPropertyOptional({ example: 'promotion' })

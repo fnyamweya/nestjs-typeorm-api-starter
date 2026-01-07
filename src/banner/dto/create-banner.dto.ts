@@ -15,7 +15,8 @@ import { Type } from 'class-transformer';
 
 class BannerPlacementDto {
   @ApiProperty({
-    description: 'Where the banner should be shown (dynamic key, e.g. landing, category, product)',
+    description:
+      'Where the banner should be shown (dynamic key, e.g. landing, category, product)',
     example: 'landing',
   })
   @IsString()
@@ -55,7 +56,8 @@ class BannerTargetDto {
   kind: string;
 
   @ApiPropertyOptional({
-    description: 'Optional reference id (UUID or any external id depending on kind)',
+    description:
+      'Optional reference id (UUID or any external id depending on kind)',
     example: '2d931510-d99f-494a-8c67-87feb05e1594',
   })
   @IsOptional()
@@ -72,18 +74,25 @@ class BannerTargetDto {
 }
 
 export class CreateBannerDto {
-  @ApiProperty({ description: 'Internal banner name', example: 'Homepage Hero Banner' })
+  @ApiProperty({
+    description: 'Internal banner name',
+    example: 'Homepage Hero Banner',
+  })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({ description: 'Whether the banner is active', example: true })
+  @ApiPropertyOptional({
+    description: 'Whether the banner is active',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Banner start time (inclusive). If omitted, banner can start immediately.',
+    description:
+      'Banner start time (inclusive). If omitted, banner can start immediately.',
     example: '2026-01-05T00:00:00.000Z',
   })
   @IsOptional()
@@ -91,7 +100,8 @@ export class CreateBannerDto {
   startsAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Banner end time (inclusive). If omitted, banner can run indefinitely.',
+    description:
+      'Banner end time (inclusive). If omitted, banner can run indefinitely.',
     example: '2026-12-31T23:59:59.000Z',
   })
   @IsOptional()
@@ -99,7 +109,8 @@ export class CreateBannerDto {
   endsAt?: string;
 
   @ApiPropertyOptional({
-    description: 'Higher priority banners can be preferred by clients when multiple match.',
+    description:
+      'Higher priority banners can be preferred by clients when multiple match.',
     example: 10,
   })
   @IsOptional()

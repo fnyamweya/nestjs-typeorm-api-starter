@@ -1,7 +1,19 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  JoinColumn,
+} from 'typeorm';
 import { ShippingZone } from './shipping-zone.entity';
+import { Location } from '../../location/entities/location.entity';
 
-export type ShippingLocationType = 'location' | 'country' | 'region' | 'postal_code' | 'radius';
+export type ShippingLocationType =
+  | 'location'
+  | 'country'
+  | 'region'
+  | 'postal_code'
+  | 'radius';
 
 @Entity('shipping_zone_location')
 export class ShippingZoneLocation {
@@ -22,6 +34,10 @@ export class ShippingZoneLocation {
   // We keep legacy country/region/postal_code columns for backward compatibility.
   @Column({ name: 'location_id', type: 'uuid', nullable: true })
   locationId?: string;
+
+  @ManyToOne(() => Location, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'location_id' })
+  location?: Location;
 
   @Column({ name: 'country_code', type: 'char', length: 2, nullable: true })
   countryCode?: string;

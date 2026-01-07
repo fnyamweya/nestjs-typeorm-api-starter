@@ -1,7 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { In } from 'typeorm';
+import { FindManyOptions } from 'typeorm';
 import { Order } from '../entities/order.entity';
 import { OrderItem } from '../entities/order-item.entity';
 import { OrderItemCharge } from '../entities/order-item-charge.entity';
@@ -62,10 +67,15 @@ export class OrderService {
     private readonly customerShippingAddressService: CustomerShippingAddressService,
   ) {}
 
-  private allocateProportionally(total: number, bases: number[], decimals = 4): number[] {
+  private allocateProportionally(
+    total: number,
+    bases: number[],
+    decimals = 4,
+  ): number[] {
     const n = bases.length;
     if (n === 0) return [];
-    if (!Number.isFinite(total) || total <= 0) return Array.from({ length: n }, () => 0);
+    if (!Number.isFinite(total) || total <= 0)
+      return Array.from({ length: n }, () => 0);
 
     const safeBases = bases.map((b) => (Number.isFinite(b) && b > 0 ? b : 0));
     const sumBases = safeBases.reduce((a, b) => a + b, 0);
@@ -101,9 +111,12 @@ export class OrderService {
 
   async create(payload: CreateOrderDto) {
     // Resolve customer identity (orders store email/name snapshot for reporting/receipts)
-    const customer = await this.userRepository.findOne({ where: { id: payload.customerId } });
+    const customer = await this.userRepository.findOne({
+      where: { id: payload.customerId },
+    });
     if (!customer) throw new NotFoundException('Customer not found');
-    if (!customer.email) throw new BadRequestException('Customer email is missing');
+    if (!customer.email)
+      throw new BadRequestException('Customer email is missing');
 
     // Customer shipping address is editable/reusable and is snapshotted onto the order (immutable).
     // If shippingAddress is provided at checkout, we upsert it into the customer's shipping address.
@@ -115,10 +128,11 @@ export class OrderService {
       if (!payload.shippingAddress.locationId) {
         throw new BadRequestException('shippingAddress.locationId is required');
       }
-      customerShippingAddress = await this.customerShippingAddressService.upsertForUser(
-        payload.customerId,
-        payload.shippingAddress,
-      );
+      customerShippingAddress =
+        await this.customerShippingAddressService.upsertForUser(
+          payload.customerId,
+          payload.shippingAddress,
+        );
     }
 
     // Backward-compat: if the client only provides shippingLocationId and the customer has no shipping address yet,
@@ -133,18 +147,21 @@ export class OrderService {
         throw new BadRequestException('Invalid shippingLocationId');
       }
 
-      customerShippingAddress = await this.customerShippingAddressService.upsertForUser(
-        payload.customerId,
-        {
-          countryCode: String(loc.countryCode).toUpperCase(),
-          locationId: payload.shippingLocationId,
-        } as any,
-      );
+      customerShippingAddress =
+        await this.customerShippingAddressService.upsertForUser(
+          payload.customerId,
+          {
+            countryCode: String(loc.countryCode).toUpperCase(),
+            locationId: payload.shippingLocationId,
+          } as any,
+        );
     }
 
     const shippingAddress = customerShippingAddress?.address;
     if (shippingAddress && !shippingAddress.locationId) {
-      throw new BadRequestException('Customer shipping address must include locationId');
+      throw new BadRequestException(
+        'Customer shipping address must include locationId',
+      );
     }
 
     const resolvedShippingLocationId: string | undefined =
@@ -164,7 +181,9 @@ export class OrderService {
     // Resolve price list if provided
     let priceList: PriceList | null = null;
     if (payload.priceListId) {
-      priceList = await this.priceListRepository.findOne({ where: { id: payload.priceListId } });
+      priceList = await this.priceListRepository.findOne({
+        where: { id: payload.priceListId },
+      });
       if (!priceList) {
         throw new NotFoundException('Price list not found');
       }
@@ -172,8 +191,10 @@ export class OrderService {
 
     let resolvedPriceList: PriceList | null = priceList;
     if (!resolvedPriceList) {
-      const defaultCurrency = await this.currencyService.getDefaultCurrencyCode();
-      resolvedPriceList = await this.priceService.findActivePriceListByCurrency(defaultCurrency);
+      const defaultCurrency =
+        await this.currencyService.getDefaultCurrencyCode();
+      resolvedPriceList =
+        await this.priceService.findActivePriceListByCurrency(defaultCurrency);
 
       if (!resolvedPriceList) {
         resolvedPriceList = await this.priceListRepository.findOne({
@@ -191,9 +212,13 @@ export class OrderService {
       orderNumber: await this.generateOrderNumber(),
       customerId: payload.customerId,
       customerEmail: customer.email,
-      customerName: [customer.firstName, customer.lastName].filter(Boolean).join(' ') || undefined,
+      customerName:
+        [customer.firstName, customer.lastName].filter(Boolean).join(' ') ||
+        undefined,
       priceListId: resolvedPriceList.id,
-      currencyCode: await this.currencyService.assertExists(resolvedPriceList.currency),
+      currencyCode: await this.currencyService.assertExists(
+        resolvedPriceList.currency,
+      ),
       itemsSubtotal: '0',
       discountTotal: '0',
       feeTotal: '0',
@@ -229,7 +254,8 @@ export class OrderService {
           lastName: shippingSnapshot?.lastName,
           phone: shippingSnapshot?.phone,
           countryCode: shippingSnapshot?.countryCode,
-          locationId: shippingSnapshot?.locationId ?? resolvedShippingLocationId,
+          locationId:
+            shippingSnapshot?.locationId ?? resolvedShippingLocationId,
           fieldsJson: shippingSnapshot?.fieldsJson ?? {},
         }),
       );
@@ -240,7 +266,9 @@ export class OrderService {
     const productIds = new Set<string>();
 
     for (const item of payload.orderItems) {
-      const sku = await this.productSkuRepository.findOne({ where: { id: item.productSkuId } });
+      const sku = await this.productSkuRepository.findOne({
+        where: { id: item.productSkuId },
+      });
       if (!sku) {
         throw new NotFoundException('Product SKU not found');
       }
@@ -284,7 +312,7 @@ export class OrderService {
         fulfillmentStatus: 'unfulfilled',
         pricingSnapshotJson: { resolved },
         // Persist the SKU weight so later total weight calculation can read it from the order item
-        metaJson: { weight: (sku.attributes as any)?.weight },
+        metaJson: { weight: (sku as any).weight ?? (sku.attributes as any)?.weight },
       });
 
       await this.orderItemRepository.save(orderItem);
@@ -296,15 +324,20 @@ export class OrderService {
     // Shipping calculation using the ShippingMatrixService (select best candidate)
     // compute total weight from items (attempt to use SKU weight if set)
     let totalWeight = 0;
-    const items = await this.orderItemRepository.find({ where: { orderId: savedOrder.id } });
+    const items = await this.orderItemRepository.find({
+      where: { orderId: savedOrder.id },
+    });
     for (const it of items) {
-      const weight = Number((it as any).weight || (it as any).metaJson?.weight || 0);
+      const weight = Number(
+        (it as any).weight || (it as any).metaJson?.weight || 0,
+      );
       totalWeight += (it.quantity || 0) * (weight || 0);
     }
 
-    const catalogShipping = await this.catalogShippingContextService.resolveCatalogShippingContext(
-      Array.from(productIds),
-    );
+    const catalogShipping =
+      await this.catalogShippingContextService.resolveCatalogShippingContext(
+        Array.from(productIds),
+      );
 
     const quotes = resolvedShippingLocationId
       ? await this.shippingMatrixService.getQuotes({
@@ -313,6 +346,7 @@ export class OrderService {
           totalWeight,
           itemCount: totalItemCount,
           currencyCode: savedOrder.currencyCode,
+          channelCode: savedOrder.salesChannelCode,
           allowedMethodCodes: catalogShipping.allowedMethodCodes,
           excludedMethodCodes: catalogShipping.excludedMethodCodes,
           ratePriorityBoost: catalogShipping.ratePriorityBoost,
@@ -327,7 +361,9 @@ export class OrderService {
       const code = String(payload.shippingMethodCode).trim();
       const candidates = quotes.filter((q) => q.method?.code === code);
       if (!candidates.length) {
-        throw new BadRequestException('Selected shipping method is not available for this destination');
+        throw new BadRequestException(
+          'Selected shipping method is not available for this destination',
+        );
       }
 
       candidates.sort(
@@ -351,7 +387,13 @@ export class OrderService {
         appliesToShipping: true,
         sourceType: 'shipping',
         sourceReference: best ? best.method.code : undefined,
-        metaJson: best ? { methodId: best.method.id, rateId: best.rate.id, meta: best.rate.metaJson } : {},
+        metaJson: best
+          ? {
+              methodId: best.method.id,
+              rateId: best.rate.id,
+              meta: best.rate.metaJson,
+            }
+          : {},
       });
       await this.orderLevelChargeRepository.save(shippingCharge);
     }
@@ -360,7 +402,9 @@ export class OrderService {
 
     // Build promotion item targeting context (products/categories/taxonomies/tags)
     const promoProductIds = Array.from(
-      new Set(items.map((it) => it.productId).filter((x): x is string => Boolean(x))),
+      new Set(
+        items.map((it) => it.productId).filter((x): x is string => Boolean(x)),
+      ),
     );
 
     const productTagsById = new Map<string, string[]>();
@@ -371,7 +415,12 @@ export class OrderService {
       });
       for (const p of products) {
         const meta: any = (p as any).metaJson ?? {};
-        const tags = Array.isArray(meta.tags) ? meta.tags.map(String).map((t: string) => t.trim()).filter(Boolean) : [];
+        const tags = Array.isArray(meta.tags)
+          ? meta.tags
+              .map(String)
+              .map((t: string) => t.trim())
+              .filter(Boolean)
+          : [];
         productTagsById.set(p.id, tags);
       }
     }
@@ -380,9 +429,13 @@ export class OrderService {
     const taxonomyIdsByProductId = new Map<string, Set<string>>();
 
     if (promoProductIds.length) {
-      const pcs = await this.productCategoryRepository.find({ where: { productId: In(promoProductIds) } });
+      const pcs = await this.productCategoryRepository.find({
+        where: { productId: In(promoProductIds) },
+      });
 
-      const directCategoryIds = Array.from(new Set(pcs.map((pc) => pc.categoryId)));
+      const directCategoryIds = Array.from(
+        new Set(pcs.map((pc) => pc.categoryId)),
+      );
 
       // Include ancestor categories so promotions targeting a parent category match items in descendant categories.
       const ancestorIdsByDescendantId = new Map<string, Set<string>>();
@@ -406,13 +459,18 @@ export class OrderService {
       }
 
       const categories = expandedCategoryIds.size
-        ? await this.categoryRepository.find({ where: { id: In(Array.from(expandedCategoryIds)) } })
+        ? await this.categoryRepository.find({
+            where: { id: In(Array.from(expandedCategoryIds)) },
+          })
         : [];
-      const taxonomyByCategoryId = new Map(categories.map((c) => [c.id, c.taxonomyId] as const));
+      const taxonomyByCategoryId = new Map(
+        categories.map((c) => [c.id, c.taxonomyId] as const),
+      );
 
       for (const pc of pcs) {
         const pid = pc.productId;
-        if (!categoryIdsByProductId.has(pid)) categoryIdsByProductId.set(pid, new Set());
+        if (!categoryIdsByProductId.has(pid))
+          categoryIdsByProductId.set(pid, new Set());
 
         const catIds = new Set<string>();
         catIds.add(pc.categoryId);
@@ -425,7 +483,8 @@ export class OrderService {
           categoryIdsByProductId.get(pid)!.add(categoryId);
           const taxonomyId = taxonomyByCategoryId.get(categoryId);
           if (taxonomyId) {
-            if (!taxonomyIdsByProductId.has(pid)) taxonomyIdsByProductId.set(pid, new Set());
+            if (!taxonomyIdsByProductId.has(pid))
+              taxonomyIdsByProductId.set(pid, new Set());
             taxonomyIdsByProductId.get(pid)!.add(taxonomyId);
           }
         }
@@ -438,8 +497,12 @@ export class OrderService {
         productId: pid,
         productSkuId: it.productSkuId,
         quantity: it.quantity,
-        categoryIds: pid ? Array.from(categoryIdsByProductId.get(pid) ?? []) : [],
-        taxonomyIds: pid ? Array.from(taxonomyIdsByProductId.get(pid) ?? []) : [],
+        categoryIds: pid
+          ? Array.from(categoryIdsByProductId.get(pid) ?? [])
+          : [],
+        taxonomyIds: pid
+          ? Array.from(taxonomyIdsByProductId.get(pid) ?? [])
+          : [],
         tags: pid ? Array.from(new Set(productTagsById.get(pid) ?? [])) : [],
       };
     });
@@ -454,12 +517,18 @@ export class OrderService {
     });
 
     const totalDiscount = Number(promoResult.totalDiscount || '0');
-    const shippingDiscount = Number((promoResult as any).shippingDiscount || '0');
+    const shippingDiscount = Number(
+      (promoResult as any).shippingDiscount || '0',
+    );
 
     // Allocate order-level promotion discount to items and persist per-item charges.
     if (totalDiscount > 0 && items.length) {
       const itemBases = items.map((it) => Number(it.baseSubtotal || '0'));
-      const allocations = this.allocateProportionally(totalDiscount, itemBases, 4);
+      const allocations = this.allocateProportionally(
+        totalDiscount,
+        itemBases,
+        4,
+      );
 
       const discountCharges: OrderItemCharge[] = [];
       for (let i = 0; i < items.length; i++) {
@@ -473,7 +542,8 @@ export class OrderService {
           this.orderItemChargeRepository.create({
             orderItemId: it.id,
             chargeKind: 'discount',
-            code: promoResult.applied?.map((a) => a.code).join(',') || undefined,
+            code:
+              promoResult.applied?.map((a) => a.code).join(',') || undefined,
             displayName: 'Promotion Discount',
             calculationType: 'fixed',
             baseAmount: it.baseSubtotal,
@@ -481,7 +551,9 @@ export class OrderService {
             amount: (-allocated).toFixed(4),
             isIncludedInPrice: false,
             sourceType: 'promotion',
-            sourceReference: promoResult.applied?.map((a) => a.promotionId).join(',') || undefined,
+            sourceReference:
+              promoResult.applied?.map((a) => a.promotionId).join(',') ||
+              undefined,
             metaJson: {
               applied: promoResult.applied ?? [],
               allocationBasis: 'base_subtotal',
@@ -508,7 +580,9 @@ export class OrderService {
         isIncludedInPrice: false,
         appliesToShipping: false,
         sourceType: 'promotion',
-        sourceReference: promoResult.applied.map((a) => a.promotionId).join(','),
+        sourceReference: promoResult.applied
+          .map((a) => a.promotionId)
+          .join(','),
         metaJson: { applied: promoResult.applied },
       });
       await this.orderLevelChargeRepository.save(charge);
@@ -526,7 +600,9 @@ export class OrderService {
         isIncludedInPrice: false,
         appliesToShipping: true,
         sourceType: 'promotion',
-        sourceReference: promoResult.applied.map((a) => a.promotionId).join(','),
+        sourceReference: promoResult.applied
+          .map((a) => a.promotionId)
+          .join(','),
         metaJson: { applied: promoResult.applied },
       });
       await this.orderLevelChargeRepository.save(shippingDiscCharge);
@@ -538,16 +614,26 @@ export class OrderService {
     // Tax calculation using TaxService for configurable tax rate
     const shippingNet = Math.max(0, shippingFee - shippingDiscount);
     const taxable = itemsSubtotal - totalDiscount + shippingNet;
-    const taxResult = await this.taxService.calculateTax({ taxableAmount: taxable, currencyCode: savedOrder.currencyCode });
+    const taxResult = await this.taxService.calculateTax({
+      taxableAmount: taxable,
+      currencyCode: savedOrder.currencyCode,
+    });
 
     const taxAmount = Number(taxResult.amount || 0);
 
     // Allocate tax between items and shipping (so order.taxTotal represents item tax, order.shippingTax represents shipping tax).
     const itemTaxableBases = items.map((it) =>
-      Math.max(0, Number(it.baseSubtotal || '0') - Number(it.discountTotal || '0')),
+      Math.max(
+        0,
+        Number(it.baseSubtotal || '0') - Number(it.discountTotal || '0'),
+      ),
     );
     const basesWithShipping = [...itemTaxableBases, shippingNet];
-    const taxAllocations = this.allocateProportionally(taxAmount, basesWithShipping, 4);
+    const taxAllocations = this.allocateProportionally(
+      taxAmount,
+      basesWithShipping,
+      4,
+    );
 
     const taxCharges: OrderItemCharge[] = [];
     let itemTaxSum = 0;
@@ -632,7 +718,12 @@ export class OrderService {
     savedOrder.shippingTotal = (shippingNet + shippingTax).toFixed(4);
 
     // Grand total: itemsSubtotal - discounts + shipping + tax
-    savedOrder.grandTotal = (itemsSubtotal - totalDiscount + shippingNet + taxAmount).toFixed(4);
+    savedOrder.grandTotal = (
+      itemsSubtotal -
+      totalDiscount +
+      shippingNet +
+      taxAmount
+    ).toFixed(4);
 
     const updated = await this.orderRepository.save(savedOrder);
 
@@ -645,10 +736,22 @@ export class OrderService {
     return hydrated ?? updated;
   }
 
+  async findAndCount(options: FindManyOptions<Order>) {
+    return this.orderRepository.findAndCount(options);
+  }
+
+  async findOneHydrated(id: string): Promise<Order> {
+    const order = await this.orderRepository.findOne({
+      where: { id },
+      relations: ['items', 'items.itemCharges', 'orderLevelCharges'],
+    } as any);
+    if (!order) throw new NotFoundException('Order not found');
+    return order;
+  }
+
   private async generateOrderNumber() {
     // Simple generator for now, in real system use a robust sequence
     const seq = Math.floor(Math.random() * 1000000);
     return `ORD-${Date.now()}-${seq}`;
   }
-
 }

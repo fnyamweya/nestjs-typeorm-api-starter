@@ -33,7 +33,10 @@ export function buildPasswordSetLink({
   audience: SetPasswordAudience;
   roleName?: string;
 }): string {
-  const defaultAppUrl = configService.get<string>('APP_URL', 'http://localhost:3000');
+  const defaultAppUrl = configService.get<string>(
+    'APP_URL',
+    'http://localhost:3000',
+  );
   const defaultPasswordSetPath = configService.get<string>(
     'PASSWORD_SET_PATH',
     '/auth/password-set',
@@ -66,7 +69,9 @@ export function buildPasswordSetLink({
     ? configService.get<string>(rolePasswordSetPathKey)
     : undefined;
 
-  const audienceOverrideAppUrl = appUrlKey ? configService.get<string>(appUrlKey) : undefined;
+  const audienceOverrideAppUrl = appUrlKey
+    ? configService.get<string>(appUrlKey)
+    : undefined;
   const audienceOverridePasswordSetPath = passwordSetPathKey
     ? configService.get<string>(passwordSetPathKey)
     : undefined;
@@ -83,7 +88,8 @@ export function buildPasswordSetLink({
   const appUrl = isHttpUrl(appUrlCandidate) ? appUrlCandidate : defaultAppUrl;
 
   const passwordSetPath =
-    (roleOverridePasswordSetPath && roleOverridePasswordSetPath.trim().length > 0
+    (roleOverridePasswordSetPath &&
+    roleOverridePasswordSetPath.trim().length > 0
       ? roleOverridePasswordSetPath
       : undefined) ??
     (audienceOverridePasswordSetPath &&

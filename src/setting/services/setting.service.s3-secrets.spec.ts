@@ -38,7 +38,10 @@ class InMemorySettingRepo {
 describe('SettingService.updateS3Secrets', () => {
   it('stores S3 secrets encrypted and never returns their values', async () => {
     const repo = new InMemorySettingRepo();
-    const cache = { del: jest.fn(), remember: jest.fn(async (_k: any, fn: any) => fn()) } as any;
+    const cache = {
+      del: jest.fn(),
+      remember: jest.fn(async (_k: any, fn: any) => fn()),
+    } as any;
     const crypto = {
       encrypt: jest.fn((v: string) => `enc:v1:${v}`),
       decrypt: jest.fn((v: string) => v),
@@ -54,8 +57,12 @@ describe('SettingService.updateS3Secrets', () => {
     expect(crypto.encrypt).toHaveBeenCalledWith('access_key');
     expect(crypto.encrypt).toHaveBeenCalledWith('secret_key');
 
-    const storedAccess = await repo.findOne({ where: { key: 's3_access_key_id' } });
-    const storedSecret = await repo.findOne({ where: { key: 's3_secret_access_key' } });
+    const storedAccess = await repo.findOne({
+      where: { key: 's3_access_key_id' },
+    });
+    const storedSecret = await repo.findOne({
+      where: { key: 's3_secret_access_key' },
+    });
 
     expect(storedAccess.value).toBe('enc:v1:access_key');
     expect(storedSecret.value).toBe('enc:v1:secret_key');
@@ -73,7 +80,10 @@ describe('SettingService.updateS3Secrets', () => {
 
   it('is idempotent and can update one secret at a time', async () => {
     const repo = new InMemorySettingRepo();
-    const cache = { del: jest.fn(), remember: jest.fn(async (_k: any, fn: any) => fn()) } as any;
+    const cache = {
+      del: jest.fn(),
+      remember: jest.fn(async (_k: any, fn: any) => fn()),
+    } as any;
     const crypto = {
       encrypt: jest.fn((v: string) => `enc:v1:${v}`),
       decrypt: jest.fn((v: string) => v),

@@ -79,7 +79,8 @@ async function bootstrap() {
   app.useGlobalFilters(new HttpExceptionFilter());
 
   const swaggerEnabled =
-    process.env.SWAGGER_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+    process.env.SWAGGER_ENABLED === 'true' ||
+    process.env.NODE_ENV !== 'production';
 
   if (swaggerEnabled) {
     const swaggerConfig = new DocumentBuilder()

@@ -34,9 +34,15 @@ describe('PromotionService', () => {
       providers: [
         PromotionService,
         { provide: getRepositoryToken(Promotion), useValue: promotionRepo },
-        { provide: getRepositoryToken(PromotionCondition), useValue: conditionRepo },
+        {
+          provide: getRepositoryToken(PromotionCondition),
+          useValue: conditionRepo,
+        },
         { provide: getRepositoryToken(PromotionAction), useValue: actionRepo },
-        { provide: getRepositoryToken(PromotionRedemption), useValue: redemptionRepo },
+        {
+          provide: getRepositoryToken(PromotionRedemption),
+          useValue: redemptionRepo,
+        },
         {
           provide: CurrencyService,
           useValue: {
@@ -82,7 +88,11 @@ describe('PromotionService', () => {
     redemptionRepo.count.mockResolvedValue(0);
     jest.spyOn(service, 'findActivePromotions').mockResolvedValue([p]);
 
-    const r = await service.evaluatePromotions({ subtotal: '200', currencyCode: 'KES', shippingFee: '50.00' });
+    const r = await service.evaluatePromotions({
+      subtotal: '200',
+      currencyCode: 'KES',
+      shippingFee: '50.00',
+    });
     expect(r.totalDiscount).toBe('20.00');
     expect(r.shippingDiscount).toBe('0.00');
     expect(r.applied[0].code).toBe('P10');
@@ -112,7 +122,10 @@ describe('PromotionService', () => {
     redemptionRepo.count.mockResolvedValue(0);
     jest.spyOn(service, 'findActivePromotions').mockResolvedValue([p]);
 
-    const r = await service.evaluatePromotions({ subtotal: '200', currencyCode: 'KES' });
+    const r = await service.evaluatePromotions({
+      subtotal: '200',
+      currencyCode: 'KES',
+    });
     expect(r.totalDiscount).toBe('0.00');
     expect(r.applied.length).toBe(0);
   });
@@ -133,7 +146,11 @@ describe('PromotionService', () => {
         },
       ],
       actions: [
-        { type: PromotionActionType.FIXED_OFF, params: { amount: 10 }, target: { scope: 'order' } },
+        {
+          type: PromotionActionType.FIXED_OFF,
+          params: { amount: 10 },
+          target: { scope: 'order' },
+        },
       ],
     } as any as Promotion;
 
@@ -152,14 +169,22 @@ describe('PromotionService', () => {
         },
       ],
       actions: [
-        { type: PromotionActionType.FIXED_OFF, params: { amount: 10 }, target: { scope: 'order' } },
+        {
+          type: PromotionActionType.FIXED_OFF,
+          params: { amount: 10 },
+          target: { scope: 'order' },
+        },
       ],
     } as any as Promotion;
 
     redemptionRepo.count.mockResolvedValue(0);
     jest.spyOn(service, 'findActivePromotions').mockResolvedValue([p1, p2]);
 
-    const r = await service.evaluatePromotions({ subtotal: '200', currencyCode: 'KES', isFirstOrder: true });
+    const r = await service.evaluatePromotions({
+      subtotal: '200',
+      currencyCode: 'KES',
+      isFirstOrder: true,
+    });
     expect(r.applied.map((x) => x.code)).toEqual(['A']);
     expect(r.totalDiscount).toBe('10.00');
   });
@@ -172,11 +197,29 @@ describe('PromotionService', () => {
       priority: 100,
       stackingPolicy: StackingPolicy.STACKABLE,
       conditions: [
-        { type: PromotionConditionType.ITEM_IN_PRODUCT, operator: ConditionOperator.IN, params: { productIds: ['prod-1'] } },
-        { type: PromotionConditionType.ITEM_IN_CATEGORY, operator: ConditionOperator.IN, params: { categoryIds: ['cat-1'] } },
-        { type: PromotionConditionType.ITEM_IN_TAXONOMY, operator: ConditionOperator.IN, params: { taxonomyIds: ['tax-1'] } },
+        {
+          type: PromotionConditionType.ITEM_IN_PRODUCT,
+          operator: ConditionOperator.IN,
+          params: { productIds: ['prod-1'] },
+        },
+        {
+          type: PromotionConditionType.ITEM_IN_CATEGORY,
+          operator: ConditionOperator.IN,
+          params: { categoryIds: ['cat-1'] },
+        },
+        {
+          type: PromotionConditionType.ITEM_IN_TAXONOMY,
+          operator: ConditionOperator.IN,
+          params: { taxonomyIds: ['tax-1'] },
+        },
       ],
-      actions: [{ type: PromotionActionType.FIXED_OFF, params: { amount: 10 }, target: { scope: 'order' } }],
+      actions: [
+        {
+          type: PromotionActionType.FIXED_OFF,
+          params: { amount: 10 },
+          target: { scope: 'order' },
+        },
+      ],
     } as any as Promotion;
 
     redemptionRepo.count.mockResolvedValue(0);
@@ -207,15 +250,28 @@ describe('PromotionService', () => {
       priority: 100,
       stackingPolicy: StackingPolicy.STACKABLE,
       conditions: [
-        { type: PromotionConditionType.ITEM_IN_CATEGORY, operator: ConditionOperator.IN, params: { categoryIds: ['cat-1'] } },
+        {
+          type: PromotionConditionType.ITEM_IN_CATEGORY,
+          operator: ConditionOperator.IN,
+          params: { categoryIds: ['cat-1'] },
+        },
       ],
-      actions: [{ type: PromotionActionType.FIXED_OFF, params: { amount: 10 }, target: { scope: 'order' } }],
+      actions: [
+        {
+          type: PromotionActionType.FIXED_OFF,
+          params: { amount: 10 },
+          target: { scope: 'order' },
+        },
+      ],
     } as any as Promotion;
 
     redemptionRepo.count.mockResolvedValue(0);
     jest.spyOn(service, 'findActivePromotions').mockResolvedValue([p]);
 
-    const r = await service.evaluatePromotions({ subtotal: '200', currencyCode: 'KES' });
+    const r = await service.evaluatePromotions({
+      subtotal: '200',
+      currencyCode: 'KES',
+    });
     expect(r.applied.length).toBe(0);
     expect(r.totalDiscount).toBe('0.00');
   });
@@ -245,7 +301,9 @@ describe('PromotionService', () => {
 
     // Ensure cache doesn't swallow the call
     const cache = (service as any).cache as AppCacheService;
-    (cache.remember as jest.Mock).mockImplementation((_: string, fn: any) => fn());
+    (cache.remember as jest.Mock).mockImplementation((_: string, fn: any) =>
+      fn(),
+    );
 
     promotionRepo.createQueryBuilder.mockReturnValue(qb);
 

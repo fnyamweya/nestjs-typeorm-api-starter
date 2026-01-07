@@ -3,7 +3,11 @@ import { Job } from 'bullmq';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { QueueService } from 'src/queue/queue.service';
-import { CacheKey, CacheKeyService, CacheKeyStatus } from '../entities/cache-key.entity';
+import {
+  CacheKey,
+  CacheKeyService,
+  CacheKeyStatus,
+} from '../entities/cache-key.entity';
 import { User } from 'src/user/entities/user.entity';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
@@ -92,7 +96,9 @@ export class AuthOtpWorkerService implements OnModuleInit {
       return;
     }
 
-    const user = await this.userRepository.findOne({ where: { id: cacheKey.userId } });
+    const user = await this.userRepository.findOne({
+      where: { id: cacheKey.userId },
+    });
     if (!user) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);
@@ -207,7 +213,9 @@ export class AuthOtpWorkerService implements OnModuleInit {
       return;
     }
 
-    const user = await this.userRepository.findOne({ where: { id: cacheKey.userId } });
+    const user = await this.userRepository.findOne({
+      where: { id: cacheKey.userId },
+    });
     if (!user) {
       cacheKey.status = CacheKeyStatus.EXPIRED;
       await this.cacheKeyRepository.save(cacheKey);

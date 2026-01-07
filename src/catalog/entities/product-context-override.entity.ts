@@ -36,7 +36,11 @@ export class ProductContextOverride {
   @Column({ name: 'valid_until', type: 'timestamptz', nullable: true })
   validUntil?: Date;
 
-  @Column({ name: 'match_context', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'match_context',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   matchContext: Record<string, unknown>;
 
   @Column({ name: 'rule', type: 'jsonb', nullable: true })

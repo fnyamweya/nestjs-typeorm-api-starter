@@ -72,8 +72,10 @@ export class ChannelsSeeder {
     existing.name = channel.name;
     existing.description = channel.description;
     existing.isActive = channel.isActive ?? existing.isActive;
-    if (typeof channel.configJson !== 'undefined') existing.configJson = channel.configJson ?? {};
-    if (typeof channel.metadata !== 'undefined') existing.metadata = channel.metadata ?? {};
+    if (typeof channel.configJson !== 'undefined')
+      existing.configJson = channel.configJson ?? {};
+    if (typeof channel.metadata !== 'undefined')
+      existing.metadata = channel.metadata ?? {};
 
     await this.channelRepo.save(existing);
   }

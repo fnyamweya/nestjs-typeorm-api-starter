@@ -70,7 +70,9 @@ export class TwoFactorService {
       }
     } else {
       if (!user.phone) {
-        throw new BadRequestException('Phone number is required for SMS-based MFA');
+        throw new BadRequestException(
+          'Phone number is required for SMS-based MFA',
+        );
       }
     }
 
@@ -78,7 +80,9 @@ export class TwoFactorService {
     await this.userRepository.save(user);
 
     await this.sendVerificationCode(userId, targetChannel);
-    this.logger.log(`2FA verification code sent to user ${userId} via ${targetChannel}`);
+    this.logger.log(
+      `2FA verification code sent to user ${userId} via ${targetChannel}`,
+    );
   }
 
   async verifyTwoFactor(userId: string, code: string): Promise<boolean> {

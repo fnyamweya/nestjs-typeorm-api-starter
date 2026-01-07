@@ -2,7 +2,10 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsObject, IsOptional, IsString } from 'class-validator';
 
 export class UpdatePaymentProviderDto {
-  @ApiPropertyOptional({ description: 'Unique provider code', example: 'SAFARICOM' })
+  @ApiPropertyOptional({
+    description: 'Unique provider code',
+    example: 'SAFARICOM',
+  })
   @IsOptional()
   @IsString()
   code?: string;

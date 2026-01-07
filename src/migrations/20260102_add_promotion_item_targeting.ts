@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPromotionItemTargeting20260102_1760000000001 implements MigrationInterface {
+export class AddPromotionItemTargeting20260102_1760000000001
+  implements MigrationInterface
+{
   name = 'AddPromotionItemTargeting20260102_1760000000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

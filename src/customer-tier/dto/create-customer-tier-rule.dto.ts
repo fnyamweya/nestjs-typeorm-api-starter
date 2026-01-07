@@ -1,5 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsBoolean,
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 
 export class CreateCustomerTierRuleDto {
   @ApiProperty()
@@ -28,7 +37,8 @@ export class CreateCustomerTierRuleDto {
   validUntil?: string;
 
   @ApiProperty({
-    description: 'JSONLogic rule to determine if this tier applies for the customer facts',
+    description:
+      'JSONLogic rule to determine if this tier applies for the customer facts',
     type: Object,
   })
   @IsObject()

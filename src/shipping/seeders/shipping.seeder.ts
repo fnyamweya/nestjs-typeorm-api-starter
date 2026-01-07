@@ -5,7 +5,11 @@ import { ShippingZone } from '../entities/shipping-zone.entity';
 import { ShippingZoneLocation } from '../entities/shipping-zone-location.entity';
 import { ShippingMethod } from '../entities/shipping-method.entity';
 import { ShippingRate } from '../entities/shipping-rate.entity';
-import { Location, LocationType } from '../../location/entities/location.entity';
+import { ShippingZoneMethod } from '../entities/shipping-zone-method.entity';
+import {
+  Location,
+  LocationType,
+} from '../../location/entities/location.entity';
 
 @Injectable()
 export class ShippingSeeder {
@@ -16,6 +20,8 @@ export class ShippingSeeder {
     private readonly locRepo: Repository<ShippingZoneLocation>,
     @InjectRepository(ShippingMethod)
     private readonly methodRepo: Repository<ShippingMethod>,
+    @InjectRepository(ShippingZoneMethod)
+    private readonly zoneMethodRepo: Repository<ShippingZoneMethod>,
     @InjectRepository(ShippingRate)
     private readonly rateRepo: Repository<ShippingRate>,
     @InjectRepository(Location)
@@ -26,14 +32,22 @@ export class ShippingSeeder {
     // Create a global zone if missing
     let global = await this.zoneRepo.findOne({ where: { code: 'global' } });
     if (!global) {
-      global = this.zoneRepo.create({ code: 'global', name: 'Global', description: 'Default fallback zone' });
+      global = this.zoneRepo.create({
+        code: 'global',
+        name: 'Global',
+        description: 'Default fallback zone',
+      });
       await this.zoneRepo.save(global);
     }
 
     // Add Kenya zone example
     let kenya = await this.zoneRepo.findOne({ where: { code: 'kenya' } });
     if (!kenya) {
-      kenya = this.zoneRepo.create({ code: 'kenya', name: 'Kenya', description: 'Kenya shipping zone' });
+      kenya = this.zoneRepo.create({
+        code: 'kenya',
+        name: 'Kenya',
+        description: 'Kenya shipping zone',
+      });
       await this.zoneRepo.save(kenya);
     }
 
@@ -59,17 +73,34 @@ export class ShippingSeeder {
 
     // Seed basic methods/rates if missing
     if (kenya) {
-      let standard = await this.methodRepo.findOne({ where: { zoneId: kenya.id, code: 'standard' } });
+      let standard = await this.methodRepo.findOne({
+        where: { code: 'standard' },
+      });
       if (!standard) {
         standard = this.methodRepo.create({
-          zoneId: kenya.id,
           code: 'standard',
           displayName: 'Standard Shipping',
+          isActive: true,
         });
         await this.methodRepo.save(standard);
       }
 
-      const standardRates = await this.rateRepo.find({ where: { methodId: standard.id } });
+      const standardAttach = await this.zoneMethodRepo.findOne({
+        where: { zoneId: kenya.id, shippingMethodId: standard.id },
+      });
+      if (!standardAttach) {
+        await this.zoneMethodRepo.save(
+          this.zoneMethodRepo.create({
+            zoneId: kenya.id,
+            shippingMethodId: standard.id,
+            isActive: true,
+          }),
+        );
+      }
+
+      const standardRates = await this.rateRepo.find({
+        where: { methodId: standard.id },
+      });
       if (!standardRates.length) {
         // Add flat rate when subtotal < 1000
         await this.rateRepo.save(
@@ -93,17 +124,34 @@ export class ShippingSeeder {
         );
       }
 
-      let express = await this.methodRepo.findOne({ where: { zoneId: kenya.id, code: 'express' } });
+      let express = await this.methodRepo.findOne({
+        where: { code: 'express' },
+      });
       if (!express) {
         express = this.methodRepo.create({
-          zoneId: kenya.id,
           code: 'express',
           displayName: 'Express Shipping',
+          isActive: true,
         });
         await this.methodRepo.save(express);
       }
 
-      const expressRates = await this.rateRepo.find({ where: { methodId: express.id } });
+      const expressAttach = await this.zoneMethodRepo.findOne({
+        where: { zoneId: kenya.id, shippingMethodId: express.id },
+      });
+      if (!expressAttach) {
+        await this.zoneMethodRepo.save(
+          this.zoneMethodRepo.create({
+            zoneId: kenya.id,
+            shippingMethodId: express.id,
+            isActive: true,
+          }),
+        );
+      }
+
+      const expressRates = await this.rateRepo.find({
+        where: { methodId: express.id },
+      });
       if (!expressRates.length) {
         await this.rateRepo.save(
           this.rateRepo.create({

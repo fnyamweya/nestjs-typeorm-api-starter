@@ -1,12 +1,19 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsNotEmpty, IsOptional, IsString, IsBoolean } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString, IsBoolean, IsUUID } from 'class-validator';
 
 export class CreateShippingMethodDto {
-  @ApiProperty({ description: 'Zone ID this method belongs to' })
-  @IsNotEmpty()
-  zoneId: string;
+  @ApiPropertyOptional({
+    description:
+      'Provider id (shipping_provider). If omitted, provider text may be used (legacy).',
+  })
+  @IsOptional()
+  @IsUUID()
+  providerId?: string;
 
-  @ApiProperty({ description: 'Unique code for the method', example: 'standard' })
+  @ApiProperty({
+    description: 'Unique code for the method',
+    example: 'standard',
+  })
   @IsString()
   @IsNotEmpty()
   code: string;

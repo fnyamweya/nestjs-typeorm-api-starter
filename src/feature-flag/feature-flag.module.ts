@@ -20,7 +20,10 @@ import { FeatureFlagGuard } from './feature-flag.guard';
       FeatureFlagAudit,
     ]),
   ],
-  providers: [FeatureFlagService, { provide: APP_GUARD, useClass: FeatureFlagGuard }],
+  providers: [
+    FeatureFlagService,
+    { provide: APP_GUARD, useClass: FeatureFlagGuard },
+  ],
   exports: [FeatureFlagService],
 })
 export class FeatureFlagModule {}

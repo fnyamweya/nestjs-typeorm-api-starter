@@ -1,7 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
 
 export class TwoFactorRequiredDto {
-  @ApiProperty({ description: 'Whether 2FA step-up is required', example: true })
+  @ApiProperty({
+    description: 'Whether 2FA step-up is required',
+    example: true,
+  })
   requiresTwoFactor: true;
 
   @ApiProperty({

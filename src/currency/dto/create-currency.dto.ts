@@ -1,8 +1,18 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
+import {
+  IsInt,
+  IsOptional,
+  IsString,
+  Matches,
+  Max,
+  Min,
+} from 'class-validator';
 
 export class CreateCurrencyDto {
-  @ApiProperty({ description: 'ISO 4217 currency code (3 letters)', example: 'KES' })
+  @ApiProperty({
+    description: 'ISO 4217 currency code (3 letters)',
+    example: 'KES',
+  })
   @IsString()
   @Matches(/^[A-Za-z]{3}$/)
   code: string;
@@ -12,7 +22,11 @@ export class CreateCurrencyDto {
   @IsString()
   symbol?: string;
 
-  @ApiPropertyOptional({ description: 'Decimal precision (minor unit exponent)', default: 2, example: 2 })
+  @ApiPropertyOptional({
+    description: 'Decimal precision (minor unit exponent)',
+    default: 2,
+    example: 2,
+  })
   @IsOptional()
   @IsInt()
   @Min(0)

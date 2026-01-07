@@ -1,4 +1,7 @@
-import { FeatureFlagStatus, FeatureFlagType } from './entities/feature-flag.entity';
+import {
+  FeatureFlagStatus,
+  FeatureFlagType,
+} from './entities/feature-flag.entity';
 import { FeatureFlagTargetType } from './entities/feature-flag-override.entity';
 
 export interface UserContext {

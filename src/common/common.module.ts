@@ -18,7 +18,12 @@ import { RateLimitService } from './security/rate-limit.service';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Setting]), ApiClientModule, RedisModule, AppCacheModule],
+  imports: [
+    TypeOrmModule.forFeature([Setting]),
+    ApiClientModule,
+    RedisModule,
+    AppCacheModule,
+  ],
   providers: [
     ResponseInterceptor,
     HttpExceptionFilter,

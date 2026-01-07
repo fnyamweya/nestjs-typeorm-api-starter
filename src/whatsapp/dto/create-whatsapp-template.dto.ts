@@ -47,7 +47,8 @@ function IsObjectArray(validationOptions?: ValidationOptions) {
         validate(value: unknown) {
           if (!Array.isArray(value)) return false;
           return value.every(
-            (item) => typeof item === 'object' && item !== null && !Array.isArray(item),
+            (item) =>
+              typeof item === 'object' && item !== null && !Array.isArray(item),
           );
         },
         defaultMessage(args: ValidationArguments) {
@@ -84,7 +85,9 @@ export class CreateWhatsappTemplateDto {
     enum: TEMPLATE_CATEGORIES,
   })
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsIn(TEMPLATE_CATEGORIES)
   category: string;
 
@@ -117,12 +120,18 @@ export class CreateWhatsappTemplateDto {
   @IsObjectArray()
   defaultComponents?: Array<Record<string, unknown>>;
 
-  @ApiPropertyOptional({ description: 'Activate or deactivate template', example: true })
+  @ApiPropertyOptional({
+    description: 'Activate or deactivate template',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ description: 'Extra metadata for business logic', example: { scenario: 'order-confirmed' } })
+  @ApiPropertyOptional({
+    description: 'Extra metadata for business logic',
+    example: { scenario: 'order-confirmed' },
+  })
   @IsOptional()
   @IsObject()
   metaJson?: Record<string, unknown>;

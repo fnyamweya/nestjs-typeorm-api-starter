@@ -71,7 +71,9 @@ export class SettingSeeder {
     ];
 
     for (const settingData of defaults) {
-      const existingSetting = await this.settingRepository.findOne({ where: { key: settingData.key } });
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: settingData.key },
+      });
       if (!existingSetting) {
         const setting = this.settingRepository.create(settingData);
         await this.settingRepository.save(setting);

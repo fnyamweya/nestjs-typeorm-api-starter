@@ -26,8 +26,9 @@ export class WhatsappMessageService {
       return { type: 'text', response };
     }
 
-    const template =
-      payload.templateId ? await this.templateService.findOne(payload.templateId) : null;
+    const template = payload.templateId
+      ? await this.templateService.findOne(payload.templateId)
+      : null;
 
     const templateName = payload.templateName ?? template?.name;
     if (!templateName) {
@@ -37,7 +38,9 @@ export class WhatsappMessageService {
     const language = payload.language ?? template?.language ?? 'en_US';
     const components =
       payload.components ??
-      (template?.defaultComponentsJson?.length ? template.defaultComponentsJson : undefined);
+      (template?.defaultComponentsJson?.length
+        ? template.defaultComponentsJson
+        : undefined);
 
     const response = await this.apiService.sendTemplateMessage({
       to: payload.to,

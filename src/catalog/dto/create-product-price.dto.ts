@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsDateString, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, Min } from 'class-validator';
+import {
+  IsDateString,
+  IsInt,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
 
 export class CreateProductPriceDto {
   @ApiProperty({ description: 'Price list id', example: 'uuid' })
@@ -26,24 +34,36 @@ export class CreateProductPriceDto {
   @Min(1)
   minQuantity?: number;
 
-  @ApiPropertyOptional({ description: 'Maximum quantity for tier', example: 10 })
+  @ApiPropertyOptional({
+    description: 'Maximum quantity for tier',
+    example: 10,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   maxQuantity?: number;
 
-  @ApiPropertyOptional({ description: 'Valid from date (ISO)', example: '2025-01-01T00:00:00Z' })
+  @ApiPropertyOptional({
+    description: 'Valid from date (ISO)',
+    example: '2025-01-01T00:00:00Z',
+  })
   @IsOptional()
   @IsDateString()
   validFrom?: string;
 
-  @ApiPropertyOptional({ description: 'Valid to date (ISO)', example: '2025-02-01T00:00:00Z' })
+  @ApiPropertyOptional({
+    description: 'Valid to date (ISO)',
+    example: '2025-02-01T00:00:00Z',
+  })
   @IsOptional()
   @IsDateString()
   validTo?: string;
 
-  @ApiPropertyOptional({ description: 'Price metadata', example: { reason: 'promo' } })
+  @ApiPropertyOptional({
+    description: 'Price metadata',
+    example: { reason: 'promo' },
+  })
   @IsOptional()
   metaJson?: Record<string, unknown>;
 }

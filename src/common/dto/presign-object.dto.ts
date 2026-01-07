@@ -10,7 +10,8 @@ export class PresignObjectDto {
   objectKey: string;
 
   @ApiPropertyOptional({
-    description: 'Signed URL expiry in seconds (min 60, max 86400). Default 3600.',
+    description:
+      'Signed URL expiry in seconds (min 60, max 86400). Default 3600.',
     example: 3600,
   })
   @IsOptional()

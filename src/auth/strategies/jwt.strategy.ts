@@ -25,7 +25,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Invalid token');
     }
 
-    user.profilePreferences = normalizeProfilePreferences(user.profilePreferences);
+    user.profilePreferences = normalizeProfilePreferences(
+      user.profilePreferences,
+    );
 
     // Never expose password-derived fields on request.user
     const { passwordHash, password, ...userWithoutSensitive } = user as any;

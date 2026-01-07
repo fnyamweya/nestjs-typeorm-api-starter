@@ -1,9 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
 
 export type RateLimitArgs = {
@@ -23,7 +18,11 @@ export class RateLimitService {
 
   constructor(private readonly redisService: RedisService) {}
 
-  async assertWithinLimit({ key, windowSeconds, max }: RateLimitArgs): Promise<void> {
+  async assertWithinLimit({
+    key,
+    windowSeconds,
+    max,
+  }: RateLimitArgs): Promise<void> {
     const namespacedKey = `ratelimit:${key}`;
 
     if (this.useMemory) {
@@ -79,10 +78,13 @@ export class RateLimitService {
     } catch (err) {
       // Fail open to avoid auth outages if Redis is down, but log for visibility.
       this.logger.warn(
-        `Rate limit check failed (${namespacedKey}): ${(err as any)?.message ?? 'unknown error'}`,
+        `Rate limit check failed (${namespacedKey}): ${err?.message ?? 'unknown error'}`,
       );
 
-      if (err instanceof HttpException && err.getStatus() === HttpStatus.TOO_MANY_REQUESTS) {
+      if (
+        err instanceof HttpException &&
+        err.getStatus() === HttpStatus.TOO_MANY_REQUESTS
+      ) {
         throw err;
       }
     }

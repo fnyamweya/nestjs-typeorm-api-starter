@@ -18,12 +18,18 @@ export class CreateProductSkuDto {
   @IsNotEmpty()
   title: string;
 
-  @ApiPropertyOptional({ description: 'Stock keeping unit', example: 'IPH-15-BLK-128' })
+  @ApiPropertyOptional({
+    description: 'Stock keeping unit',
+    example: 'IPH-15-BLK-128',
+  })
   @IsOptional()
   @IsString()
   sku?: string;
 
-  @ApiPropertyOptional({ description: 'External reference', example: 'shopify-sku-123' })
+  @ApiPropertyOptional({
+    description: 'External reference',
+    example: 'shopify-sku-123',
+  })
   @IsOptional()
   @IsString()
   externalRef?: string;
@@ -44,22 +50,34 @@ export class CreateProductSkuDto {
   @IsNumber()
   position?: number;
 
-  @ApiPropertyOptional({ description: 'SKU attributes', example: { color: 'black', size: 'M' } })
+  @ApiPropertyOptional({
+    description: 'SKU attributes',
+    example: { color: 'black', size: 'M' },
+  })
   @IsOptional()
   @IsObject()
   attributes?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'SKU options (preferred). If both provided, options wins.', example: { color: 'black', size: 'M' } })
+  @ApiPropertyOptional({
+    description: 'SKU options (preferred). If both provided, options wins.',
+    example: { color: 'black', size: 'M' },
+  })
   @IsOptional()
   @IsObject()
   options?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Inventory state by location or warehouse', example: { locations: { "NAIROBI": { onHand: 10, reserved: 2 } } } })
+  @ApiPropertyOptional({
+    description: 'Inventory state by location or warehouse',
+    example: { locations: { NAIROBI: { onHand: 10, reserved: 2 } } },
+  })
   @IsOptional()
   @IsObject()
   inventory?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'SKU images', example: ['https://cdn.example.com/1.png'] })
+  @ApiPropertyOptional({
+    description: 'SKU images',
+    example: ['https://cdn.example.com/1.png'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
@@ -70,31 +88,46 @@ export class CreateProductSkuDto {
   @IsBoolean()
   requiresShipping?: boolean;
 
-  @ApiPropertyOptional({ description: 'Weight with precision support', example: 0.2 })
+  @ApiPropertyOptional({
+    description: 'Weight with precision support',
+    example: 0.2,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   weight?: number;
 
-  @ApiPropertyOptional({ description: 'Length with precision support', example: 10.5 })
+  @ApiPropertyOptional({
+    description: 'Length with precision support',
+    example: 10.5,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   length?: number;
 
-  @ApiPropertyOptional({ description: 'Width with precision support', example: 5.25 })
+  @ApiPropertyOptional({
+    description: 'Width with precision support',
+    example: 5.25,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   width?: number;
 
-  @ApiPropertyOptional({ description: 'Height with precision support', example: 2.75 })
+  @ApiPropertyOptional({
+    description: 'Height with precision support',
+    example: 2.75,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsNumber()
   height?: number;
 
-  @ApiPropertyOptional({ description: 'Unit used for dimensions', example: 'cm' })
+  @ApiPropertyOptional({
+    description: 'Unit used for dimensions',
+    example: 'cm',
+  })
   @IsOptional()
   @IsString()
   dimensionUnit?: string;
@@ -104,12 +137,19 @@ export class CreateProductSkuDto {
   @IsString()
   weightUnit?: string;
 
-  @ApiPropertyOptional({ description: 'SKU metadata', example: { preorder: true } })
+  @ApiPropertyOptional({
+    description: 'SKU metadata',
+    example: { preorder: true },
+  })
   @IsOptional()
   @IsObject()
   metaJson?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'SKU prices', type: () => CreateProductPriceDto, isArray: true })
+  @ApiPropertyOptional({
+    description: 'SKU prices',
+    type: () => CreateProductPriceDto,
+    isArray: true,
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateProductPriceDto)

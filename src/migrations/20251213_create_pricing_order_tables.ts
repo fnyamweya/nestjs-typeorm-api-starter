@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePricingOrderTables20251213_1766123456789 implements MigrationInterface {
+export class CreatePricingOrderTables20251213_1766123456789
+  implements MigrationInterface
+{
   name = 'CreatePricingOrderTables20251213_1766123456789';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -41,7 +43,9 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
       CONSTRAINT "fk_variant_price_variant" FOREIGN KEY ("product_variant_id") REFERENCES "product_variant" ("id") ON DELETE CASCADE
     );`);
 
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "uq_variant_price_tier" ON "product_variant_price" ("price_list_id", "product_variant_id", "min_quantity");`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "uq_variant_price_tier" ON "product_variant_price" ("price_list_id", "product_variant_id", "min_quantity");`,
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "order" (
       "id" uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -155,12 +159,18 @@ export class CreatePricingOrderTables20251213_1766123456789 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "order_item_charge" CASCADE;`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "order_level_charge" CASCADE;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "order_item_charge" CASCADE;`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "order_level_charge" CASCADE;`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "order_item" CASCADE;`);
     await queryRunner.query(`DROP TABLE IF EXISTS "order" CASCADE;`);
     await queryRunner.query(`DROP INDEX IF EXISTS "uq_variant_price_tier";`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "product_variant_price" CASCADE;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "product_variant_price" CASCADE;`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "price_list" CASCADE;`);
     await queryRunner.query(`DROP TABLE IF EXISTS "currency" CASCADE;`);
   }

@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsObject, IsOptional, IsString, IsUrl } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUrl,
+} from 'class-validator';
 
 export class CreateBrandDto {
   @ApiProperty({ description: 'Brand name', example: 'Apple' })
@@ -17,17 +24,26 @@ export class CreateBrandDto {
   @IsString()
   logoUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Website URL', example: 'https://example.com' })
+  @ApiPropertyOptional({
+    description: 'Website URL',
+    example: 'https://example.com',
+  })
   @IsOptional()
   @IsUrl({ require_tld: false })
   websiteUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Whether the brand is active', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether the brand is active',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ description: 'Arbitrary metadata', example: { origin: 'US' } })
+  @ApiPropertyOptional({
+    description: 'Arbitrary metadata',
+    example: { origin: 'US' },
+  })
   @IsOptional()
   @IsObject()
   metaJson?: Record<string, unknown>;

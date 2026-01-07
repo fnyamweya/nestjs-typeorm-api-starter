@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProductSlugTypeConfig20260107_1760260000000 implements MigrationInterface {
+export class AddProductSlugTypeConfig20260107_1760260000000
+  implements MigrationInterface
+{
   name = 'AddProductSlugTypeConfig20260107_1760260000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -54,9 +56,13 @@ export class AddProductSlugTypeConfig20260107_1760260000000 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_type_config_active"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_type_config_active"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_type_config"');
-    await queryRunner.query('ALTER TABLE "product" DROP COLUMN IF EXISTS "type_fields_json"');
+    await queryRunner.query(
+      'ALTER TABLE "product" DROP COLUMN IF EXISTS "type_fields_json"',
+    );
     await queryRunner.query('DROP INDEX IF EXISTS "uq_product_slug"');
 
     await queryRunner.query(`DO $$ BEGIN

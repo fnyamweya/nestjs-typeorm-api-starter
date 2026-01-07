@@ -17,7 +17,9 @@ describe('ShippingMatrixService', () => {
   let cache: any;
 
   beforeEach(() => {
-    zoneRepo = mockRepo({ findOne: jest.fn().mockResolvedValue({ id: 'g1', code: 'global' }) });
+    zoneRepo = mockRepo({
+      findOne: jest.fn().mockResolvedValue({ id: 'g1', code: 'global' }),
+    });
     locRepo = mockRepo();
     methodRepo = mockRepo();
     rateRepo = mockRepo();
@@ -28,13 +30,30 @@ describe('ShippingMatrixService', () => {
       delByPrefix: jest.fn().mockResolvedValue(undefined),
     };
 
-    svc = new ShippingMatrixService(zoneRepo, locRepo, methodRepo, rateRepo, cache);
+    svc = new ShippingMatrixService(
+      zoneRepo,
+      locRepo,
+      methodRepo,
+      rateRepo,
+      cache,
+    );
   });
 
   it('calculates flat rate', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
-    rateRepo.find.mockResolvedValue([{ id: 'r1', methodId: 'm1', calculationType: 'flat', price: '50.00', priority: 1, metaJson: {} }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
+    rateRepo.find.mockResolvedValue([
+      {
+        id: 'r1',
+        methodId: 'm1',
+        calculationType: 'flat',
+        price: '50.00',
+        priority: 1,
+        metaJson: {},
+      },
+    ]);
 
     const quotes = await svc.getQuotes({ subtotal: 100 });
     expect(quotes.length).toBe(1);
@@ -43,8 +62,20 @@ describe('ShippingMatrixService', () => {
 
   it('calculates per_weight rate', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
-    rateRepo.find.mockResolvedValue([{ id: 'r1', methodId: 'm1', calculationType: 'per_weight', price: '0', pricePerUnit: '10', priority: 1, metaJson: {} }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
+    rateRepo.find.mockResolvedValue([
+      {
+        id: 'r1',
+        methodId: 'm1',
+        calculationType: 'per_weight',
+        price: '0',
+        pricePerUnit: '10',
+        priority: 1,
+        metaJson: {},
+      },
+    ]);
 
     const quotes = await svc.getQuotes({ subtotal: 0, totalWeight: 3 });
     expect(quotes[0].amount).toBe(30);
@@ -52,8 +83,20 @@ describe('ShippingMatrixService', () => {
 
   it('calculates per_item rate', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
-    rateRepo.find.mockResolvedValue([{ id: 'r1', methodId: 'm1', calculationType: 'per_item', price: '0', pricePerUnit: '2.5', priority: 1, metaJson: {} }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
+    rateRepo.find.mockResolvedValue([
+      {
+        id: 'r1',
+        methodId: 'm1',
+        calculationType: 'per_item',
+        price: '0',
+        pricePerUnit: '2.5',
+        priority: 1,
+        metaJson: {},
+      },
+    ]);
 
     const quotes = await svc.getQuotes({ subtotal: 0, itemCount: 4 });
     expect(quotes[0].amount).toBe(10);
@@ -61,7 +104,9 @@ describe('ShippingMatrixService', () => {
 
   it('calculates table_rate by subtotal', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
     rateRepo.find.mockResolvedValue([
       {
         id: 'r1',
@@ -69,7 +114,13 @@ describe('ShippingMatrixService', () => {
         calculationType: 'table_rate',
         price: '0',
         priority: 1,
-        metaJson: { measure: 'subtotal', tiers: [{ upto: 100, price: '10' }, { upto: 1000, price: '20' }] },
+        metaJson: {
+          measure: 'subtotal',
+          tiers: [
+            { upto: 100, price: '10' },
+            { upto: 1000, price: '20' },
+          ],
+        },
       },
     ]);
 
@@ -82,7 +133,9 @@ describe('ShippingMatrixService', () => {
 
   it('calculates formula rate', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
     rateRepo.find.mockResolvedValue([
       {
         id: 'r1',
@@ -100,7 +153,9 @@ describe('ShippingMatrixService', () => {
 
   it('handles zero weight for per_weight rates (regression test)', async () => {
     locRepo.find.mockResolvedValue([{ zoneId: 'z1' }]);
-    methodRepo.find.mockResolvedValue([{ id: 'm1', zoneId: 'z1', isActive: true }]);
+    methodRepo.find.mockResolvedValue([
+      { id: 'm1', zoneId: 'z1', isActive: true },
+    ]);
     rateRepo.find.mockResolvedValue([
       {
         id: 'r1',

@@ -82,7 +82,10 @@ export class CommonUploadController {
     return folder;
   }
 
-  private assertMimeAllowed(filetype: UploadFileType | undefined, mimeType: string) {
+  private assertMimeAllowed(
+    filetype: UploadFileType | undefined,
+    mimeType: string,
+  ) {
     const ft = filetype?.trim() as UploadFileType | undefined;
 
     if (!ft) return;
@@ -125,7 +128,10 @@ export class CommonUploadController {
   }
 
   @Post('upload')
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'create',
+  })
   @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(
     FilesInterceptor('files', 20, {
@@ -138,7 +144,7 @@ export class CommonUploadController {
             }
             cb(null, dir);
           } catch (e) {
-            cb(e as any, '');
+            cb(e, '');
           }
         },
         filename: (req, file, cb) => {
@@ -219,7 +225,7 @@ export class CommonUploadController {
       } catch (e) {
         invalid.push({
           filename: f.originalname || 'file',
-          error: (e as any)?.message || 'Invalid file type',
+          error: e?.message || 'Invalid file type',
         });
       }
     }
@@ -257,7 +263,10 @@ export class CommonUploadController {
   }
 
   @Post('upload/multi')
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'create',
+  })
   @HttpCode(HttpStatus.ACCEPTED)
   @UseInterceptors(
     FilesInterceptor('files', 20, {
@@ -270,7 +279,7 @@ export class CommonUploadController {
             }
             cb(null, dir);
           } catch (e) {
-            cb(e as any, '');
+            cb(e, '');
           }
         },
         filename: (req, file, cb) => {
@@ -301,9 +310,7 @@ export class CommonUploadController {
   @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
   @ApiOperation({ summary: 'Get async upload job status/result' })
   @ApiOkResponse({ description: 'Upload job status' })
-  async getUploadJob(
-    @Param('jobId') jobId: string,
-  ): Promise<ApiResponse<any>> {
+  async getUploadJob(@Param('jobId') jobId: string): Promise<ApiResponse<any>> {
     const queue = this.queueService.getQueue(UPLOADS_QUEUE);
     const job = await queue.getJob(jobId);
     if (!job) {
@@ -351,10 +358,16 @@ export class CommonUploadController {
     if (!objectKey) {
       throw new BadRequestException('objectKey is required');
     }
-    const url = await this.s3.generatePresignedUrl(objectKey, dto.expiresIn ?? 3600);
+    const url = await this.s3.generatePresignedUrl(
+      objectKey,
+      dto.expiresIn ?? 3600,
+    );
     if (!url) {
       throw new BadRequestException('Failed to generate signed URL');
     }
-    return ResponseUtil.success({ objectKey, signedUrl: url }, 'Signed URL generated');
+    return ResponseUtil.success(
+      { objectKey, signedUrl: url },
+      'Signed URL generated',
+    );
   }
 }

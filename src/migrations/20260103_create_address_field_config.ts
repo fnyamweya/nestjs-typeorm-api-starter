@@ -28,6 +28,8 @@ export class CreateAddressFieldConfig20260103_1767400002000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "address_field_config" CASCADE;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "address_field_config" CASCADE;`,
+    );
   }
 }

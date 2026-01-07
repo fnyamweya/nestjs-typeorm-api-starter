@@ -13,7 +13,11 @@ import { WhatsappTemplateSeeder } from './seeders/whatsapp-template.seeder';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Setting, WhatsappTemplate])],
-  controllers: [WhatsappTemplatesController, WhatsappMessagesController, WhatsappWebhookController],
+  controllers: [
+    WhatsappTemplatesController,
+    WhatsappMessagesController,
+    WhatsappWebhookController,
+  ],
   providers: [
     WhatsappConfigService,
     WhatsappApiService,

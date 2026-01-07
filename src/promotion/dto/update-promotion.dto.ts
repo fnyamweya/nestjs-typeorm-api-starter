@@ -40,9 +40,15 @@ class UpdatePromotionConditionDto {
     description:
       'Condition parameters. Supported shapes for item targeting:\n- item_in_product: { productIds: [uuid] } OR { productId: uuid } OR { ids: [uuid] } OR { id: uuid }\n- item_in_category: { categoryIds: [uuid] } OR { categoryId: uuid } (also supports ids/id)\n- item_in_taxonomy: { taxonomyIds: [uuid] } OR { taxonomyId: uuid } (also supports ids/id)\n- item_has_tag: { tags: [string] } OR { tag: string } (also supports ids/id)',
     examples: {
-      item_in_product: { value: { productIds: ['3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11'] } },
-      item_in_category: { value: { categoryIds: ['9b2d2c8b-1a24-4f64-a1e6-0e8c1c3c9d10'] } },
-      item_in_taxonomy: { value: { taxonomyIds: ['1f64a1e6-0e8c-4f64-a1e6-0e8c1c3c9d10'] } },
+      item_in_product: {
+        value: { productIds: ['3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11'] },
+      },
+      item_in_category: {
+        value: { categoryIds: ['9b2d2c8b-1a24-4f64-a1e6-0e8c1c3c9d10'] },
+      },
+      item_in_taxonomy: {
+        value: { taxonomyIds: ['1f64a1e6-0e8c-4f64-a1e6-0e8c1c3c9d10'] },
+      },
       item_has_tag: { value: { tags: ['clearance', 'vip'] } },
     },
   })
@@ -78,37 +84,58 @@ class UpdatePromotionActionDto {
 }
 
 export class UpdatePromotionDto {
-  @ApiPropertyOptional({ description: 'Unique promotion code', example: 'WELCOME10' })
+  @ApiPropertyOptional({
+    description: 'Unique promotion code',
+    example: 'WELCOME10',
+  })
   @IsOptional()
   @IsString()
   code?: string;
 
-  @ApiPropertyOptional({ description: 'Display name for admins', example: 'Welcome discount' })
+  @ApiPropertyOptional({
+    description: 'Display name for admins',
+    example: 'Welcome discount',
+  })
   @IsOptional()
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'Optional description', example: '10% off for first-time customers' })
+  @ApiPropertyOptional({
+    description: 'Optional description',
+    example: '10% off for first-time customers',
+  })
   @IsOptional()
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ enum: PromotionStatus, example: PromotionStatus.ACTIVE })
+  @ApiPropertyOptional({
+    enum: PromotionStatus,
+    example: PromotionStatus.ACTIVE,
+  })
   @IsOptional()
   @IsEnum(PromotionStatus)
   status?: PromotionStatus;
 
-  @ApiPropertyOptional({ description: 'Priority (lower runs first)', example: 100 })
+  @ApiPropertyOptional({
+    description: 'Priority (lower runs first)',
+    example: 100,
+  })
   @IsOptional()
   @IsInt()
   priority?: number;
 
-  @ApiPropertyOptional({ enum: StackingPolicy, example: StackingPolicy.STACKABLE })
+  @ApiPropertyOptional({
+    enum: StackingPolicy,
+    example: StackingPolicy.STACKABLE,
+  })
   @IsOptional()
   @IsEnum(StackingPolicy)
   stackingPolicy?: StackingPolicy;
 
-  @ApiPropertyOptional({ description: 'Optional stacking group key', example: 'welcome' })
+  @ApiPropertyOptional({
+    description: 'Optional stacking group key',
+    example: 'welcome',
+  })
   @IsOptional()
   @IsString()
   stackingGroup?: string;
@@ -118,28 +145,43 @@ export class UpdatePromotionDto {
   @IsInt()
   maxRedemptions?: number;
 
-  @ApiPropertyOptional({ description: 'Max redemptions per customer', example: 1 })
+  @ApiPropertyOptional({
+    description: 'Max redemptions per customer',
+    example: 1,
+  })
   @IsOptional()
   @IsInt()
   maxRedemptionsPerCustomer?: number;
 
-  @ApiPropertyOptional({ description: 'ISO date-time when the promo becomes valid', example: '2026-01-01T00:00:00.000Z' })
+  @ApiPropertyOptional({
+    description: 'ISO date-time when the promo becomes valid',
+    example: '2026-01-01T00:00:00.000Z',
+  })
   @IsOptional()
   @IsDateString()
   validFrom?: string;
 
-  @ApiPropertyOptional({ description: 'ISO date-time when the promo expires', example: '2026-12-31T23:59:59.999Z' })
+  @ApiPropertyOptional({
+    description: 'ISO date-time when the promo expires',
+    example: '2026-12-31T23:59:59.999Z',
+  })
   @IsOptional()
   @IsDateString()
   validTo?: string;
 
-  @ApiPropertyOptional({ description: 'Optional channel allow-list', example: ['web', 'pos'] })
+  @ApiPropertyOptional({
+    description: 'Optional channel allow-list',
+    example: ['web', 'pos'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   channels?: string[];
 
-  @ApiPropertyOptional({ description: 'Optional metadata blob (admin-only)', example: { note: 'updated by ops' } })
+  @ApiPropertyOptional({
+    description: 'Optional metadata blob (admin-only)',
+    example: { note: 'updated by ops' },
+  })
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
@@ -147,7 +189,8 @@ export class UpdatePromotionDto {
   @ApiPropertyOptional({
     type: UpdatePromotionConditionDto,
     isArray: true,
-    description: 'Replace all conditions when provided (logical AND across conditions).',
+    description:
+      'Replace all conditions when provided (logical AND across conditions).',
   })
   @IsOptional()
   @IsArray()
@@ -158,7 +201,8 @@ export class UpdatePromotionDto {
   @ApiPropertyOptional({
     type: UpdatePromotionActionDto,
     isArray: true,
-    description: 'Replace all actions when provided. Must contain at least one action when present.',
+    description:
+      'Replace all actions when provided. Must contain at least one action when present.',
   })
   @IsOptional()
   @IsArray()

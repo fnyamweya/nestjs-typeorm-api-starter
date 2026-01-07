@@ -13,7 +13,8 @@ export class EnableTwoFactorDto {
   channel: MfaChannel = MfaChannel.EMAIL;
 
   @ApiPropertyOptional({
-    description: 'Email to which the verification code should be sent (required when channel=email)',
+    description:
+      'Email to which the verification code should be sent (required when channel=email)',
     example: 'jane.doe@example.com',
   })
   @ValidateIf((dto) => dto.channel === MfaChannel.EMAIL)

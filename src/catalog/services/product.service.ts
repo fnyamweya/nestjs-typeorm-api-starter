@@ -1,7 +1,19 @@
 // @ts-nocheck
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { Brackets, DataSource, EntityManager, In, IsNull, Not, Repository } from 'typeorm';
+import {
+  Brackets,
+  DataSource,
+  EntityManager,
+  In,
+  IsNull,
+  Not,
+  Repository,
+} from 'typeorm';
 import { randomBytes } from 'crypto';
 import { Product } from '../entities/product.entity';
 import { Brand } from '../entities/brand.entity';
@@ -29,7 +41,10 @@ import {
   PublicProductSkuDto,
 } from '../dto/public/public-product.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { ShippingCatalogContextCacheIndexService } from 'src/common/cache/shipping-catalog-context-cache-index.service';
 import { ProductAvailabilityDto } from '../dto/product-availability.dto';
 import { CreateProductSkuDto } from '../dto/create-product-sku.dto';
@@ -37,8 +52,15 @@ import { CreateProductPriceDto } from '../dto/create-product-price.dto';
 import { CreateProductContextOverrideDto } from '../dto/product-v2/create-product-context-override.dto';
 import { UpdateProductContextOverrideDto } from '../dto/product-v2/update-product-context-override.dto';
 import { ProductDTO, ProductViewDTO } from '../dto/product-v2/product.dto';
-import { AvailabilityDTO, ContextualOverrideDTO, LocalizedString } from '../dto/product-v2/product.types';
-import { applyContextualOverrides, ProductViewContext } from '../utils/contextual-overrides.util';
+import {
+  AvailabilityDTO,
+  ContextualOverrideDTO,
+  LocalizedString,
+} from '../dto/product-v2/product.types';
+import {
+  applyContextualOverrides,
+  ProductViewContext,
+} from '../utils/contextual-overrides.util';
 import { PriceService } from './price.service';
 import { CurrencyService } from 'src/currency/currency.service';
 
@@ -102,7 +124,9 @@ export class ProductService {
     private readonly currencyService: CurrencyService,
   ) {}
 
-  private async normalizeAndValidateCurrencyCode(currencyCode?: string): Promise<string | undefined> {
+  private async normalizeAndValidateCurrencyCode(
+    currencyCode?: string,
+  ): Promise<string | undefined> {
     if (!currencyCode) return undefined;
     return this.currencyService.assertExists(currencyCode);
   }
@@ -132,7 +156,9 @@ export class ProductService {
       skuRepository: manager.getRepository(ProductSku),
       productCategoryRepository: manager.getRepository(ProductCategory),
       productChannelRepository: manager.getRepository(ProductChannel),
-      productContextOverrideRepository: manager.getRepository(ProductContextOverride),
+      productContextOverrideRepository: manager.getRepository(
+        ProductContextOverride,
+      ),
       priceRowRepository: manager.getRepository(PriceRow),
       priceListRepository: manager.getRepository(PriceList),
       currencyRepository: manager.getRepository(Currency),
@@ -170,7 +196,9 @@ export class ProductService {
       const { brandRepository, productRepository } = this.getRepos(manager);
 
       if (payload.brandId) {
-        const exists = await brandRepository.exist({ where: { id: payload.brandId } });
+        const exists = await brandRepository.exist({
+          where: { id: payload.brandId },
+        });
         if (!exists) throw new NotFoundException('Brand not found');
       }
 
@@ -195,8 +223,20 @@ export class ProductService {
 
       const saved = await productRepository.save(product);
 
-      await this.persistTranslations(saved.id, payload, saved.title, saved.description, manager);
-      const { skus, inputs } = await this.persistSkus(saved.id, saved.slug, payload.skus, payload.optionDefinitions ?? [], manager);
+      await this.persistTranslations(
+        saved.id,
+        payload,
+        saved.title,
+        saved.description,
+        manager,
+      );
+      const { skus, inputs } = await this.persistSkus(
+        saved.id,
+        saved.slug,
+        payload.skus,
+        payload.optionDefinitions ?? [],
+        manager,
+      );
       await this.persistPrices(saved.id, payload.prices, skus, inputs, manager);
 
       if (payload.categoryIds?.length) {
@@ -244,19 +284,27 @@ export class ProductService {
         }
 
         if (filters.brandId) {
-          qb.andWhere('product.brand_id = :brandId', { brandId: filters.brandId });
+          qb.andWhere('product.brand_id = :brandId', {
+            brandId: filters.brandId,
+          });
         }
 
         if (filters.categoryId) {
-          qb.andWhere('productCategories.categoryId = :categoryId', { categoryId: filters.categoryId });
+          qb.andWhere('productCategories.categoryId = :categoryId', {
+            categoryId: filters.categoryId,
+          });
         }
 
         if (filters.search) {
           qb.andWhere(
             new Brackets((qbInner) => {
               qbInner
-                .where('product.title ILIKE :search', { search: `%${filters.search}%` })
-                .orWhere('product.slug ILIKE :search', { search: `%${filters.search}%` });
+                .where('product.title ILIKE :search', {
+                  search: `%${filters.search}%`,
+                })
+                .orWhere('product.slug ILIKE :search', {
+                  search: `%${filters.search}%`,
+                });
             }),
           );
         }
@@ -296,7 +344,9 @@ export class ProductService {
     const product = await this.findOneEntityOrThrow(id);
 
     if (payload.brandId) {
-      const exists = await this.brandRepository.exist({ where: { id: payload.brandId } });
+      const exists = await this.brandRepository.exist({
+        where: { id: payload.brandId },
+      });
       if (!exists) throw new NotFoundException('Brand not found');
     }
 
@@ -319,9 +369,13 @@ export class ProductService {
       externalRef: payload.externalRef ?? product.externalRef,
       brandId: payload.brandId ?? product.brandId,
       availabilityJson: availability,
-      imagesJson: payload.images ? this.normalizeImages(payload.images) : product.imagesJson,
+      imagesJson: payload.images
+        ? this.normalizeImages(payload.images)
+        : product.imagesJson,
       optionDefinitionsJson:
-        payload.optionDefinitions !== undefined ? ((payload.optionDefinitions ?? []) as any) : product.optionDefinitionsJson,
+        payload.optionDefinitions !== undefined
+          ? ((payload.optionDefinitions ?? []) as any)
+          : product.optionDefinitionsJson,
       metaJson: payload.metaJson ?? product.metaJson,
     });
 
@@ -329,13 +383,25 @@ export class ProductService {
 
     if (payload.translations) {
       await this.translationRepository.delete({ productId: saved.id });
-      await this.persistTranslations(saved.id, payload, saved.title, saved.description);
+      await this.persistTranslations(
+        saved.id,
+        payload,
+        saved.title,
+        saved.description,
+      );
     }
 
     if ((payload as any).skus) {
       await this.skuRepository.delete({ productId: saved.id });
-      const optionDefs = (payload.optionDefinitions ?? (saved.optionDefinitionsJson as any) ?? []) as any[];
-      const { skus, inputs } = await this.persistSkus(saved.id, saved.slug, (payload as any).skus, optionDefs);
+      const optionDefs = (payload.optionDefinitions ??
+        (saved.optionDefinitionsJson as any) ??
+        []) as any[];
+      const { skus, inputs } = await this.persistSkus(
+        saved.id,
+        saved.slug,
+        (payload as any).skus,
+        optionDefs,
+      );
       await this.persistPrices(saved.id, payload.prices, skus, inputs);
     }
 
@@ -365,11 +431,18 @@ export class ProductService {
     await this.clearProductCaches(id);
   }
 
-  async findAllPublic(filters: PublicListProductsDto): Promise<{ data: PublicProductDto[]; total: number; page: number; limit: number }> {
+  async findAllPublic(filters: PublicListProductsDto): Promise<{
+    data: PublicProductDto[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
 
-    const currencyCode = await this.normalizeAndValidateCurrencyCode(filters.currencyCode);
+    const currencyCode = await this.normalizeAndValidateCurrencyCode(
+      filters.currencyCode,
+    );
 
     const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'list', {
       page,
@@ -400,23 +473,33 @@ export class ProductService {
           .where('product.status = :status', { status: ProductStatus.ACTIVE });
 
         if (filters.brandId) {
-          qb.andWhere('product.brand_id = :brandId', { brandId: filters.brandId });
+          qb.andWhere('product.brand_id = :brandId', {
+            brandId: filters.brandId,
+          });
         }
 
         if (filters.categoryId) {
-          qb.andWhere('productCategories.categoryId = :categoryId', { categoryId: filters.categoryId });
+          qb.andWhere('productCategories.categoryId = :categoryId', {
+            categoryId: filters.categoryId,
+          });
         }
 
         if (filters.taxonomyId) {
-          qb.andWhere('category.taxonomyId = :taxonomyId', { taxonomyId: filters.taxonomyId });
+          qb.andWhere('category.taxonomyId = :taxonomyId', {
+            taxonomyId: filters.taxonomyId,
+          });
         }
 
         if (filters.search) {
           qb.andWhere(
             new Brackets((qbInner) => {
               qbInner
-                .where('product.title ILIKE :search', { search: `%${filters.search}%` })
-                .orWhere('product.slug ILIKE :search', { search: `%${filters.search}%` });
+                .where('product.title ILIKE :search', {
+                  search: `%${filters.search}%`,
+                })
+                .orWhere('product.slug ILIKE :search', {
+                  search: `%${filters.search}%`,
+                });
             }),
           );
         }
@@ -424,19 +507,27 @@ export class ProductService {
         if (filters.channel) {
           qb.leftJoin('product.productChannels', 'productChannels')
             .leftJoin('productChannels.channel', 'channel')
-            .andWhere('channel.code = :channel', { channel: filters.channel.toUpperCase() });
+            .andWhere('channel.code = :channel', {
+              channel: filters.channel.toUpperCase(),
+            });
         }
 
         if (filters.country) {
           const country = filters.country.toUpperCase();
-          qb.andWhere("product.availability_json -> 'countries' ? :country", { country });
+          qb.andWhere("product.availability_json -> 'countries' ? :country", {
+            country,
+          });
         }
 
         if (filters.location) {
-          qb.andWhere("product.availability_json -> 'locations' ? :location", { location: filters.location });
+          qb.andWhere("product.availability_json -> 'locations' ? :location", {
+            location: filters.location,
+          });
         }
 
-        qb.orderBy('product.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
+        qb.orderBy('product.createdAt', 'DESC')
+          .skip((page - 1) * limit)
+          .take(limit);
 
         const [rows, total] = await qb.getManyAndCount();
         const data = await Promise.all(
@@ -456,9 +547,19 @@ export class ProductService {
     );
   }
 
-  async findOnePublic(id: string, opts?: { locale?: string; priceListId?: string; currencyCode?: string }): Promise<PublicProductDto> {
-    const currencyCode = await this.normalizeAndValidateCurrencyCode(opts?.currencyCode);
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'one', { id, locale: opts?.locale, priceListId: opts?.priceListId, currencyCode });
+  async findOnePublic(
+    id: string,
+    opts?: { locale?: string; priceListId?: string; currencyCode?: string },
+  ): Promise<PublicProductDto> {
+    const currencyCode = await this.normalizeAndValidateCurrencyCode(
+      opts?.currencyCode,
+    );
+    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'one', {
+      id,
+      locale: opts?.locale,
+      priceListId: opts?.priceListId,
+      currencyCode,
+    });
     const key = `public:catalog:products:${cacheKeyHash(rawKey)}`;
 
     const product = await this.cache.remember(
@@ -488,30 +589,40 @@ export class ProductService {
     });
   }
 
-  async findAllPublicView(
-    filters: PublicListProductsViewDto,
-  ): Promise<{ data: ProductViewDTO[]; total: number; page: number; limit: number }> {
+  async findAllPublicView(filters: PublicListProductsViewDto): Promise<{
+    data: ProductViewDTO[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
     const context = this.buildViewContext(filters);
 
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'view', 'list', {
-      page,
-      limit,
-      search: filters.search,
-      brandId: filters.brandId,
-      categoryId: filters.categoryId,
-      taxonomyId: filters.taxonomyId,
-      channel: filters.channel,
-      country: filters.country,
-      location: filters.location,
-      locale: filters.locale,
-      priceListId: filters.priceListId,
-      currencyCode: filters.currencyCode,
-      customerTier: filters.customerTier,
-      role: filters.role,
-      context,
-    });
+    const rawKey = cacheKeyFromParts(
+      'public',
+      'catalog',
+      'products',
+      'view',
+      'list',
+      {
+        page,
+        limit,
+        search: filters.search,
+        brandId: filters.brandId,
+        categoryId: filters.categoryId,
+        taxonomyId: filters.taxonomyId,
+        channel: filters.channel,
+        country: filters.country,
+        location: filters.location,
+        locale: filters.locale,
+        priceListId: filters.priceListId,
+        currencyCode: filters.currencyCode,
+        customerTier: filters.customerTier,
+        role: filters.role,
+        context,
+      },
+    );
     const key = `public:catalog:products:view:list:${cacheKeyHash(rawKey)}`;
 
     return this.cache.remember(
@@ -527,23 +638,33 @@ export class ProductService {
           .where('product.status = :status', { status: ProductStatus.ACTIVE });
 
         if (filters.brandId) {
-          qb.andWhere('product.brand_id = :brandId', { brandId: filters.brandId });
+          qb.andWhere('product.brand_id = :brandId', {
+            brandId: filters.brandId,
+          });
         }
 
         if (filters.categoryId) {
-          qb.andWhere('productCategories.categoryId = :categoryId', { categoryId: filters.categoryId });
+          qb.andWhere('productCategories.categoryId = :categoryId', {
+            categoryId: filters.categoryId,
+          });
         }
 
         if (filters.taxonomyId) {
-          qb.andWhere('category.taxonomyId = :taxonomyId', { taxonomyId: filters.taxonomyId });
+          qb.andWhere('category.taxonomyId = :taxonomyId', {
+            taxonomyId: filters.taxonomyId,
+          });
         }
 
         if (filters.search) {
           qb.andWhere(
             new Brackets((qbInner) => {
               qbInner
-                .where('product.title ILIKE :search', { search: `%${filters.search}%` })
-                .orWhere('product.slug ILIKE :search', { search: `%${filters.search}%` });
+                .where('product.title ILIKE :search', {
+                  search: `%${filters.search}%`,
+                })
+                .orWhere('product.slug ILIKE :search', {
+                  search: `%${filters.search}%`,
+                });
             }),
           );
         }
@@ -551,22 +672,32 @@ export class ProductService {
         if (filters.channel) {
           qb.leftJoin('product.productChannels', 'productChannels')
             .leftJoin('productChannels.channel', 'channel')
-            .andWhere('channel.code = :channel', { channel: filters.channel.toUpperCase() });
+            .andWhere('channel.code = :channel', {
+              channel: filters.channel.toUpperCase(),
+            });
         }
 
         if (filters.country) {
           const country = filters.country.toUpperCase();
-          qb.andWhere("product.availability_json -> 'countries' ? :country", { country });
+          qb.andWhere("product.availability_json -> 'countries' ? :country", {
+            country,
+          });
         }
 
         if (filters.location) {
-          qb.andWhere("product.availability_json -> 'locations' ? :location", { location: filters.location });
+          qb.andWhere("product.availability_json -> 'locations' ? :location", {
+            location: filters.location,
+          });
         }
 
-        qb.orderBy('product.createdAt', 'DESC').skip((page - 1) * limit).take(limit);
+        qb.orderBy('product.createdAt', 'DESC')
+          .skip((page - 1) * limit)
+          .take(limit);
 
         const [rows, total] = await qb.getManyAndCount();
-        const overridesByProduct = await this.loadContextOverridesByProductIds(rows.map((row) => row.id));
+        const overridesByProduct = await this.loadContextOverridesByProductIds(
+          rows.map((row) => row.id),
+        );
 
         const data = await Promise.all(
           rows.map((row) =>
@@ -587,15 +718,27 @@ export class ProductService {
 
   async findOnePublicView(
     id: string,
-    opts?: { locale?: string; priceListId?: string; currencyCode?: string; context?: ProductViewContext },
+    opts?: {
+      locale?: string;
+      priceListId?: string;
+      currencyCode?: string;
+      context?: ProductViewContext;
+    },
   ): Promise<ProductViewDTO> {
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'products', 'view', 'one', {
-      id,
-      locale: opts?.locale,
-      priceListId: opts?.priceListId,
-      currencyCode: opts?.currencyCode,
-      context: opts?.context ?? null,
-    });
+    const rawKey = cacheKeyFromParts(
+      'public',
+      'catalog',
+      'products',
+      'view',
+      'one',
+      {
+        id,
+        locale: opts?.locale,
+        priceListId: opts?.priceListId,
+        currencyCode: opts?.currencyCode,
+        context: opts?.context ?? null,
+      },
+    );
     const key = `public:catalog:products:view:${cacheKeyHash(rawKey)}`;
 
     return this.cache.remember(
@@ -616,8 +759,12 @@ export class ProductService {
 
         if (!product) throw new NotFoundException('Product not found');
 
-        const overrides = await this.productContextOverrideRepository.find({ where: { productId: product.id } });
-        const overrideDtos = overrides.map((override) => this.toContextualOverrideDto(override));
+        const overrides = await this.productContextOverrideRepository.find({
+          where: { productId: product.id },
+        });
+        const overrideDtos = overrides.map((override) =>
+          this.toContextualOverrideDto(override),
+        );
         return this.toProductView(product, overrideDtos, {
           locale: opts?.locale,
           priceListId: opts?.priceListId,
@@ -629,7 +776,9 @@ export class ProductService {
     );
   }
 
-  async listContextOverrides(productId: string): Promise<ProductContextOverride[]> {
+  async listContextOverrides(
+    productId: string,
+  ): Promise<ProductContextOverride[]> {
     await this.findOneEntityOrThrow(productId);
     return this.productContextOverrideRepository.find({
       where: { productId },
@@ -637,7 +786,10 @@ export class ProductService {
     });
   }
 
-  async createContextOverride(productId: string, payload: CreateProductContextOverrideDto): Promise<ProductContextOverride> {
+  async createContextOverride(
+    productId: string,
+    payload: CreateProductContextOverrideDto,
+  ): Promise<ProductContextOverride> {
     await this.findOneEntityOrThrow(productId);
     const override = this.productContextOverrideRepository.create({
       productId,
@@ -665,27 +817,42 @@ export class ProductService {
     const override = await this.productContextOverrideRepository.findOne({
       where: { id: overrideId, productId },
     });
-    if (!override) throw new NotFoundException('Product context override not found');
+    if (!override)
+      throw new NotFoundException('Product context override not found');
 
     if (payload.isActive !== undefined) override.isActive = payload.isActive;
     if (payload.priority !== undefined) override.priority = payload.priority;
-    if (payload.validFrom !== undefined) override.validFrom = payload.validFrom ? new Date(payload.validFrom) : undefined;
-    if (payload.validUntil !== undefined) override.validUntil = payload.validUntil ? new Date(payload.validUntil) : undefined;
-    if (payload.match !== undefined) override.matchContext = (payload.match ?? {}) as any;
-    if (payload.rule !== undefined) override.rule = (payload.rule ?? undefined) as any;
-    if (payload.patch !== undefined) override.patch = (payload.patch ?? []) as any;
-    if (payload.description !== undefined) override.description = payload.description;
+    if (payload.validFrom !== undefined)
+      override.validFrom = payload.validFrom
+        ? new Date(payload.validFrom)
+        : undefined;
+    if (payload.validUntil !== undefined)
+      override.validUntil = payload.validUntil
+        ? new Date(payload.validUntil)
+        : undefined;
+    if (payload.match !== undefined)
+      override.matchContext = (payload.match ?? {}) as any;
+    if (payload.rule !== undefined)
+      override.rule = (payload.rule ?? undefined) as any;
+    if (payload.patch !== undefined)
+      override.patch = (payload.patch ?? []) as any;
+    if (payload.description !== undefined)
+      override.description = payload.description;
 
     const saved = await this.productContextOverrideRepository.save(override);
     await this.clearProductCaches(productId);
     return saved;
   }
 
-  async removeContextOverride(productId: string, overrideId: string): Promise<void> {
+  async removeContextOverride(
+    productId: string,
+    overrideId: string,
+  ): Promise<void> {
     const override = await this.productContextOverrideRepository.findOne({
       where: { id: overrideId, productId },
     });
-    if (!override) throw new NotFoundException('Product context override not found');
+    if (!override)
+      throw new NotFoundException('Product context override not found');
 
     await this.productContextOverrideRepository.remove(override);
     await this.clearProductCaches(productId);
@@ -693,10 +860,14 @@ export class ProductService {
 
   async addProductPrice(productId: string, payload: CreateProductPriceDto) {
     const product = await this.findOneEntityOrThrow(productId);
-    const list = await this.priceListRepository.findOne({ where: { id: payload.priceListId } });
+    const list = await this.priceListRepository.findOne({
+      where: { id: payload.priceListId },
+    });
     if (!list) throw new NotFoundException('Price list not found');
 
-    const currency = await this.currencyRepository.findOne({ where: { code: list.currency } });
+    const currency = await this.currencyRepository.findOne({
+      where: { code: list.currency },
+    });
     const precision = currency?.precision ?? 2;
 
     const conditions = (payload.metaJson as any)?.conditions ?? {};
@@ -708,7 +879,10 @@ export class ProductService {
       selectorJson: conditions,
       currencyCode: undefined,
       unitAmount: this.toMinorUnits(payload.unitPrice, precision),
-      compareAtAmount: payload.compareAtPrice !== undefined ? this.toMinorUnits(payload.compareAtPrice, precision) : undefined,
+      compareAtAmount:
+        payload.compareAtPrice !== undefined
+          ? this.toMinorUnits(payload.compareAtPrice, precision)
+          : undefined,
       minQuantity: payload.minQuantity ?? 1,
       maxQuantity: payload.maxQuantity,
       validFrom: payload.validFrom ? new Date(payload.validFrom) : undefined,
@@ -723,21 +897,31 @@ export class ProductService {
     return {
       ...saved,
       unitPrice: this.fromMinorUnits(saved.unitAmount, precision),
-      compareAtPrice: saved.compareAtAmount ? this.fromMinorUnits(saved.compareAtAmount, precision) : undefined,
+      compareAtPrice: saved.compareAtAmount
+        ? this.fromMinorUnits(saved.compareAtAmount, precision)
+        : undefined,
     };
   }
 
-  async addSkuPrice(productId: string, skuId: string, payload: CreateProductPriceDto) {
+  async addSkuPrice(
+    productId: string,
+    skuId: string,
+    payload: CreateProductPriceDto,
+  ) {
     const sku = await this.skuRepository.findOne({ where: { id: skuId } });
     if (!sku) throw new NotFoundException('Product SKU not found');
     if (sku.productId !== productId) {
       throw new BadRequestException('SKU does not belong to product');
     }
 
-    const list = await this.priceListRepository.findOne({ where: { id: payload.priceListId } });
+    const list = await this.priceListRepository.findOne({
+      where: { id: payload.priceListId },
+    });
     if (!list) throw new NotFoundException('Price list not found');
 
-    const currency = await this.currencyRepository.findOne({ where: { code: list.currency } });
+    const currency = await this.currencyRepository.findOne({
+      where: { code: list.currency },
+    });
     const precision = currency?.precision ?? 2;
 
     const conditions = (payload.metaJson as any)?.conditions ?? {};
@@ -749,7 +933,10 @@ export class ProductService {
       selectorJson: conditions,
       currencyCode: undefined,
       unitAmount: this.toMinorUnits(payload.unitPrice, precision),
-      compareAtAmount: payload.compareAtPrice !== undefined ? this.toMinorUnits(payload.compareAtPrice, precision) : undefined,
+      compareAtAmount:
+        payload.compareAtPrice !== undefined
+          ? this.toMinorUnits(payload.compareAtPrice, precision)
+          : undefined,
       minQuantity: payload.minQuantity ?? 1,
       maxQuantity: payload.maxQuantity,
       validFrom: payload.validFrom ? new Date(payload.validFrom) : undefined,
@@ -764,7 +951,9 @@ export class ProductService {
     return {
       ...saved,
       unitPrice: this.fromMinorUnits(saved.unitAmount, precision),
-      compareAtPrice: saved.compareAtAmount ? this.fromMinorUnits(saved.compareAtAmount, precision) : undefined,
+      compareAtPrice: saved.compareAtAmount
+        ? this.fromMinorUnits(saved.compareAtAmount, precision)
+        : undefined,
     };
   }
 
@@ -776,11 +965,19 @@ export class ProductService {
     });
 
     const priceListIds = Array.from(new Set(rows.map((r) => r.priceListId)));
-    const lists = priceListIds.length ? await this.priceListRepository.find({ where: { id: In(priceListIds) } }) : [];
+    const lists = priceListIds.length
+      ? await this.priceListRepository.find({ where: { id: In(priceListIds) } })
+      : [];
     const listById = new Map(lists.map((l) => [l.id, l] as const));
     const currencyCodes = Array.from(new Set(lists.map((l) => l.currency)));
-    const currencies = currencyCodes.length ? await this.currencyRepository.find({ where: { code: In(currencyCodes) } }) : [];
-    const precisionByCode = new Map(currencies.map((c) => [c.code, c.precision] as const));
+    const currencies = currencyCodes.length
+      ? await this.currencyRepository.find({
+          where: { code: In(currencyCodes) },
+        })
+      : [];
+    const precisionByCode = new Map(
+      currencies.map((c) => [c.code, c.precision] as const),
+    );
 
     return rows.map((r) => {
       const list = listById.get(r.priceListId);
@@ -788,7 +985,9 @@ export class ProductService {
       return {
         ...r,
         unitPrice: this.fromMinorUnits(r.unitAmount, precision),
-        compareAtPrice: r.compareAtAmount ? this.fromMinorUnits(r.compareAtAmount, precision) : undefined,
+        compareAtPrice: r.compareAtAmount
+          ? this.fromMinorUnits(r.compareAtAmount, precision)
+          : undefined,
       };
     });
   }
@@ -805,11 +1004,19 @@ export class ProductService {
     });
 
     const priceListIds = Array.from(new Set(rows.map((r) => r.priceListId)));
-    const lists = priceListIds.length ? await this.priceListRepository.find({ where: { id: In(priceListIds) } }) : [];
+    const lists = priceListIds.length
+      ? await this.priceListRepository.find({ where: { id: In(priceListIds) } })
+      : [];
     const listById = new Map(lists.map((l) => [l.id, l] as const));
     const currencyCodes = Array.from(new Set(lists.map((l) => l.currency)));
-    const currencies = currencyCodes.length ? await this.currencyRepository.find({ where: { code: In(currencyCodes) } }) : [];
-    const precisionByCode = new Map(currencies.map((c) => [c.code, c.precision] as const));
+    const currencies = currencyCodes.length
+      ? await this.currencyRepository.find({
+          where: { code: In(currencyCodes) },
+        })
+      : [];
+    const precisionByCode = new Map(
+      currencies.map((c) => [c.code, c.precision] as const),
+    );
 
     return rows.map((r) => {
       const list = listById.get(r.priceListId);
@@ -817,7 +1024,9 @@ export class ProductService {
       return {
         ...r,
         unitPrice: this.fromMinorUnits(r.unitAmount, precision),
-        compareAtPrice: r.compareAtAmount ? this.fromMinorUnits(r.compareAtAmount, precision) : undefined,
+        compareAtPrice: r.compareAtAmount
+          ? this.fromMinorUnits(r.compareAtAmount, precision)
+          : undefined,
       };
     });
   }
@@ -864,7 +1073,11 @@ export class ProductService {
     productId: string,
     slug: string,
     skus?: CreateProductSkuDto[],
-    optionDefinitions?: Array<{ key: string; allowedValues?: string[]; required?: boolean }>,
+    optionDefinitions?: Array<{
+      key: string;
+      allowedValues?: string[];
+      required?: boolean;
+    }>,
     manager?: EntityManager,
   ): Promise<{ skus: ProductSku[]; inputs: CreateProductSkuDto[] }> {
     const { skuRepository } = this.getRepos(manager);
@@ -877,10 +1090,18 @@ export class ProductService {
           },
         ];
 
-    const defs = (optionDefinitions ?? []).filter((d) => d && typeof d.key === 'string' && d.key.trim().length > 0);
+    const defs = (optionDefinitions ?? []).filter(
+      (d) => d && typeof d.key === 'string' && d.key.trim().length > 0,
+    );
     const allowedKeys = new Set(defs.map((d) => d.key));
-    const requiredKeys = new Set(defs.filter((d) => d.required).map((d) => d.key));
-    const allowedValuesByKey = new Map(defs.map((d) => [d.key, (d.allowedValues ?? []).map((v) => String(v))] as const));
+    const requiredKeys = new Set(
+      defs.filter((d) => d.required).map((d) => d.key),
+    );
+    const allowedValuesByKey = new Map(
+      defs.map(
+        (d) => [d.key, (d.allowedValues ?? []).map((v) => String(v))] as const,
+      ),
+    );
 
     const validateOptions = (options: Record<string, unknown>) => {
       if (!defs.length) return;
@@ -892,8 +1113,14 @@ export class ProductService {
       }
 
       for (const requiredKey of requiredKeys) {
-        if (options?.[requiredKey] === undefined || options?.[requiredKey] === null || options?.[requiredKey] === '') {
-          throw new BadRequestException(`Missing required option: ${requiredKey}`);
+        if (
+          options?.[requiredKey] === undefined ||
+          options?.[requiredKey] === null ||
+          options?.[requiredKey] === ''
+        ) {
+          throw new BadRequestException(
+            `Missing required option: ${requiredKey}`,
+          );
         }
       }
 
@@ -902,16 +1129,19 @@ export class ProductService {
         if (options?.[key] === undefined || options?.[key] === null) continue;
         const v = String(options[key]);
         if (!allowed.includes(v)) {
-          throw new BadRequestException(`Invalid value for option '${key}': ${v}`);
+          throw new BadRequestException(
+            `Invalid value for option '${key}': ${v}`,
+          );
         }
       }
     };
 
     const skuEntities: ProductSku[] = [];
     for (const [index, v] of normalized.entries()) {
-      const sku = v.sku?.trim() || (await this.generateSku(slug, index, manager));
+      const sku =
+        v.sku?.trim() || (await this.generateSku(slug, index, manager));
 
-      const options = (v.options ?? v.attributes ?? {}) as Record<string, unknown>;
+      const options = v.options ?? v.attributes ?? {};
       validateOptions(options);
 
       skuEntities.push(
@@ -949,15 +1179,20 @@ export class ProductService {
     skuInputs: CreateProductSkuDto[] | undefined,
     manager?: EntityManager,
   ) {
-    const { priceListRepository, currencyRepository, priceRowRepository } = this.getRepos(manager);
+    const { priceListRepository, currencyRepository, priceRowRepository } =
+      this.getRepos(manager);
     const rows: PriceRow[] = [];
 
     const allPriceListIds = new Set<string>();
     for (const p of prices ?? []) allPriceListIds.add(p.priceListId);
-    for (const skuInput of skuInputs ?? []) for (const p of skuInput?.prices ?? []) allPriceListIds.add(p.priceListId);
+    for (const skuInput of skuInputs ?? [])
+      for (const p of skuInput?.prices ?? [])
+        allPriceListIds.add(p.priceListId);
 
     const lists = allPriceListIds.size
-      ? await priceListRepository.find({ where: { id: In(Array.from(allPriceListIds)) } })
+      ? await priceListRepository.find({
+          where: { id: In(Array.from(allPriceListIds)) },
+        })
       : [];
     const listById = new Map(lists.map((l) => [l.id, l] as const));
 
@@ -965,7 +1200,9 @@ export class ProductService {
     const currencies = currencyCodes.length
       ? await currencyRepository.find({ where: { code: In(currencyCodes) } })
       : [];
-    const precisionByCode = new Map(currencies.map((c) => [c.code, c.precision] as const));
+    const precisionByCode = new Map(
+      currencies.map((c) => [c.code, c.precision] as const),
+    );
 
     const getPrecisionForList = (priceListId: string) => {
       const list = listById.get(priceListId);
@@ -985,7 +1222,10 @@ export class ProductService {
             selectorJson: conditions,
             currencyCode: undefined,
             unitAmount: this.toMinorUnits(p.unitPrice, precision),
-            compareAtAmount: p.compareAtPrice !== undefined ? this.toMinorUnits(p.compareAtPrice, precision) : undefined,
+            compareAtAmount:
+              p.compareAtPrice !== undefined
+                ? this.toMinorUnits(p.compareAtPrice, precision)
+                : undefined,
             minQuantity: p.minQuantity ?? 1,
             maxQuantity: p.maxQuantity,
             validFrom: p.validFrom ? new Date(p.validFrom) : undefined,
@@ -1011,7 +1251,10 @@ export class ProductService {
             selectorJson: conditions,
             currencyCode: undefined,
             unitAmount: this.toMinorUnits(p.unitPrice, precision),
-            compareAtAmount: p.compareAtPrice !== undefined ? this.toMinorUnits(p.compareAtPrice, precision) : undefined,
+            compareAtAmount:
+              p.compareAtPrice !== undefined
+                ? this.toMinorUnits(p.compareAtPrice, precision)
+                : undefined,
             minQuantity: p.minQuantity ?? 1,
             maxQuantity: p.maxQuantity,
             validFrom: p.validFrom ? new Date(p.validFrom) : undefined,
@@ -1029,7 +1272,9 @@ export class ProductService {
     }
   }
 
-  private normalizeAvailability(input?: ProductAvailabilityDto): AvailabilityNormalized {
+  private normalizeAvailability(
+    input?: ProductAvailabilityDto,
+  ): AvailabilityNormalized {
     const normalizeList = (values?: string[], upper?: boolean) =>
       Array.from(
         new Set(
@@ -1061,7 +1306,11 @@ export class ProductService {
     return (images ?? []).map((i) => String(i ?? '').trim()).filter(Boolean);
   }
 
-  private async ensureUniqueSlug(baseSlug: string, excludeId?: string, manager?: EntityManager): Promise<string> {
+  private async ensureUniqueSlug(
+    baseSlug: string,
+    excludeId?: string,
+    manager?: EntityManager,
+  ): Promise<string> {
     const { productRepository } = this.getRepos(manager);
     const slugCandidate = this.slugify(baseSlug);
     let slug = slugCandidate;
@@ -1091,7 +1340,11 @@ export class ProductService {
       .replace(/-+$/, '');
   }
 
-  private async generateSku(slug: string, index: number, manager?: EntityManager): Promise<string> {
+  private async generateSku(
+    slug: string,
+    index: number,
+    manager?: EntityManager,
+  ): Promise<string> {
     const { skuRepository } = this.getRepos(manager);
     const base = slug.toUpperCase().replace(/[^A-Z0-9]+/g, '-');
     const suffix = randomBytes(2).toString('hex').toUpperCase();
@@ -1102,7 +1355,11 @@ export class ProductService {
     return `${candidate}-${randomBytes(1).toString('hex').toUpperCase()}`;
   }
 
-  private async attachCategories(productId: string, categoryIds: string[], manager?: EntityManager) {
+  private async attachCategories(
+    productId: string,
+    categoryIds: string[],
+    manager?: EntityManager,
+  ) {
     const { productCategoryRepository } = this.getRepos(manager);
     const categories = categoryIds.map((categoryId, index) =>
       productCategoryRepository.create({
@@ -1115,23 +1372,38 @@ export class ProductService {
     await productCategoryRepository.save(categories);
   }
 
-  private async syncChannels(productId: string, channelCodes: string[], manager?: EntityManager): Promise<void> {
-    const { productChannelRepository, channelRepository } = this.getRepos(manager);
-    const normalized = Array.from(new Set((channelCodes ?? []).map((c) => c.toUpperCase())));
+  private async syncChannels(
+    productId: string,
+    channelCodes: string[],
+    manager?: EntityManager,
+  ): Promise<void> {
+    const { productChannelRepository, channelRepository } =
+      this.getRepos(manager);
+    const normalized = Array.from(
+      new Set((channelCodes ?? []).map((c) => c.toUpperCase())),
+    );
     await productChannelRepository.delete({ productId } as any);
 
     if (!normalized.length) return;
 
-    const channels = await channelRepository.find({ where: { code: In(normalized), isActive: true } as any });
+    const channels = await channelRepository.find({
+      where: { code: In(normalized), isActive: true } as any,
+    });
     const foundCodes = new Set(channels.map((c) => c.code.toUpperCase()));
 
     const missing = normalized.filter((code) => !foundCodes.has(code));
     if (missing.length) {
-      throw new BadRequestException(`Unknown or inactive channel(s): ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown or inactive channel(s): ${missing.join(', ')}`,
+      );
     }
 
     await productChannelRepository.insert(
-      channels.map((c) => ({ productId, channelId: c.id, isActive: true })) as any,
+      channels.map((c) => ({
+        productId,
+        channelId: c.id,
+        isActive: true,
+      })) as any,
     );
   }
 
@@ -1142,7 +1414,9 @@ export class ProductService {
     await this.cache.delByPrefix('public:catalog:products:');
     await this.cache.delByPrefix('public:catalog:products:view:');
     await this.cache.delByPrefix('price:resolve:');
-    await this.shippingCatalogContextCacheIndex.invalidateByProductIds([productId]);
+    await this.shippingCatalogContextCacheIndex.invalidateByProductIds([
+      productId,
+    ]);
   }
 
   private pickTranslation(
@@ -1159,7 +1433,10 @@ export class ProductService {
     );
   }
 
-  private categoryToPublicDto(category: Category, locale?: string): PublicProductCategoryRefDto {
+  private categoryToPublicDto(
+    category: Category,
+    locale?: string,
+  ): PublicProductCategoryRefDto {
     const translations = category.translations ?? [];
     const preferred = (locale || 'en').toLowerCase();
     const t =
@@ -1242,7 +1519,9 @@ export class ProductService {
     return localized;
   }
 
-  private toContextualOverrideDto(override: ProductContextOverride): ContextualOverrideDTO {
+  private toContextualOverrideDto(
+    override: ProductContextOverride,
+  ): ContextualOverrideDTO {
     return {
       id: override.id,
       priority: override.priority,
@@ -1280,7 +1559,10 @@ export class ProductService {
     return byProduct;
   }
 
-  private categoryToPublicCategoryDto(category: Category, locale?: string): PublicCategoryDto {
+  private categoryToPublicCategoryDto(
+    category: Category,
+    locale?: string,
+  ): PublicCategoryDto {
     const translations = category.translations ?? [];
     const preferred = (locale || 'en').toLowerCase();
     const t =
@@ -1304,21 +1586,33 @@ export class ProductService {
     };
   }
 
-  private buildAvailabilityDto(availability: Record<string, unknown> | undefined): AvailabilityDTO {
-    const raw = (availability ?? {}) as Record<string, unknown>;
-    const channels = (this.normalizeStringArray(raw.channels) ?? ['WEB']).map((c) => c.toUpperCase());
-    const countries = this.normalizeStringArray(raw.countries)?.map((c) => c.toUpperCase());
+  private buildAvailabilityDto(
+    availability: Record<string, unknown> | undefined,
+  ): AvailabilityDTO {
+    const raw = availability ?? {};
+    const channels = (this.normalizeStringArray(raw.channels) ?? ['WEB']).map(
+      (c) => c.toUpperCase(),
+    );
+    const countries = this.normalizeStringArray(raw.countries)?.map((c) =>
+      c.toUpperCase(),
+    );
     const locations = this.normalizeStringArray(raw.locations);
 
-    const stock = raw.stock && typeof raw.stock === 'object'
-      ? {
-          type: String((raw.stock as any).type ?? 'FINITE'),
-          quantity: (raw.stock as any).quantity,
-        }
-      : undefined;
+    const stock =
+      raw.stock && typeof raw.stock === 'object'
+        ? {
+            type: String((raw.stock as any).type ?? 'FINITE'),
+            quantity: (raw.stock as any).quantity,
+          }
+        : undefined;
 
-    const scheduleInput = raw.schedule && typeof raw.schedule === 'object' ? (raw.schedule as any) : undefined;
-    let schedule: { timezone: string; windows: Array<{ from: string; to: string }> } | undefined;
+    const scheduleInput =
+      raw.schedule && typeof raw.schedule === 'object'
+        ? (raw.schedule as any)
+        : undefined;
+    let schedule:
+      | { timezone: string; windows: Array<{ from: string; to: string }> }
+      | undefined;
     if (scheduleInput) {
       const windows: Array<{ from: string; to: string }> = [];
       if (Array.isArray(scheduleInput.windows)) {
@@ -1348,7 +1642,10 @@ export class ProductService {
       locations,
       stock,
       schedule,
-      meta: raw.meta && typeof raw.meta === 'object' ? (raw.meta as Record<string, unknown>) : undefined,
+      meta:
+        raw.meta && typeof raw.meta === 'object'
+          ? (raw.meta as Record<string, unknown>)
+          : undefined,
     };
   }
 
@@ -1357,38 +1654,71 @@ export class ProductService {
     opts?: { locale?: string; priceListId?: string; currencyCode?: string },
   ): Promise<ProductDTO> {
     const translations = product.translations ?? [];
-    const name = this.buildLocalizedString(translations, 'title', product.title);
-    const descriptionMap = this.buildLocalizedString(translations, 'description', product.description);
-    const description = Object.keys(descriptionMap).length ? descriptionMap : undefined;
+    const name = this.buildLocalizedString(
+      translations,
+      'title',
+      product.title,
+    );
+    const descriptionMap = this.buildLocalizedString(
+      translations,
+      'description',
+      product.description,
+    );
+    const description = Object.keys(descriptionMap).length
+      ? descriptionMap
+      : undefined;
 
     const categories = (product.productCategories ?? [])
       .map((pc) => pc.category)
       .filter((c): c is Category => Boolean(c))
       .map((c) => this.categoryToPublicCategoryDto(c, opts?.locale));
 
-    const meta = (product.metaJson ?? {}) as Record<string, unknown>;
+    const meta = product.metaJson ?? {};
     const tags = this.normalizeStringArray(meta.tags);
     const collections = this.normalizeStringArray(meta.collections);
     const attributes =
-      meta.attributes && typeof meta.attributes === 'object' ? (meta.attributes as Record<string, unknown>) : {};
+      meta.attributes && typeof meta.attributes === 'object'
+        ? (meta.attributes as Record<string, unknown>)
+        : {};
 
-    const schemaRefRaw = meta.attributeSchemaRef as Record<string, unknown> | undefined;
+    const schemaRefRaw = meta.attributeSchemaRef as
+      | Record<string, unknown>
+      | undefined;
     const attributeSchemaRef = {
-      schemaId: typeof schemaRefRaw?.schemaId === 'string' ? (schemaRefRaw.schemaId as string) : 'standard',
-      schemaVersion: typeof schemaRefRaw?.schemaVersion === 'number' ? (schemaRefRaw.schemaVersion as number) : 1,
+      schemaId:
+        typeof schemaRefRaw?.schemaId === 'string'
+          ? schemaRefRaw.schemaId
+          : 'standard',
+      schemaVersion:
+        typeof schemaRefRaw?.schemaVersion === 'number'
+          ? schemaRefRaw.schemaVersion
+          : 1,
     };
 
-    const type = typeof meta.type === 'string' ? (meta.type as string) : 'standard';
+    const type = typeof meta.type === 'string' ? meta.type : 'standard';
 
-    const defaultSku = (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
-    const resolvedPrice = await this.resolvePriceForSku(product.id, defaultSku, opts);
-    const basePrice = resolvedPrice?.unitPrice ? Number(resolvedPrice.unitPrice) : undefined;
-    const dynamicCurrency = opts?.currencyCode ?? (await this.currencyService.getDefaultCurrencyCode());
+    const defaultSku =
+      (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
+    const resolvedPrice = await this.resolvePriceForSku(
+      product.id,
+      defaultSku,
+      opts,
+    );
+    const basePrice = resolvedPrice?.unitPrice
+      ? Number(resolvedPrice.unitPrice)
+      : undefined;
+    const dynamicCurrency =
+      opts?.currencyCode ??
+      (await this.currencyService.getDefaultCurrencyCode());
     const pricing = resolvedPrice
-      ? ({ currency: resolvedPrice.currencyCode, pricingType: 'FIXED' as const, basePrice } as any)
+      ? ({
+          currency: resolvedPrice.currencyCode,
+          pricingType: 'FIXED' as const,
+          basePrice,
+        } as any)
       : ({ currency: dynamicCurrency, pricingType: 'DYNAMIC' as const } as any);
 
-    const availability = this.buildAvailabilityDto(product.availabilityJson as Record<string, unknown>);
+    const availability = this.buildAvailabilityDto(product.availabilityJson);
 
     const schedule = (product.availabilityJson as any)?.schedule ?? {};
     const validFrom = schedule?.startAt;
@@ -1441,7 +1771,12 @@ export class ProductService {
   private async toProductView(
     product: Product,
     overrides: ContextualOverrideDTO[] | undefined,
-    opts?: { locale?: string; priceListId?: string; currencyCode?: string; context?: ProductViewContext },
+    opts?: {
+      locale?: string;
+      priceListId?: string;
+      currencyCode?: string;
+      context?: ProductViewContext;
+    },
   ): Promise<ProductViewDTO> {
     const base = await this.toProductDTO(product, {
       locale: opts?.locale,
@@ -1462,9 +1797,17 @@ export class ProductService {
 
   private async toPublicProduct(
     product: Product,
-    opts?: { locale?: string; includeSkus?: boolean; priceListId?: string; currencyCode?: string },
+    opts?: {
+      locale?: string;
+      includeSkus?: boolean;
+      priceListId?: string;
+      currencyCode?: string;
+    },
   ): Promise<PublicProductDto> {
-    const translation = this.pickTranslation(product.translations, opts?.locale);
+    const translation = this.pickTranslation(
+      product.translations,
+      opts?.locale,
+    );
     const title = translation?.title ?? product.title;
     const description = translation?.description ?? product.description;
 
@@ -1489,7 +1832,8 @@ export class ProductService {
         )
       : [];
 
-    const defaultSku = (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
+    const defaultSku =
+      (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
     const price = await this.resolvePriceForSku(product.id, defaultSku, opts);
 
     return {
@@ -1509,7 +1853,7 @@ export class ProductService {
             websiteUrl: product.brand.websiteUrl,
           }
         : undefined,
-      availability: (product.availabilityJson ?? {}) as Record<string, unknown>,
+      availability: product.availabilityJson ?? {},
       images: product.imagesJson ?? [],
       price,
       skus,

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerTier } from './entities/customer-tier.entity';
@@ -66,7 +70,9 @@ export class CustomerTierService {
   }
 
   async listTiers(): Promise<CustomerTierDto[]> {
-    const rows = await this.tierRepository.find({ order: { priority: 'DESC', code: 'ASC' } });
+    const rows = await this.tierRepository.find({
+      order: { priority: 'DESC', code: 'ASC' },
+    });
     return rows.map((r) => this.toTierDto(r));
   }
 
@@ -89,9 +95,14 @@ export class CustomerTierService {
     return this.toTierDto(saved);
   }
 
-  async updateTier(code: string, payload: UpdateCustomerTierDto): Promise<CustomerTierDto> {
+  async updateTier(
+    code: string,
+    payload: UpdateCustomerTierDto,
+  ): Promise<CustomerTierDto> {
     const normalized = this.normalizeCode(code);
-    const row = await this.tierRepository.findOne({ where: { code: normalized } as any });
+    const row = await this.tierRepository.findOne({
+      where: { code: normalized } as any,
+    });
     if (!row) throw new NotFoundException('Tier not found');
 
     if (payload.code && this.normalizeCode(payload.code) !== normalized) {
@@ -112,7 +123,9 @@ export class CustomerTierService {
 
   async deleteTier(code: string): Promise<void> {
     const normalized = this.normalizeCode(code);
-    const row = await this.tierRepository.findOne({ where: { code: normalized } as any });
+    const row = await this.tierRepository.findOne({
+      where: { code: normalized } as any,
+    });
     if (!row) throw new NotFoundException('Tier not found');
     await this.tierRepository.remove(row);
   }
@@ -125,8 +138,12 @@ export class CustomerTierService {
     return rows.map((r) => this.toRuleDto(r));
   }
 
-  async createRule(payload: CreateCustomerTierRuleDto): Promise<CustomerTierRuleDto> {
-    const tier = await this.tierRepository.findOne({ where: { id: payload.tierId } as any });
+  async createRule(
+    payload: CreateCustomerTierRuleDto,
+  ): Promise<CustomerTierRuleDto> {
+    const tier = await this.tierRepository.findOne({
+      where: { id: payload.tierId } as any,
+    });
     if (!tier) throw new NotFoundException('Tier not found');
 
     const row = this.ruleRepository.create({
@@ -140,16 +157,27 @@ export class CustomerTierService {
     });
 
     const saved = await this.ruleRepository.save(row);
-    const withTier = await this.ruleRepository.findOne({ where: { id: saved.id } as any, relations: ['tier'] });
+    const withTier = await this.ruleRepository.findOne({
+      where: { id: saved.id } as any,
+      relations: ['tier'],
+    });
     return this.toRuleDto(withTier!);
   }
 
-  async updateRule(id: string, payload: UpdateCustomerTierRuleDto): Promise<CustomerTierRuleDto> {
-    const row = await this.ruleRepository.findOne({ where: { id } as any, relations: ['tier'] });
+  async updateRule(
+    id: string,
+    payload: UpdateCustomerTierRuleDto,
+  ): Promise<CustomerTierRuleDto> {
+    const row = await this.ruleRepository.findOne({
+      where: { id } as any,
+      relations: ['tier'],
+    });
     if (!row) throw new NotFoundException('Rule not found');
 
     if (payload.tierId && payload.tierId !== row.tierId) {
-      const tier = await this.tierRepository.findOne({ where: { id: payload.tierId } as any });
+      const tier = await this.tierRepository.findOne({
+        where: { id: payload.tierId } as any,
+      });
       if (!tier) throw new NotFoundException('Tier not found');
       row.tierId = payload.tierId;
     }
@@ -157,14 +185,27 @@ export class CustomerTierService {
     Object.assign(row, {
       isActive: payload.isActive ?? row.isActive,
       priority: payload.priority ?? row.priority,
-      validFrom: payload.validFrom !== undefined ? (payload.validFrom ? new Date(payload.validFrom) : undefined) : row.validFrom,
-      validUntil: payload.validUntil !== undefined ? (payload.validUntil ? new Date(payload.validUntil) : undefined) : row.validUntil,
+      validFrom:
+        payload.validFrom !== undefined
+          ? payload.validFrom
+            ? new Date(payload.validFrom)
+            : undefined
+          : row.validFrom,
+      validUntil:
+        payload.validUntil !== undefined
+          ? payload.validUntil
+            ? new Date(payload.validUntil)
+            : undefined
+          : row.validUntil,
       ruleJson: payload.rule ?? row.ruleJson,
       description: payload.description ?? row.description,
     });
 
     const saved = await this.ruleRepository.save(row);
-    const withTier = await this.ruleRepository.findOne({ where: { id: saved.id } as any, relations: ['tier'] });
+    const withTier = await this.ruleRepository.findOne({
+      where: { id: saved.id } as any,
+      relations: ['tier'],
+    });
     return this.toRuleDto(withTier!);
   }
 
@@ -174,13 +215,20 @@ export class CustomerTierService {
     await this.ruleRepository.remove(row);
   }
 
-  async setCustomerTierOverride(userId: string, tierCode?: string): Promise<void> {
-    const profile = await this.customerProfileRepository.findOne({ where: { userId } as any });
+  async setCustomerTierOverride(
+    userId: string,
+    tierCode?: string,
+  ): Promise<void> {
+    const profile = await this.customerProfileRepository.findOne({
+      where: { userId } as any,
+    });
     if (!profile) throw new NotFoundException('Customer profile not found');
 
     const normalized = tierCode ? this.normalizeCode(tierCode) : '';
     if (normalized) {
-      const tier = await this.tierRepository.findOne({ where: { code: normalized, isActive: true } as any });
+      const tier = await this.tierRepository.findOne({
+        where: { code: normalized, isActive: true } as any,
+      });
       if (!tier) throw new BadRequestException('Unknown or inactive tier');
       profile.tierOverrideCode = normalized;
       profile.tierId = tier.id;
@@ -192,7 +240,9 @@ export class CustomerTierService {
     await this.customerProfileRepository.save(profile);
   }
 
-  async resolveTierForUser(userId: string): Promise<{ tierCode: string; source: string; matchedRuleId?: string }>{
+  async resolveTierForUser(
+    userId: string,
+  ): Promise<{ tierCode: string; source: string; matchedRuleId?: string }> {
     const user = await this.userRepository.findOne({
       where: { id: userId } as any,
       relations: ['customerProfile'],
@@ -204,7 +254,9 @@ export class CustomerTierService {
     // Manual override (if active)
     const overrideTierId = profile?.tierId ?? null;
     if (overrideTierId) {
-      const tier = await this.tierRepository.findOne({ where: { id: overrideTierId, isActive: true } as any });
+      const tier = await this.tierRepository.findOne({
+        where: { id: overrideTierId, isActive: true } as any,
+      });
       if (tier) {
         // Keep the legacy code field in sync for backwards compatibility/visibility
         if (profile && profile.tierOverrideCode !== tier.code) {
@@ -222,7 +274,9 @@ export class CustomerTierService {
     // Legacy override fallback (no tier_id yet)
     const overrideCode = profile?.tierOverrideCode ?? null;
     if (overrideCode) {
-      const tier = await this.tierRepository.findOne({ where: { code: overrideCode, isActive: true } as any });
+      const tier = await this.tierRepository.findOne({
+        where: { code: overrideCode, isActive: true } as any,
+      });
       if (tier) {
         // Best-effort backfill tier_id for future lookups
         if (profile && !profile.tierId) {
@@ -241,10 +295,17 @@ export class CustomerTierService {
       .createQueryBuilder('o')
       .select('COUNT(*)', 'ordersCount')
       .addSelect('COALESCE(SUM(o.grand_total::numeric), 0)', 'lifetimeSpend')
-      .addSelect('MAX(COALESCE(o.completed_at, o.placed_at, o.created_at))', 'lastOrderAt')
+      .addSelect(
+        'MAX(COALESCE(o.completed_at, o.placed_at, o.created_at))',
+        'lastOrderAt',
+      )
       .where('o.customer_id = :userId', { userId })
       .andWhere('o.financial_status = :paid', { paid: FinancialStatus.PAID })
-      .getRawOne<{ ordersCount: string; lifetimeSpend: string; lastOrderAt: string | null }>();
+      .getRawOne<{
+        ordersCount: string;
+        lifetimeSpend: string;
+        lastOrderAt: string | null;
+      }>();
 
     const facts = {
       userId: user.id,
@@ -256,7 +317,9 @@ export class CustomerTierService {
       ordersCount: Number(stats?.ordersCount ?? 0),
       lifetimeSpend: Number(stats?.lifetimeSpend ?? 0),
       lastOrderAt: stats?.lastOrderAt ?? null,
-      emailDomain: user.email?.includes('@') ? user.email.split('@')[1] : undefined,
+      emailDomain: user.email?.includes('@')
+        ? user.email.split('@')[1]
+        : undefined,
     };
 
     const rules = await this.ruleRepository.find({
@@ -293,6 +356,10 @@ export class CustomerTierService {
       }
     }
 
-    return { tierCode: resolved.tierCode, source: resolved.source, matchedRuleId: resolved.matchedRuleId };
+    return {
+      tierCode: resolved.tierCode,
+      source: resolved.source,
+      matchedRuleId: resolved.matchedRuleId,
+    };
   }
 }

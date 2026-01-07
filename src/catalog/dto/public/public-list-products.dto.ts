@@ -14,7 +14,10 @@ export class PublicListProductsDto {
   @Min(1)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Search term applied to title/slug', example: 'iphone' })
+  @ApiPropertyOptional({
+    description: 'Search term applied to title/slug',
+    example: 'iphone',
+  })
   @IsOptional()
   @IsString()
   search?: string;
@@ -29,17 +32,25 @@ export class PublicListProductsDto {
   @IsUUID('4')
   categoryId?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by taxonomy id (via product categories)' })
+  @ApiPropertyOptional({
+    description: 'Filter by taxonomy id (via product categories)',
+  })
   @IsOptional()
   @IsUUID('4')
   taxonomyId?: string;
 
-  @ApiPropertyOptional({ description: 'Channel code for availability filter', example: 'app' })
+  @ApiPropertyOptional({
+    description: 'Channel code for availability filter',
+    example: 'app',
+  })
   @IsOptional()
   @IsString()
   channel?: string;
 
-  @ApiPropertyOptional({ description: 'Country code for availability filter', example: 'KE' })
+  @ApiPropertyOptional({
+    description: 'Country code for availability filter',
+    example: 'KE',
+  })
   @IsOptional()
   @IsString()
   country?: string;
@@ -49,7 +60,10 @@ export class PublicListProductsDto {
   @IsString()
   location?: string;
 
-  @ApiPropertyOptional({ description: 'Preferred locale for translated fields', example: 'en' })
+  @ApiPropertyOptional({
+    description: 'Preferred locale for translated fields',
+    example: 'en',
+  })
   @IsOptional()
   @IsString()
   locale?: string;
@@ -59,7 +73,10 @@ export class PublicListProductsDto {
   @IsUUID('4')
   priceListId?: string;
 
-  @ApiPropertyOptional({ description: 'Currency code for price resolution', example: 'KES' })
+  @ApiPropertyOptional({
+    description: 'Currency code for price resolution',
+    example: 'KES',
+  })
   @IsOptional()
   @IsString()
   currencyCode?: string;

@@ -71,7 +71,7 @@ export const KENYA_LOCATION_TREE: SeedLocationNode = {
     { name: 'Nyandarua', type: LocationType.COUNTY },
     { name: 'Nyeri', type: LocationType.COUNTY },
     { name: 'Kirinyaga', type: LocationType.COUNTY },
-    { name: 'Murang\'a', type: LocationType.COUNTY },
+    { name: "Murang'a", type: LocationType.COUNTY },
     { name: 'Kiambu', type: LocationType.COUNTY },
     { name: 'Turkana', type: LocationType.COUNTY },
     { name: 'West Pokot', type: LocationType.COUNTY },

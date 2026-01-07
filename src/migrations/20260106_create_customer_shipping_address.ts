@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCustomerShippingAddress20260106_120000 implements MigrationInterface {
+export class CreateCustomerShippingAddress20260106_120000
+  implements MigrationInterface
+{
   name = 'CreateCustomerShippingAddress20260106_120000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -24,7 +26,11 @@ export class CreateCustomerShippingAddress20260106_120000 implements MigrationIn
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_shipping_address_user_id";`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "customer_shipping_address";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_shipping_address_user_id";`,
+    );
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "customer_shipping_address";`,
+    );
   }
 }

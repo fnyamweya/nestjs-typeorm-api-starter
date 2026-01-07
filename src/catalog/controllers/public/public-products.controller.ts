@@ -1,4 +1,13 @@
-import { Controller, Get, Param, Query, Req, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Req,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
 import { ResponseUtil } from 'src/common/utils/response.util';
@@ -11,7 +20,13 @@ import { CustomerTierService } from 'src/customer-tier/customer-tier.service';
 
 @Controller('public/catalog/products')
 @ApiTags('Public Catalog: Products')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class PublicProductsController {
   constructor(
     private readonly productService: ProductService,
@@ -34,7 +49,10 @@ export class PublicProductsController {
   @Get('view')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOkResponse({ description: 'Public product views retrieved successfully' })
-  async listView(@Req() req: Request, @Query() query: PublicListProductsViewDto) {
+  async listView(
+    @Req() req: Request,
+    @Query() query: PublicListProductsViewDto,
+  ) {
     const user = (req as any).user as { id: string } | undefined;
     const resolvedTier = user?.id
       ? await this.customerTierService.resolveTierForUser(user.id)
@@ -56,15 +74,31 @@ export class PublicProductsController {
 
   @Get(':id')
   @ApiOkResponse({ description: 'Public product retrieved successfully' })
-  async get(@Param('id') id: string, @Query('locale') locale?: string, @Query('priceListId') priceListId?: string, @Query('currencyCode') currencyCode?: string) {
-    const product = await this.productService.findOnePublic(id, { locale, priceListId, currencyCode });
-    return ResponseUtil.success(product, 'Public product retrieved successfully');
+  async get(
+    @Param('id') id: string,
+    @Query('locale') locale?: string,
+    @Query('priceListId') priceListId?: string,
+    @Query('currencyCode') currencyCode?: string,
+  ) {
+    const product = await this.productService.findOnePublic(id, {
+      locale,
+      priceListId,
+      currencyCode,
+    });
+    return ResponseUtil.success(
+      product,
+      'Public product retrieved successfully',
+    );
   }
 
   @Get(':id/view')
   @UseGuards(OptionalJwtAuthGuard)
   @ApiOkResponse({ description: 'Public product view retrieved successfully' })
-  async getView(@Req() req: Request, @Param('id') id: string, @Query() query: PublicProductViewQueryDto) {
+  async getView(
+    @Req() req: Request,
+    @Param('id') id: string,
+    @Query() query: PublicProductViewQueryDto,
+  ) {
     const user = (req as any).user as { id: string } | undefined;
     const resolvedTier = user?.id
       ? await this.customerTierService.resolveTierForUser(user.id)
@@ -82,6 +116,9 @@ export class PublicProductsController {
       currencyCode: query.currencyCode,
       context,
     });
-    return ResponseUtil.success(product, 'Public product view retrieved successfully');
+    return ResponseUtil.success(
+      product,
+      'Public product view retrieved successfully',
+    );
   }
 }

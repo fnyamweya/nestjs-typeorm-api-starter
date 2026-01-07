@@ -303,7 +303,9 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('ALTER TABLE "product" DROP CONSTRAINT IF EXISTS "FK_product_default_variant"');
+    await queryRunner.query(
+      'ALTER TABLE "product" DROP CONSTRAINT IF EXISTS "FK_product_default_variant"',
+    );
 
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_attr_number"');
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_attr_string"');
@@ -321,13 +323,17 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
     await queryRunner.query('DROP INDEX IF EXISTS "idx_variant_product"');
     await queryRunner.query('DROP TABLE IF EXISTS "product_variant"');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_translation_locale"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_translation_locale"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_translation"');
 
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_status"');
     await queryRunner.query('DROP TABLE IF EXISTS "product"');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_category_attribute_cat"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_category_attribute_cat"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "category_attribute"');
 
     await queryRunner.query('DROP TABLE IF EXISTS "attribute_definition"');
@@ -337,10 +343,14 @@ export class AddCatalogSchema20251211010000 implements MigrationInterface {
 
     await queryRunner.query('DROP TABLE IF EXISTS "sales_channel"');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_cat_translation_locale"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_cat_translation_locale"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "category_translation"');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_cat_closure_descendant"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_cat_closure_descendant"',
+    );
     await queryRunner.query('DROP INDEX IF EXISTS "idx_cat_closure_ancestor"');
     await queryRunner.query('DROP TABLE IF EXISTS "category_closure"');
 

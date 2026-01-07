@@ -40,10 +40,14 @@ export class RefactorShippingZoneLocationToLocationId20260101173000
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_shipping_zone_location_location_id";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_shipping_zone_location_location_id";`,
+    );
     await queryRunner.query(
       `ALTER TABLE "shipping_zone_location" DROP CONSTRAINT IF EXISTS "fk_shipping_zone_location_location";`,
     );
-    await queryRunner.query(`ALTER TABLE "shipping_zone_location" DROP COLUMN IF EXISTS "location_id";`);
+    await queryRunner.query(
+      `ALTER TABLE "shipping_zone_location" DROP COLUMN IF EXISTS "location_id";`,
+    );
   }
 }

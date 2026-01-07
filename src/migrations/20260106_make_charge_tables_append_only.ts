@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class MakeChargeTablesAppendOnly20260106_1768000000000 implements MigrationInterface {
+export class MakeChargeTablesAppendOnly20260106_1768000000000
+  implements MigrationInterface
+{
   name = 'MakeChargeTablesAppendOnly20260106_1768000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -36,6 +38,8 @@ export class MakeChargeTablesAppendOnly20260106_1768000000000 implements Migrati
     await queryRunner.query(
       `DROP TRIGGER IF EXISTS trg_order_level_charge_no_update_delete ON "order_level_charge";`,
     );
-    await queryRunner.query(`DROP FUNCTION IF EXISTS prevent_charge_row_modification();`);
+    await queryRunner.query(
+      `DROP FUNCTION IF EXISTS prevent_charge_row_modification();`,
+    );
   }
 }

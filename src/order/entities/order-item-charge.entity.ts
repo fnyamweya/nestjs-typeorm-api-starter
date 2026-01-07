@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { OrderItem } from './order-item.entity';
 
 @Entity('order_item_charge')
@@ -9,7 +16,9 @@ export class OrderItemCharge {
   @Column({ name: 'order_item_id', type: 'uuid' })
   orderItemId: string;
 
-  @ManyToOne(() => OrderItem, (item) => item.itemCharges, { onDelete: 'CASCADE' })
+  @ManyToOne(() => OrderItem, (item) => item.itemCharges, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'order_item_id' })
   orderItem: OrderItem;
 
@@ -28,7 +37,13 @@ export class OrderItemCharge {
   @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
   rate?: string;
 
-  @Column({ name: 'base_amount', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  @Column({
+    name: 'base_amount',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    nullable: true,
+  })
   baseAmount?: string;
 
   @Column({ name: 'quantity_basis', type: 'int', nullable: true })

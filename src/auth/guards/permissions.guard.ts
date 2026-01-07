@@ -106,10 +106,11 @@ export class PermissionsGuard implements CanActivate {
   }> {
     if (!role) return [];
 
-    const direct = role.rolePermissions?.map((rp) => ({
-      module: rp.permission.module,
-      permission: rp.permission.permission as PermissionType,
-    })) || [];
+    const direct =
+      role.rolePermissions?.map((rp) => ({
+        module: rp.permission.module,
+        permission: rp.permission.permission,
+      })) || [];
 
     const parentPerms = this.flattenPermissions(role.parent);
 

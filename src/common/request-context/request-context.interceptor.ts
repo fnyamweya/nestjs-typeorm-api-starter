@@ -16,10 +16,15 @@ export class RequestContextInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     const http = context.switchToHttp();
-    const req = http.getRequest<Request & { headers?: Record<string, unknown> }>();
-    const res = http.getResponse<{ setHeader?: (name: string, value: string) => void }>();
+    const req = http.getRequest<
+      Request & { headers?: Record<string, unknown> }
+    >();
+    const res = http.getResponse<{
+      setHeader?: (name: string, value: string) => void;
+    }>();
 
-    const headerValue = (req?.headers?.[REQUEST_ID_HEADER] ?? req?.headers?.[REQUEST_ID_HEADER.toUpperCase()]) as
+    const headerValue = (req?.headers?.[REQUEST_ID_HEADER] ??
+      req?.headers?.[REQUEST_ID_HEADER.toUpperCase()]) as
       | string
       | string[]
       | undefined;

@@ -26,13 +26,22 @@ export class Promotion {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'enum', enum: PromotionStatus, default: PromotionStatus.DRAFT })
+  @Column({
+    type: 'enum',
+    enum: PromotionStatus,
+    default: PromotionStatus.DRAFT,
+  })
   status: PromotionStatus;
 
   @Column({ type: 'int', default: 100 })
   priority: number;
 
-  @Column({ name: 'stacking_policy', type: 'enum', enum: StackingPolicy, default: StackingPolicy.STACKABLE })
+  @Column({
+    name: 'stacking_policy',
+    type: 'enum',
+    enum: StackingPolicy,
+    default: StackingPolicy.STACKABLE,
+  })
   stackingPolicy: StackingPolicy;
 
   @Column({ name: 'stacking_group', type: 'text', nullable: true })

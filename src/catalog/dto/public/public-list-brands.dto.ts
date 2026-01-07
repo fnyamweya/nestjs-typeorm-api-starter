@@ -14,7 +14,10 @@ export class PublicListBrandsDto {
   @Min(1)
   limit?: number;
 
-  @ApiPropertyOptional({ description: 'Search term applied to name/slug', example: 'app' })
+  @ApiPropertyOptional({
+    description: 'Search term applied to name/slug',
+    example: 'app',
+  })
   @IsOptional()
   @IsString()
   search?: string;

@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreatePaymentProviderDto {
   @ApiProperty({ description: 'Unique provider code', example: 'SAFARICOM' })
@@ -17,7 +23,10 @@ export class CreatePaymentProviderDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Whether provider is active', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether provider is active',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;

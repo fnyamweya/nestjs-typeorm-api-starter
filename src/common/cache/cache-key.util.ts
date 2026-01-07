@@ -13,11 +13,15 @@ function stableStringify(value: unknown): string {
 
   const obj = value as Record<string, unknown>;
   const keys = Object.keys(obj).sort();
-  const parts = keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`);
+  const parts = keys.map(
+    (k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`,
+  );
   return `{${parts.join(',')}}`;
 }
 
-export function cacheKeyFromParts(...parts: Array<string | number | boolean | object | undefined | null>): string {
+export function cacheKeyFromParts(
+  ...parts: Array<string | number | boolean | object | undefined | null>
+): string {
   return parts
     .filter((p) => p !== undefined && p !== null)
     .map((p) => (typeof p === 'object' ? stableStringify(p) : String(p)))

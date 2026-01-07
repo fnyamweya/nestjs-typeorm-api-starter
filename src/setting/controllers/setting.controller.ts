@@ -133,13 +133,9 @@ export class SettingController {
   async createSMSSettings(
     @Body() createSMSSettingDto: CreateSMSSettingDto,
   ): Promise<ApiResponse<SMSResponseDto>> {
-    const smsSettings = await this.settingService.createSMSSettings(
-      createSMSSettingDto,
-    );
-    return ResponseUtil.created(
-      smsSettings,
-      'SMS settings setup successfully',
-    );
+    const smsSettings =
+      await this.settingService.createSMSSettings(createSMSSettingDto);
+    return ResponseUtil.created(smsSettings, 'SMS settings setup successfully');
   }
 
   @Get('sms')
@@ -258,7 +254,10 @@ export class SettingController {
     @Body() payload: UpdateWhatsappSecretsDto,
   ): Promise<ApiResponse<WhatsappSecretsResponseDto>> {
     const data = await this.settingService.updateWhatsappSecrets(payload);
-    return ResponseUtil.success(data, 'WhatsApp webhook secrets updated successfully');
+    return ResponseUtil.success(
+      data,
+      'WhatsApp webhook secrets updated successfully',
+    );
   }
 
   @Post('s3')
@@ -272,7 +271,9 @@ export class SettingController {
     resourceType: 's3-settings',
   })
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create or update S3 (object storage) configuration' })
+  @ApiOperation({
+    summary: 'Create or update S3 (object storage) configuration',
+  })
   @ApiBody({ type: CreateS3SettingDto })
   @ApiCreatedResponse({
     description: 'S3 settings setup successfully',

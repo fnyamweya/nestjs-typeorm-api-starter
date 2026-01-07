@@ -1,6 +1,30 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { OrderItemDto } from './order-item.dto';
 import { OrderLevelChargeDto } from './order-level-charge.dto';
+import { DerivedOrderPaymentStatus } from '../../order-payment/order-payment.types';
+
+class OrderPaymentSummaryDto {
+  @ApiProperty({ example: '100000.0000' })
+  capturedTotal: string;
+
+  @ApiProperty({ example: '0.0000' })
+  adjustedTotal: string;
+
+  @ApiProperty({ example: '0.0000' })
+  reversedTotal: string;
+
+  @ApiProperty({ example: '0.0000' })
+  refundedTotal: string;
+
+  @ApiProperty({ example: '100000.0000' })
+  netPaidTotal: string;
+
+  @ApiProperty({
+    enum: DerivedOrderPaymentStatus,
+    example: DerivedOrderPaymentStatus.PARTIALLY_PAID,
+  })
+  status: DerivedOrderPaymentStatus;
+}
 
 export class OrderDto {
   @ApiProperty({ example: 'a0b1c2d3-e4f5-6789-0123-456789abcdef' })
@@ -116,4 +140,18 @@ export class OrderDto {
 
   @ApiPropertyOptional({ type: () => [OrderLevelChargeDto] })
   orderLevelCharges?: OrderLevelChargeDto[];
+
+  @ApiPropertyOptional({
+    type: () => OrderPaymentSummaryDto,
+    example: {
+      capturedTotal: '0.0000',
+      adjustedTotal: '0.0000',
+      reversedTotal: '0.0000',
+      refundedTotal: '0.0000',
+      netPaidTotal: '0.0000',
+      status: DerivedOrderPaymentStatus.PENDING,
+    },
+    description: 'Derived from successful payment allocations; no DB field.',
+  })
+  paymentSummary?: OrderPaymentSummaryDto;
 }

@@ -86,7 +86,11 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
   async evaluate(
     flagKey: string,
     ctx: UserContext,
-  ): Promise<{ enabled: boolean; config?: Record<string, any>; exists: boolean }> {
+  ): Promise<{
+    enabled: boolean;
+    config?: Record<string, any>;
+    exists: boolean;
+  }> {
     await this.refreshCache();
 
     const flag = this.memoryCache.get(flagKey);
@@ -205,16 +209,23 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
         flags,
         segments: Array.from(segments.entries()),
       };
-      await this.redis?.set(CACHE_KEY, JSON.stringify(payload), 'EX', CACHE_TTL_SECONDS);
+      await this.redis?.set(
+        CACHE_KEY,
+        JSON.stringify(payload),
+        'EX',
+        CACHE_TTL_SECONDS,
+      );
     } catch (err) {
-      this.logger.warn(`Failed to write feature flag cache to Redis: ${err?.message}`);
+      this.logger.warn(
+        `Failed to write feature flag cache to Redis: ${err?.message}`,
+      );
     }
   }
 
-  private async getCachedFlagsFromRedis(): Promise<
-    | { flags: RuntimeFlag[]; segments: Map<string, SegmentDefinition | undefined> }
-    | null
-  > {
+  private async getCachedFlagsFromRedis(): Promise<{
+    flags: RuntimeFlag[];
+    segments: Map<string, SegmentDefinition | undefined>;
+  } | null> {
     if (!this.isRedisAvailable()) return null;
 
     try {
@@ -229,7 +240,9 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
         segments: new Map(parsed.segments),
       };
     } catch (err) {
-      this.logger.warn(`Failed to read feature flag cache from Redis: ${err?.message}`);
+      this.logger.warn(
+        `Failed to read feature flag cache from Redis: ${err?.message}`,
+      );
       return null;
     }
   }
@@ -249,7 +262,8 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
 
       if (o.segmentKey) {
         const definition = this.segmentDefinitions.get(o.segmentKey);
-        if (!this.evaluateSegment(definition, ctx.attributes || {})) return false;
+        if (!this.evaluateSegment(definition, ctx.attributes || {}))
+          return false;
       }
 
       switch (o.targetType) {
@@ -260,7 +274,10 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
         case FeatureFlagTargetType.TENANT:
           return !!ctx.tenantId && ctx.tenantId === o.targetId;
         case FeatureFlagTargetType.ENV:
-          return !!env && (!!o.targetId ? env === (o.targetId || '').toLowerCase() : true);
+          return (
+            !!env &&
+            (o.targetId ? env === (o.targetId || '').toLowerCase() : true)
+          );
         default:
           return false;
       }
@@ -280,7 +297,8 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
     definition: SegmentDefinition | undefined,
     attributes: Record<string, any>,
   ): boolean {
-    if (!definition || !definition.rules || definition.rules.length === 0) return true;
+    if (!definition || !definition.rules || definition.rules.length === 0)
+      return true;
     const op = definition.operator || 'AND';
 
     const evalRule = (rule: SegmentDefinitionRule): boolean => {
@@ -309,7 +327,8 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
     const password = this.configService.get<string>('REDIS_PASSWORD');
     const username = this.configService.get<string>('REDIS_USERNAME');
     const db = Number(this.configService.get<string>('REDIS_DB', '0'));
-    const tlsEnabled = this.configService.get<string>('REDIS_TLS', 'false') === 'true';
+    const tlsEnabled =
+      this.configService.get<string>('REDIS_TLS', 'false') === 'true';
 
     const options: RedisOptions = {
       host,
@@ -378,11 +397,7 @@ export class FeatureFlagService implements OnModuleInit, OnModuleDestroy {
   }
 
   // Helper for seeding/testing to register simple boolean flags quickly
-  async upsertBooleanFlag(
-    key: string,
-    enabled: boolean,
-    actorId?: string,
-  ) {
+  async upsertBooleanFlag(key: string, enabled: boolean, actorId?: string) {
     if (!key) {
       throw new BadRequestException('Flag key is required');
     }

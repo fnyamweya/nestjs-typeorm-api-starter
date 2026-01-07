@@ -12,7 +12,14 @@ import {
   UsePipes,
   ValidationPipe,
 } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCreatedResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
 import { RequirePermissions } from 'src/auth/decorators/permissions.decorator';
@@ -45,8 +52,17 @@ export class CurrencyController {
 
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-  @RequirePermissions({ module: PermissionModule.CURRENCIES, permission: 'create' })
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  @RequirePermissions({
+    module: PermissionModule.CURRENCIES,
+    permission: 'create',
+  })
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Create (or upsert) currency (admin)' })
   @ApiBody({ type: CreateCurrencyDto })
@@ -59,20 +75,35 @@ export class CurrencyController {
 
   @Put(':code')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
-  @RequirePermissions({ module: PermissionModule.CURRENCIES, permission: 'update' })
+  @UsePipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  )
+  @RequirePermissions({
+    module: PermissionModule.CURRENCIES,
+    permission: 'update',
+  })
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Update currency (admin)' })
   @ApiBody({ type: UpdateCurrencyDto })
   @ApiOkResponse({ description: 'Currency updated' })
-  async update(@Param('code') code: string, @Body() payload: UpdateCurrencyDto) {
+  async update(
+    @Param('code') code: string,
+    @Body() payload: UpdateCurrencyDto,
+  ) {
     const row = await this.currencyService.update(code, payload);
     return ResponseUtil.success(row, 'Currency updated');
   }
 
   @Delete(':code')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions({ module: PermissionModule.CURRENCIES, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.CURRENCIES,
+    permission: 'delete',
+  })
   @ApiBearerAuth('access-token')
   @ApiOperation({ summary: 'Delete currency (admin)' })
   @ApiOkResponse({ description: 'Currency deleted' })

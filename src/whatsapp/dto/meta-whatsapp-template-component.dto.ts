@@ -12,14 +12,32 @@ import {
   ValidateNested,
 } from 'class-validator';
 
-export const META_TEMPLATE_COMPONENT_TYPES = ['HEADER', 'BODY', 'FOOTER', 'BUTTONS'] as const;
-export type MetaTemplateComponentType = (typeof META_TEMPLATE_COMPONENT_TYPES)[number];
+export const META_TEMPLATE_COMPONENT_TYPES = [
+  'HEADER',
+  'BODY',
+  'FOOTER',
+  'BUTTONS',
+] as const;
+export type MetaTemplateComponentType =
+  (typeof META_TEMPLATE_COMPONENT_TYPES)[number];
 
-export const META_TEMPLATE_HEADER_FORMATS = ['TEXT', 'IMAGE', 'VIDEO', 'DOCUMENT', 'LOCATION'] as const;
-export type MetaTemplateHeaderFormat = (typeof META_TEMPLATE_HEADER_FORMATS)[number];
+export const META_TEMPLATE_HEADER_FORMATS = [
+  'TEXT',
+  'IMAGE',
+  'VIDEO',
+  'DOCUMENT',
+  'LOCATION',
+] as const;
+export type MetaTemplateHeaderFormat =
+  (typeof META_TEMPLATE_HEADER_FORMATS)[number];
 
-export const META_TEMPLATE_BUTTON_TYPES = ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'] as const;
-export type MetaTemplateButtonType = (typeof META_TEMPLATE_BUTTON_TYPES)[number];
+export const META_TEMPLATE_BUTTON_TYPES = [
+  'QUICK_REPLY',
+  'URL',
+  'PHONE_NUMBER',
+] as const;
+export type MetaTemplateButtonType =
+  (typeof META_TEMPLATE_BUTTON_TYPES)[number];
 
 export class MetaTemplateButtonDto {
   @ApiProperty({
@@ -28,15 +46,20 @@ export class MetaTemplateButtonDto {
     example: 'QUICK_REPLY',
   })
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsIn(META_TEMPLATE_BUTTON_TYPES)
   type: MetaTemplateButtonType;
 
   @ApiPropertyOptional({
-    description: 'Button display text (required for QUICK_REPLY/URL/PHONE_NUMBER)',
+    description:
+      'Button display text (required for QUICK_REPLY/URL/PHONE_NUMBER)',
     example: 'Track order',
   })
-  @ValidateIf((o: MetaTemplateButtonDto) => ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(o.type))
+  @ValidateIf((o: MetaTemplateButtonDto) =>
+    ['QUICK_REPLY', 'URL', 'PHONE_NUMBER'].includes(o.type),
+  )
   @IsString()
   @IsNotEmpty()
   text?: string;
@@ -67,7 +90,9 @@ export class MetaTemplateComponentDto {
     example: 'BODY',
   })
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsIn(META_TEMPLATE_COMPONENT_TYPES)
   type: MetaTemplateComponentType;
 
@@ -78,7 +103,9 @@ export class MetaTemplateComponentDto {
   })
   @ValidateIf((o: MetaTemplateComponentDto) => o.type === 'HEADER')
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim().toUpperCase() : value,
+  )
   @IsIn(META_TEMPLATE_HEADER_FORMATS)
   format?: MetaTemplateHeaderFormat;
 
@@ -88,7 +115,9 @@ export class MetaTemplateComponentDto {
   })
   @ValidateIf(
     (o: MetaTemplateComponentDto) =>
-      o.type === 'BODY' || o.type === 'FOOTER' || (o.type === 'HEADER' && (o.format ?? 'TEXT') === 'TEXT'),
+      o.type === 'BODY' ||
+      o.type === 'FOOTER' ||
+      (o.type === 'HEADER' && (o.format ?? 'TEXT') === 'TEXT'),
   )
   @IsString()
   @IsNotEmpty()

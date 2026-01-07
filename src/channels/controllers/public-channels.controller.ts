@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { PublicListChannelsDto } from '../dto/public-list-channels.dto';
@@ -6,7 +13,13 @@ import { ChannelsService } from '../services/channels.service';
 
 @Controller('public/channels')
 @ApiTags('Public Channels')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class PublicChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 

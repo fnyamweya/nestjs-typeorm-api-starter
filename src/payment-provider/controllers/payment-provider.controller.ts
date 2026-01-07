@@ -30,13 +30,22 @@ import { PaymentProviderService } from '../services/payment-provider.service';
 @Controller('payment-providers')
 @ApiTags('Payment Providers')
 @ApiBearerAuth('access-token')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PaymentProviderController {
   constructor(private readonly providerService: PaymentProviderService) {}
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.PAYMENT_PROVIDERS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_PROVIDERS,
+    permission: 'create',
+  })
   @ApiCreatedResponse({ description: 'Payment provider created' })
   async create(@Body() payload: CreatePaymentProviderDto) {
     const row = await this.providerService.create(payload);
@@ -44,7 +53,10 @@ export class PaymentProviderController {
   }
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PAYMENT_PROVIDERS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_PROVIDERS,
+    permission: 'read',
+  })
   @ApiOkResponse({ description: 'Payment providers retrieved' })
   async list(@Query() query: ListPaymentProvidersDto) {
     const rows = await this.providerService.list(query);
@@ -52,7 +64,10 @@ export class PaymentProviderController {
   }
 
   @Get(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_PROVIDERS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_PROVIDERS,
+    permission: 'read',
+  })
   @ApiOkResponse({ description: 'Payment provider retrieved' })
   async get(@Param('id') id: string) {
     const row = await this.providerService.getById(id);
@@ -60,15 +75,24 @@ export class PaymentProviderController {
   }
 
   @Patch(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_PROVIDERS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_PROVIDERS,
+    permission: 'update',
+  })
   @ApiOkResponse({ description: 'Payment provider updated' })
-  async update(@Param('id') id: string, @Body() payload: UpdatePaymentProviderDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() payload: UpdatePaymentProviderDto,
+  ) {
     const row = await this.providerService.update(id, payload);
     return ResponseUtil.success(row, 'Payment provider updated');
   }
 
   @Delete(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_PROVIDERS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_PROVIDERS,
+    permission: 'delete',
+  })
   @ApiOkResponse({ description: 'Payment provider deleted' })
   async delete(@Param('id') id: string) {
     const res = await this.providerService.delete(id);

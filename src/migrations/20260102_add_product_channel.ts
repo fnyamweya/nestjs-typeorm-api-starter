@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProductChannel20260102_1767390000001 implements MigrationInterface {
+export class AddProductChannel20260102_1767390000001
+  implements MigrationInterface
+{
   name = 'AddProductChannel20260102_1767390000001';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -32,8 +34,12 @@ export class AddProductChannel20260102_1767390000001 implements MigrationInterfa
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_product_channel_channel"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_product_channel_active"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_product_channel_channel"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_product_channel_active"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "product_channel"`);
   }
 }

@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RenameVariantColumnsToSku20260103_1767500000000 implements MigrationInterface {
+export class RenameVariantColumnsToSku20260103_1767500000000
+  implements MigrationInterface
+{
   name = 'RenameVariantColumnsToSku20260103_1767500000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

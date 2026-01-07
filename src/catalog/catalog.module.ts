@@ -72,7 +72,22 @@ import { CurrencyModule } from '../currency/currency.module';
     PublicCategoriesController,
     PublicTaxonomiesController,
   ],
-  providers: [TaxonomyService, CategoryService, ProductService, BrandService, CatalogSeeder, PriceService],
-  exports: [TypeOrmModule, TaxonomyService, CategoryService, ProductService, BrandService, CatalogSeeder, PriceService],
+  providers: [
+    TaxonomyService,
+    CategoryService,
+    ProductService,
+    BrandService,
+    CatalogSeeder,
+    PriceService,
+  ],
+  exports: [
+    TypeOrmModule,
+    TaxonomyService,
+    CategoryService,
+    ProductService,
+    BrandService,
+    CatalogSeeder,
+    PriceService,
+  ],
 })
 export class CatalogModule {}

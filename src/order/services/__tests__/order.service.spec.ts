@@ -34,17 +34,31 @@ describe('OrderService', () => {
   const categoryClosureRepo = { find: jest.fn() };
   const userRepo = { findOne: jest.fn() };
   const priceListRepo = { findOne: jest.fn() };
-  const priceService = { resolveSkuPrice: jest.fn(), findActivePriceListByCurrency: jest.fn() };
+  const priceService = {
+    resolveSkuPrice: jest.fn(),
+    findActivePriceListByCurrency: jest.fn(),
+  };
   const orderLevelChargeRepo = { create: jest.fn(), save: jest.fn() };
   const orderItemChargeRepo = { create: jest.fn(), save: jest.fn() };
   const orderShippingAddressRepo = { create: jest.fn(), save: jest.fn() };
   const locationRepo = { findOne: jest.fn() };
-  const promotionService = { evaluatePromotions: jest.fn(), findActivePromotions: jest.fn() };
+  const promotionService = {
+    evaluatePromotions: jest.fn(),
+    findActivePromotions: jest.fn(),
+  };
   const shippingMatrixService = { getQuotes: jest.fn() };
   const taxService = { calculateTax: jest.fn() };
-  const catalogShippingContextService = { resolveCatalogShippingContext: jest.fn() };
-  const currencyService = { getDefaultCurrencyCode: jest.fn(), assertExists: jest.fn() };
-  const customerShippingAddressService = { getOptionalForUser: jest.fn(), upsertForUser: jest.fn() };
+  const catalogShippingContextService = {
+    resolveCatalogShippingContext: jest.fn(),
+  };
+  const currencyService = {
+    getDefaultCurrencyCode: jest.fn(),
+    assertExists: jest.fn(),
+  };
+  const customerShippingAddressService = {
+    getOptionalForUser: jest.fn(),
+    upsertForUser: jest.fn(),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -52,24 +66,45 @@ describe('OrderService', () => {
         OrderService,
         { provide: getRepositoryToken(Order), useValue: orderRepo },
         { provide: getRepositoryToken(OrderItem), useValue: orderItemRepo },
-        { provide: getRepositoryToken(OrderItemCharge), useValue: orderItemChargeRepo },
+        {
+          provide: getRepositoryToken(OrderItemCharge),
+          useValue: orderItemChargeRepo,
+        },
         { provide: getRepositoryToken(ProductSku), useValue: skuRepo },
         { provide: getRepositoryToken(Product), useValue: productRepo },
-        { provide: getRepositoryToken(ProductCategory), useValue: productCategoryRepo },
+        {
+          provide: getRepositoryToken(ProductCategory),
+          useValue: productCategoryRepo,
+        },
         { provide: getRepositoryToken(Category), useValue: categoryRepo },
-        { provide: getRepositoryToken(CategoryClosure), useValue: categoryClosureRepo },
+        {
+          provide: getRepositoryToken(CategoryClosure),
+          useValue: categoryClosureRepo,
+        },
         { provide: getRepositoryToken(User), useValue: userRepo },
         { provide: getRepositoryToken(PriceList), useValue: priceListRepo },
-        { provide: getRepositoryToken(OrderLevelCharge), useValue: orderLevelChargeRepo },
-        { provide: getRepositoryToken(OrderShippingAddress), useValue: orderShippingAddressRepo },
+        {
+          provide: getRepositoryToken(OrderLevelCharge),
+          useValue: orderLevelChargeRepo,
+        },
+        {
+          provide: getRepositoryToken(OrderShippingAddress),
+          useValue: orderShippingAddressRepo,
+        },
         { provide: getRepositoryToken(Location), useValue: locationRepo },
         { provide: PriceService, useValue: priceService },
         { provide: PromotionService, useValue: promotionService },
         { provide: ShippingMatrixService, useValue: shippingMatrixService },
         { provide: TaxService, useValue: taxService },
-        { provide: CatalogShippingContextService, useValue: catalogShippingContextService },
+        {
+          provide: CatalogShippingContextService,
+          useValue: catalogShippingContextService,
+        },
         { provide: CurrencyService, useValue: currencyService },
-        { provide: CustomerShippingAddressService, useValue: customerShippingAddressService },
+        {
+          provide: CustomerShippingAddressService,
+          useValue: customerShippingAddressService,
+        },
       ],
     }).compile();
 
@@ -82,7 +117,13 @@ describe('OrderService', () => {
     currencyService.getDefaultCurrencyCode.mockResolvedValue('KES');
     currencyService.assertExists.mockResolvedValue(undefined);
 
-    const fakeOrder: any = { id: '100', orderNumber: 'ORD-1', itemsSubtotal: '0', itemCount: 0, currencyCode: 'KES' };
+    const fakeOrder: any = {
+      id: '100',
+      orderNumber: 'ORD-1',
+      itemsSubtotal: '0',
+      itemCount: 0,
+      currencyCode: 'KES',
+    };
     orderRepo.create.mockReturnValue(fakeOrder);
     orderRepo.save.mockImplementation(async (o: any) => o);
     orderRepo.findOne.mockResolvedValue(fakeOrder);
@@ -95,9 +136,14 @@ describe('OrderService', () => {
     } as any);
 
     customerShippingAddressService.getOptionalForUser.mockResolvedValue(null);
-    customerShippingAddressService.upsertForUser.mockResolvedValue({ address: { locationId: 'loc1', countryCode: 'KE', fieldsJson: {} } } as any);
+    customerShippingAddressService.upsertForUser.mockResolvedValue({
+      address: { locationId: 'loc1', countryCode: 'KE', fieldsJson: {} },
+    } as any);
 
-    locationRepo.findOne.mockResolvedValue({ id: 'loc1', countryCode: 'KE' } as unknown as Location);
+    locationRepo.findOne.mockResolvedValue({
+      id: 'loc1',
+      countryCode: 'KE',
+    } as unknown as Location);
 
     skuRepo.findOne.mockResolvedValue({
       id: 'pv1',
@@ -109,24 +155,47 @@ describe('OrderService', () => {
     } as unknown as ProductSku);
 
     priceService.resolveSkuPrice.mockResolvedValue({
-      priceListId: '1', currencyCode: 'KES', unitPrice: '100.00', compareAtPrice: '120.00',
+      priceListId: '1',
+      currencyCode: 'KES',
+      unitPrice: '100.00',
+      compareAtPrice: '120.00',
     });
-    priceService.findActivePriceListByCurrency.mockResolvedValue({ id: '1', currency: 'KES' } as unknown as PriceList);
+    priceService.findActivePriceListByCurrency.mockResolvedValue({
+      id: '1',
+      currency: 'KES',
+    } as unknown as PriceList);
     promotionService.evaluatePromotions.mockResolvedValue({
       applied: [{ code: 'PROMO10', promotionId: 'p1', discount: '20.00' }],
       totalDiscount: '20.00',
     });
     promotionService.findActivePromotions.mockResolvedValue([]);
-    shippingMatrixService.getQuotes.mockResolvedValue([{ method: { id: 'm1', displayName: 'Standard' , code: 'standard' } as any, rate: { id: 'r1', calculationType: 'flat', price: '50.00', metaJson: {} } as any, amount: 50 }]);
-    taxService.calculateTax.mockResolvedValue({ amount: 36.8, rate: 0.16, meta: {} });
-    catalogShippingContextService.resolveCatalogShippingContext.mockResolvedValue({
-      allowedMethodCodes: undefined,
-      excludedMethodCodes: undefined,
-      ratePriorityBoost: 0,
-      productIds: ['p1'],
-      categoryIds: [],
-      taxonomyIds: [],
+    shippingMatrixService.getQuotes.mockResolvedValue([
+      {
+        method: { id: 'm1', displayName: 'Standard', code: 'standard' } as any,
+        rate: {
+          id: 'r1',
+          calculationType: 'flat',
+          price: '50.00',
+          metaJson: {},
+        } as any,
+        amount: 50,
+      },
+    ]);
+    taxService.calculateTax.mockResolvedValue({
+      amount: 36.8,
+      rate: 0.16,
+      meta: {},
     });
+    catalogShippingContextService.resolveCatalogShippingContext.mockResolvedValue(
+      {
+        allowedMethodCodes: undefined,
+        excludedMethodCodes: undefined,
+        ratePriorityBoost: 0,
+        productIds: ['p1'],
+        categoryIds: [],
+        taxonomyIds: [],
+      },
+    );
 
     orderShippingAddressRepo.create.mockImplementation((x: any) => x);
     orderShippingAddressRepo.save.mockResolvedValue(undefined);
@@ -134,7 +203,18 @@ describe('OrderService', () => {
     orderItemRepo.create.mockImplementation((x: any) => x);
     orderItemRepo.save.mockImplementation(async (x: any) => x);
     orderItemRepo.find.mockResolvedValue([
-      { id: 'oi1', orderId: '100', productId: 'p1', productSkuId: 'pv1', quantity: 2, baseSubtotal: '200.0000', discountTotal: '0', feeTotal: '0', taxTotal: '0', metaJson: { weight: '1.234' } },
+      {
+        id: 'oi1',
+        orderId: '100',
+        productId: 'p1',
+        productSkuId: 'pv1',
+        quantity: 2,
+        baseSubtotal: '200.0000',
+        discountTotal: '0',
+        feeTotal: '0',
+        taxTotal: '0',
+        metaJson: { weight: '1.234' },
+      },
     ]);
 
     orderItemChargeRepo.create.mockImplementation((x: any) => x);

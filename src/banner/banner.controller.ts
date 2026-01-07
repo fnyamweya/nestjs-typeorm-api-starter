@@ -34,7 +34,13 @@ import { FilterBannerDto } from './dto/filter-banner.dto';
 
 @Controller('banners')
 @ApiTags('Banners')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class BannerController {
   constructor(private readonly bannerService: BannerService) {}
 
@@ -47,10 +53,16 @@ export class BannerController {
   @ApiQuery({ name: 'placementPage', required: false, example: 'landing' })
   @ApiQuery({ name: 'placementSection', required: false, example: 'hero' })
   @ApiQuery({ name: 'targetKind', required: false, example: 'category' })
-  @ApiQuery({ name: 'targetRefId', required: false, example: 'uuid-of-category' })
+  @ApiQuery({
+    name: 'targetRefId',
+    required: false,
+    example: 'uuid-of-category',
+  })
   @ApiOkResponse({ description: 'Public banners retrieved' })
   async listPublic(@Query() filters: FilterBannerDto) {
-    const result = await this.bannerService.findAll(filters, { publicOnly: true });
+    const result = await this.bannerService.findAll(filters, {
+      publicOnly: true,
+    });
 
     if (filters.getAll) {
       return ResponseUtil.success(result.data, 'Public banners retrieved');
@@ -68,15 +80,22 @@ export class BannerController {
   @Post()
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions({ module: PermissionModule.BANNERS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.BANNERS,
+    permission: 'create',
+  })
   @ApiOperation({
     summary: 'Create a banner',
     description:
       "Banners support dynamic placements/targets (JSON). creative.kind can be 'image' (imageKey/imageUrl) or 'color' (backgroundColor).",
   })
   @ApiCreatedResponse({ description: 'Banner created' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to create banners' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to create banners',
+  })
   async create(@Body() payload: CreateBannerDto) {
     const row = await this.bannerService.create(payload);
     return ResponseUtil.created(row, 'Banner created');
@@ -88,8 +107,12 @@ export class BannerController {
   @RequirePermissions({ module: PermissionModule.BANNERS, permission: 'read' })
   @ApiOperation({ summary: 'List banners (admin)' })
   @ApiOkResponse({ description: 'Banners retrieved' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to read banners' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read banners',
+  })
   async list(@Query() filters: FilterBannerDto) {
     const result = await this.bannerService.findAll(filters);
 
@@ -121,7 +144,10 @@ export class BannerController {
   @Patch(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions({ module: PermissionModule.BANNERS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.BANNERS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update a banner' })
   @ApiParam({ name: 'id', description: 'Banner UUID' })
   @ApiOkResponse({ description: 'Banner updated' })
@@ -133,7 +159,10 @@ export class BannerController {
   @Delete(':id')
   @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
-  @RequirePermissions({ module: PermissionModule.BANNERS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.BANNERS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete a banner' })
   @ApiParam({ name: 'id', description: 'Banner UUID' })
   @ApiOkResponse({ description: 'Banner deleted' })

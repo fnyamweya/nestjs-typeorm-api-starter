@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateChannelsTable20260102_1769990000000 implements MigrationInterface {
+export class CreateChannelsTable20260102_1769990000000
+  implements MigrationInterface
+{
   name = 'CreateChannelsTable20260102_1769990000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -16,8 +18,12 @@ export class CreateChannelsTable20260102_1769990000000 implements MigrationInter
       "updated_at" timestamptz NOT NULL DEFAULT now()
     );`);
 
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "uq_channel_code" ON "channel" ("code");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_channel_is_active" ON "channel" ("is_active");`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "uq_channel_code" ON "channel" ("code");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_channel_is_active" ON "channel" ("is_active");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {

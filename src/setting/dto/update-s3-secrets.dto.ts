@@ -10,7 +10,9 @@ export class UpdateS3SecretsDto {
   })
   @IsOptional()
   @IsString({ message: 'S3 access key id must be a string' })
-  @MaxLength(512, { message: 'S3 access key id must not exceed 512 characters' })
+  @MaxLength(512, {
+    message: 'S3 access key id must not exceed 512 characters',
+  })
   accessKeyId?: string;
 
   @ApiPropertyOptional({

@@ -16,7 +16,10 @@ import { RolePermission } from '../entities/role-permission.entity';
 import { CreateRoleDto } from '../dto/create-role.dto';
 import { UpdateRoleDto } from '../dto/update-role.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 
 @Injectable()
 export class RoleService {

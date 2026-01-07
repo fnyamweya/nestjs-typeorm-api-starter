@@ -64,7 +64,13 @@ export class MpesaTransaction {
   @Column({ name: 'result_desc', type: 'text', nullable: true })
   resultDesc?: string;
 
-  @Column({ name: 'amount', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  @Column({
+    name: 'amount',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    nullable: true,
+  })
   amount?: string;
 
   @Column({ name: 'msisdn', type: 'text', nullable: true })
@@ -85,13 +91,25 @@ export class MpesaTransaction {
   @Column({ name: 'remarks', type: 'text', nullable: true })
   remarks?: string;
 
-  @Column({ name: 'raw_request_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'raw_request_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   rawRequestJson: Record<string, unknown>;
 
-  @Column({ name: 'raw_response_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'raw_response_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   rawResponseJson: Record<string, unknown>;
 
-  @Column({ name: 'raw_callback_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'raw_callback_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   rawCallbackJson: Record<string, unknown>;
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { WhatsappTemplate } from '../entities/whatsapp-template.entity';
@@ -17,7 +21,9 @@ export class WhatsappTemplateService {
   ) {}
 
   async create(payload: CreateWhatsappTemplateDto) {
-    const exists = await this.templateRepository.exist({ where: { name: payload.name } });
+    const exists = await this.templateRepository.exist({
+      where: { name: payload.name },
+    });
     if (exists) {
       throw new BadRequestException('Template name already exists');
     }
@@ -28,7 +34,9 @@ export class WhatsappTemplateService {
       category: payload.category,
       status: 'draft',
       isActive: payload.isActive ?? true,
-      componentsJson: payload.components as unknown as Array<Record<string, unknown>>,
+      componentsJson: payload.components as unknown as Array<
+        Record<string, unknown>
+      >,
       defaultComponentsJson: payload.defaultComponents ?? [],
       metaJson: payload.metaJson ?? {},
     });
@@ -63,7 +71,15 @@ export class WhatsappTemplateService {
 
   async fetchProviderTemplates(filters: FetchWhatsappProviderTemplatesDto) {
     const { name, category, status, language, limit, after, before } = filters;
-    return this.apiService.listTemplates({ name, category, status, language, limit, after, before });
+    return this.apiService.listTemplates({
+      name,
+      category,
+      status,
+      language,
+      limit,
+      after,
+      before,
+    });
   }
 
   async fetchProviderTemplate(id: string) {
@@ -80,7 +96,9 @@ export class WhatsappTemplateService {
     const template = await this.findOne(id);
 
     if (payload.name && payload.name !== template.name) {
-      const exists = await this.templateRepository.exist({ where: { name: payload.name } });
+      const exists = await this.templateRepository.exist({
+        where: { name: payload.name },
+      });
       if (exists) {
         throw new BadRequestException('Template name already exists');
       }
@@ -92,9 +110,11 @@ export class WhatsappTemplateService {
       category: payload.category ?? template.category,
       isActive: payload.isActive ?? template.isActive,
       componentsJson:
-        (payload.components as unknown as Array<Record<string, unknown>> | undefined) ??
-        template.componentsJson,
-      defaultComponentsJson: payload.defaultComponents ?? template.defaultComponentsJson,
+        (payload.components as unknown as
+          | Array<Record<string, unknown>>
+          | undefined) ?? template.componentsJson,
+      defaultComponentsJson:
+        payload.defaultComponents ?? template.defaultComponentsJson,
       metaJson: payload.metaJson ?? template.metaJson,
     });
 

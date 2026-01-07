@@ -1,13 +1,23 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RefactorProductsDtoAndOverrides20260102_1767390000000 implements MigrationInterface {
+export class RefactorProductsDtoAndOverrides20260102_1767390000000
+  implements MigrationInterface
+{
   name = 'RefactorProductsDtoAndOverrides20260102_1767390000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "code" text`);
-    await queryRunner.query(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "valid_from" timestamptz`);
-    await queryRunner.query(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "valid_until" timestamptz`);
-    await queryRunner.query(`ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "tags" text[] NOT NULL DEFAULT ARRAY[]::text[]`);
+    await queryRunner.query(
+      `ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "code" text`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "valid_from" timestamptz`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "valid_until" timestamptz`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "tags" text[] NOT NULL DEFAULT ARRAY[]::text[]`,
+    );
     await queryRunner.query(
       `ALTER TABLE "product" ADD COLUMN IF NOT EXISTS "collections" text[] NOT NULL DEFAULT ARRAY[]::text[]`,
     );
@@ -32,7 +42,9 @@ export class RefactorProductsDtoAndOverrides20260102_1767390000000 implements Mi
       `UPDATE "product" SET "code" = COALESCE("code", CONCAT('P-', REPLACE(LEFT(id::text, 12), '-', ''))) WHERE "code" IS NULL`,
     );
 
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_code" ON "product" ("code")`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_code" ON "product" ("code")`,
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "product_context_override" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -61,19 +73,43 @@ export class RefactorProductsDtoAndOverrides20260102_1767390000000 implements Mi
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_product_context_override_valid"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_product_context_override_product"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_product_context_override_valid"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_product_context_override_product"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "product_context_override"`);
     await queryRunner.query(`DROP INDEX IF EXISTS "uq_product_code"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "media_json"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "availability_json"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "pricing_json"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "attribute_schema_ref_json"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "attributes_json"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "collections"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "tags"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "valid_until"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "valid_from"`);
-    await queryRunner.query(`ALTER TABLE "product" DROP COLUMN IF EXISTS "code"`);
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "media_json"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "availability_json"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "pricing_json"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "attribute_schema_ref_json"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "attributes_json"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "collections"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "tags"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "valid_until"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "valid_from"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "product" DROP COLUMN IF EXISTS "code"`,
+    );
   }
 }

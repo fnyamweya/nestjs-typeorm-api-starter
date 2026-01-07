@@ -1,5 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateWhatsappSettingDto {
   @ApiProperty({
@@ -61,7 +67,10 @@ export class CreateWhatsappSettingDto {
   @IsString({ message: 'Base URL must be a string' })
   baseUrl?: string;
 
-  @ApiProperty({ description: 'Enable or disable WhatsApp delivery', example: true })
+  @ApiProperty({
+    description: 'Enable or disable WhatsApp delivery',
+    example: true,
+  })
   @IsBoolean({ message: 'whatsappEnabled must be a boolean' })
   whatsappEnabled: boolean;
 }

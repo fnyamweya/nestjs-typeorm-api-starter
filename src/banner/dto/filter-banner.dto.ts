@@ -4,7 +4,10 @@ import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { PaginationFilterDto } from 'src/common/dto/pagination-filter.dto';
 
 export class FilterBannerDto extends PaginationFilterDto {
-  @ApiPropertyOptional({ description: 'Free text search (matches banner name)', example: 'hero' })
+  @ApiPropertyOptional({
+    description: 'Free text search (matches banner name)',
+    example: 'hero',
+  })
   @IsOptional()
   @IsString()
   search?: string;

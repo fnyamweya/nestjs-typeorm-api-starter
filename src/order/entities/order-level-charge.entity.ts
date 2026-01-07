@@ -1,4 +1,11 @@
-import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 import { Order } from './order.entity';
 
 @Entity('order_level_charge')
@@ -30,7 +37,13 @@ export class OrderLevelCharge {
   @Column({ type: 'numeric', precision: 9, scale: 6, nullable: true })
   rate?: string;
 
-  @Column({ name: 'base_amount', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  @Column({
+    name: 'base_amount',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    nullable: true,
+  })
   baseAmount?: string;
 
   @Column({ type: 'numeric', precision: 18, scale: 4 })

@@ -3,10 +3,7 @@ import { Job } from 'bullmq';
 import { createReadStream, promises as fs } from 'fs';
 import { QueueService } from 'src/queue/queue.service';
 import { S3ClientUtils } from 'src/common/utils/s3-client.utils';
-import {
-  UploadFilesJobData,
-  UploadFilesJobResult,
-} from './upload-jobs.types';
+import { UploadFilesJobData, UploadFilesJobResult } from './upload-jobs.types';
 import { randomUUID } from 'crypto';
 
 const UPLOADS_QUEUE = 'uploads';
@@ -34,7 +31,8 @@ export class UploadWorkerService implements OnModuleInit {
           return { uploaded: [], failed: [] };
         }
 
-        const { folder, files, generateSignedUrl, isPublic, filetype } = job.data;
+        const { folder, files, generateSignedUrl, isPublic, filetype } =
+          job.data;
         const shouldSign = generateSignedUrl ?? true;
         const shouldPublic =
           isPublic ?? (filetype === 'image' || filetype === 'avatar');
@@ -70,9 +68,10 @@ export class UploadWorkerService implements OnModuleInit {
             // Ensure we always return a usable url:
             // - For private objects, return a signed URL (even if generateSignedUrl is false)
             // - For public objects, prefer publicUrl; if missing/misconfigured, fall back to signed
-            const signedUrl = !shouldPublic || shouldSign || !publicUrl
-              ? await this.s3.generatePresignedUrl(res.key)
-              : null;
+            const signedUrl =
+              !shouldPublic || shouldSign || !publicUrl
+                ? await this.s3.generatePresignedUrl(res.key)
+                : null;
             const url = publicUrl ?? signedUrl;
 
             uploaded.push({
@@ -89,7 +88,7 @@ export class UploadWorkerService implements OnModuleInit {
           } catch (error) {
             failed.push({
               filename: original,
-              error: (error as any)?.message || 'Upload failed',
+              error: error?.message || 'Upload failed',
             });
           } finally {
             // Always attempt cleanup.

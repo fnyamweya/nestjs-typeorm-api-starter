@@ -1,6 +1,13 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+  OneToMany,
+} from 'typeorm';
 import { ShippingZoneLocation } from './shipping-zone-location.entity';
-import { ShippingMethod } from './shipping-method.entity';
+import { ShippingZoneMethod } from './shipping-zone-method.entity';
 
 @Entity('shipping_zone')
 export class ShippingZone {
@@ -22,8 +29,8 @@ export class ShippingZone {
   @OneToMany(() => ShippingZoneLocation, (l) => l.zone)
   locations: ShippingZoneLocation[];
 
-  @OneToMany(() => ShippingMethod, (m) => m.zone)
-  methods: ShippingMethod[];
+  @OneToMany(() => ShippingZoneMethod, (zm) => zm.zone)
+  zoneMethods: ShippingZoneMethod[];
 
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;

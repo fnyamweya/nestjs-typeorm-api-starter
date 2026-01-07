@@ -13,7 +13,12 @@ import { PriceList } from './price-list.entity';
 export type PriceRowTargetType = 'SKU' | 'PRODUCT' | 'CATEGORY' | 'BRAND';
 
 @Entity('price_row')
-@Index('idx_price_row_lookup', ['priceListId', 'targetType', 'targetId', 'minQuantity'])
+@Index('idx_price_row_lookup', [
+  'priceListId',
+  'targetType',
+  'targetId',
+  'minQuantity',
+])
 export class PriceRow {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,7 +36,11 @@ export class PriceRow {
   @Column({ name: 'target_id', type: 'uuid' })
   targetId: string;
 
-  @Column({ name: 'selector_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'selector_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   selectorJson: Record<string, unknown>;
 
   @Column({ name: 'currency_code', type: 'char', length: 3, nullable: true })

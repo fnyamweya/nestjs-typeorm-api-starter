@@ -60,8 +60,12 @@ export class CustomerController {
   })
   @ApiOperation({ summary: 'Create a new customer' })
   @ApiCreatedResponse({ description: 'Customer created successfully' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to create customers' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to create customers',
+  })
   async create(@Body() payload: CreateCustomerDto) {
     const customer = await this.userService.createCustomer(payload);
     return ResponseUtil.created(customer, 'Customer created successfully');
@@ -73,11 +77,19 @@ export class CustomerController {
     permission: 'update',
   })
   @ApiOperation({ summary: 'Update a customer by identifier' })
-  @ApiParam({ name: 'id', description: 'Customer user identifier', type: String })
+  @ApiParam({
+    name: 'id',
+    description: 'Customer user identifier',
+    type: String,
+  })
   @ApiOkResponse({ description: 'Customer updated successfully' })
   @ApiNotFoundResponse({ description: 'Customer not found' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to update customers' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to update customers',
+  })
   async updateCustomer(
     @Param('id') id: string,
     @Body() payload: UpdateCustomerDto,
@@ -93,10 +105,18 @@ export class CustomerController {
     module: PermissionModule.USERS,
     permission: 'create',
   })
-  @ApiOperation({ summary: 'Invite a customer (email + WhatsApp) and let them set password' })
-  @ApiCreatedResponse({ description: 'Customer invitation created and notifications sent' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to invite customers' })
+  @ApiOperation({
+    summary: 'Invite a customer (email + WhatsApp) and let them set password',
+  })
+  @ApiCreatedResponse({
+    description: 'Customer invitation created and notifications sent',
+  })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to invite customers',
+  })
   async inviteCustomer(
     @CurrentUser() inviter: AuthenticatedUser,
     @Body() payload: InviteCustomerDto,
@@ -191,7 +211,11 @@ export class CustomerController {
     permission: 'read',
   })
   @ApiOperation({ summary: 'Retrieve a customer by identifier' })
-  @ApiParam({ name: 'id', description: 'Customer user identifier', type: String })
+  @ApiParam({
+    name: 'id',
+    description: 'Customer user identifier',
+    type: String,
+  })
   @ApiOkResponse({ description: 'Customer retrieved successfully' })
   @ApiNotFoundResponse({ description: 'Customer not found' })
   @ApiUnauthorizedResponse({

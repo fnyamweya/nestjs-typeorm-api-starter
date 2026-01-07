@@ -36,16 +36,29 @@ import { PricingService } from './pricing.service';
 @ApiTags('Pricing')
 @ApiBearerAuth('access-token')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class PricingController {
   constructor(private readonly pricingService: PricingService) {}
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.PRICING, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PRICING,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create a price list' })
   @ApiCreatedResponse({ description: 'Price list created' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to create price lists' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to create price lists',
+  })
   async create(@Body() payload: CreatePriceListDto) {
     const row = await this.pricingService.createPriceList(payload);
     return ResponseUtil.created(row, 'Price list created');
@@ -59,10 +72,19 @@ export class PricingController {
   @ApiQuery({ name: 'getAll', required: false, type: Boolean })
   @ApiQuery({ name: 'search', required: false, type: String })
   @ApiQuery({ name: 'currency', required: false, type: String, example: 'KES' })
-  @ApiQuery({ name: 'status', required: false, type: String, example: 'active' })
+  @ApiQuery({
+    name: 'status',
+    required: false,
+    type: String,
+    example: 'active',
+  })
   @ApiOkResponse({ description: 'Price lists retrieved' })
-  @ApiUnauthorizedResponse({ description: 'Missing or invalid authentication token' })
-  @ApiForbiddenResponse({ description: 'Insufficient permissions to read price lists' })
+  @ApiUnauthorizedResponse({
+    description: 'Missing or invalid authentication token',
+  })
+  @ApiForbiddenResponse({
+    description: 'Insufficient permissions to read price lists',
+  })
   async list(@Query() filters: FilterPriceListDto) {
     const result = await this.pricingService.listPriceLists(filters);
 
@@ -90,7 +112,10 @@ export class PricingController {
   }
 
   @Patch(':id')
-  @RequirePermissions({ module: PermissionModule.PRICING, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRICING,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update a price list' })
   @ApiParam({ name: 'id', description: 'Price list UUID' })
   @ApiOkResponse({ description: 'Price list updated' })
@@ -100,7 +125,10 @@ export class PricingController {
   }
 
   @Delete(':id')
-  @RequirePermissions({ module: PermissionModule.PRICING, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PRICING,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete a price list' })
   @ApiParam({ name: 'id', description: 'Price list UUID' })
   @ApiOkResponse({ description: 'Price list deleted' })

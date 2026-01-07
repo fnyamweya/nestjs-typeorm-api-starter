@@ -20,7 +20,10 @@ class RuleExpressionDto {
   @IsString()
   language?: 'CEL' | 'JSONLOGIC';
 
-  @ApiProperty({ description: 'Expression string. For JSONLOGIC this should be a JSON string.' })
+  @ApiProperty({
+    description:
+      'Expression string. For JSONLOGIC this should be a JSON string.',
+  })
   @IsString()
   expression: string;
 }
@@ -59,12 +62,16 @@ export class CreateProductContextOverrideDto {
   @Type(() => Number)
   priority?: number;
 
-  @ApiPropertyOptional({ description: 'ISO timestamp when this override becomes active' })
+  @ApiPropertyOptional({
+    description: 'ISO timestamp when this override becomes active',
+  })
   @IsOptional()
   @IsString()
   validFrom?: string;
 
-  @ApiPropertyOptional({ description: 'ISO timestamp when this override expires' })
+  @ApiPropertyOptional({
+    description: 'ISO timestamp when this override expires',
+  })
   @IsOptional()
   @IsString()
   validUntil?: string;
@@ -82,7 +89,8 @@ export class CreateProductContextOverrideDto {
   rule?: RuleExpressionDto;
 
   @ApiProperty({
-    description: 'JSON Patch operations (RFC 6902) applied to the ProductDTO when matched',
+    description:
+      'JSON Patch operations (RFC 6902) applied to the ProductDTO when matched',
     isArray: true,
     example: [{ op: 'replace', path: '/pricing/basePrice', value: 999 }],
   })

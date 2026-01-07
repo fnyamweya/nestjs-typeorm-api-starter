@@ -29,7 +29,13 @@ import { UpdateBrandDto } from '../dto/update-brand.dto';
 import { FilterBrandDto } from '../dto/filter-brand.dto';
 
 @Controller('catalog/brands')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Catalog: Brands')
 export class BrandController {
   constructor(private readonly brandService: BrandService) {}
@@ -37,7 +43,10 @@ export class BrandController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create brand' })
   @ApiCreatedResponse({ description: 'Brand created successfully' })
   async create(@Body() payload: CreateBrandDto) {
@@ -70,7 +79,10 @@ export class BrandController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update brand' })
   @ApiOkResponse({ description: 'Brand updated successfully' })
   async update(@Param('id') id: string, @Body() payload: UpdateBrandDto) {
@@ -81,7 +93,10 @@ export class BrandController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete brand' })
   @ApiOkResponse({ description: 'Brand deleted successfully' })
   async remove(@Param('id') id: string) {

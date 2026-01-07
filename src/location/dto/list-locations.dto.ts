@@ -8,12 +8,17 @@ function normalizeLocationType(value: unknown): unknown {
 }
 
 export class ListLocationsDto {
-  @ApiPropertyOptional({ description: 'Parent location id (UUID). Omit for roots.' })
+  @ApiPropertyOptional({
+    description: 'Parent location id (UUID). Omit for roots.',
+  })
   @IsOptional()
   @IsUUID()
   parentId?: string;
 
-  @ApiPropertyOptional({ description: 'Country ISO2 code filter', example: 'KE' })
+  @ApiPropertyOptional({
+    description: 'Country ISO2 code filter',
+    example: 'KE',
+  })
   @IsOptional()
   @IsString()
   @Length(2, 2)
@@ -25,7 +30,9 @@ export class ListLocationsDto {
     example: 'district',
   })
   @IsOptional()
-  @Transform(({ value, obj }) => normalizeLocationType(value ?? obj?.locationType))
+  @Transform(({ value, obj }) =>
+    normalizeLocationType(value ?? obj?.locationType),
+  )
   @IsString()
   type?: string;
 

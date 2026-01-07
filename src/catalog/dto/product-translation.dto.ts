@@ -15,7 +15,10 @@ export class ProductTranslationDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Arbitrary translation metadata', example: { tagline: 'New' } })
+  @ApiPropertyOptional({
+    description: 'Arbitrary translation metadata',
+    example: { tagline: 'New' },
+  })
   @IsOptional()
   metaJson?: Record<string, unknown>;
 }

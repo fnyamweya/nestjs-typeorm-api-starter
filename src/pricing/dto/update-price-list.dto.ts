@@ -14,10 +14,17 @@ import { Type } from 'class-transformer';
 
 const PRICE_LIST_STATUS = ['active', 'inactive', 'archived'] as const;
 const STACKING_POLICY = ['EXCLUSIVE', 'STACKABLE'] as const;
-const MATCH_POLICY = ['HIGHEST_PRIORITY', 'LOWEST_PRICE', 'FIRST_MATCH'] as const;
+const MATCH_POLICY = [
+  'HIGHEST_PRIORITY',
+  'LOWEST_PRICE',
+  'FIRST_MATCH',
+] as const;
 
 export class UpdatePriceListDto {
-  @ApiPropertyOptional({ description: 'Unique price list code', example: 'ke-retail' })
+  @ApiPropertyOptional({
+    description: 'Unique price list code',
+    example: 'ke-retail',
+  })
   @IsOptional()
   @IsString()
   @IsNotEmpty()
@@ -35,7 +42,10 @@ export class UpdatePriceListDto {
   @Length(3, 3)
   currency?: string;
 
-  @ApiPropertyOptional({ description: 'Priority (higher wins by default)', example: 10 })
+  @ApiPropertyOptional({
+    description: 'Priority (higher wins by default)',
+    example: 10,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -50,17 +60,29 @@ export class UpdatePriceListDto {
   @IsObject()
   scope?: Record<string, unknown>;
 
-  @ApiPropertyOptional({ description: 'Status', enum: PRICE_LIST_STATUS, example: 'inactive' })
+  @ApiPropertyOptional({
+    description: 'Status',
+    enum: PRICE_LIST_STATUS,
+    example: 'inactive',
+  })
   @IsOptional()
   @IsIn(PRICE_LIST_STATUS as unknown as string[])
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Stacking policy', enum: STACKING_POLICY, example: 'EXCLUSIVE' })
+  @ApiPropertyOptional({
+    description: 'Stacking policy',
+    enum: STACKING_POLICY,
+    example: 'EXCLUSIVE',
+  })
   @IsOptional()
   @IsIn(STACKING_POLICY as unknown as string[])
   stackingPolicy?: string;
 
-  @ApiPropertyOptional({ description: 'Match policy', enum: MATCH_POLICY, example: 'HIGHEST_PRIORITY' })
+  @ApiPropertyOptional({
+    description: 'Match policy',
+    enum: MATCH_POLICY,
+    example: 'HIGHEST_PRIORITY',
+  })
   @IsOptional()
   @IsIn(MATCH_POLICY as unknown as string[])
   matchPolicy?: string;

@@ -1,12 +1,31 @@
-import { Body, Controller, Post, UseGuards, UsePipes, ValidationPipe } from '@nestjs/common';
-import { ApiBearerAuth, ApiBody, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Post,
+  UseGuards,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { ResponseUtil } from '../../common/utils/response.util';
 import { GetShippingQuotesDto } from '../dto/get-shipping-quotes.dto';
 import { ShippingQuotesService } from '../services/shipping-quotes.service';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('shipping')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Shipping')
 @ApiBearerAuth('access-token')
 export class ShippingController {
@@ -23,7 +42,11 @@ export class ShippingController {
       orderItems: payload.orderItems,
       priceListId: payload.priceListId,
       currencyCode: payload.currencyCode,
+      salesChannelCode: payload.salesChannelCode,
     });
-    return ResponseUtil.success(quotes, 'Shipping quotes returned successfully');
+    return ResponseUtil.success(
+      quotes,
+      'Shipping quotes returned successfully',
+    );
   }
 }

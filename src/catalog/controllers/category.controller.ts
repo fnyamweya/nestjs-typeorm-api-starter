@@ -30,7 +30,13 @@ import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { FilterCategoryDto } from '../dto/filter-category.dto';
 
 @Controller('catalog/categories')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Catalog: Categories')
 export class CategoryController {
   constructor(private readonly categoryService: CategoryService) {}
@@ -38,7 +44,10 @@ export class CategoryController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create category' })
   @ApiCreatedResponse({ description: 'Category created successfully' })
   async create(@Body() payload: CreateCategoryDto) {
@@ -58,7 +67,10 @@ export class CategoryController {
   @ApiOkResponse({ description: 'Categories retrieved successfully' })
   async findAll(@Query() filters: FilterCategoryDto) {
     const categories = await this.categoryService.findAll(filters);
-    return ResponseUtil.success(categories, 'Categories retrieved successfully');
+    return ResponseUtil.success(
+      categories,
+      'Categories retrieved successfully',
+    );
   }
 
   @Get('/:id')
@@ -72,7 +84,10 @@ export class CategoryController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update category' })
   @ApiOkResponse({ description: 'Category updated successfully' })
   async update(@Param('id') id: string, @Body() payload: UpdateCategoryDto) {
@@ -83,7 +98,10 @@ export class CategoryController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete category' })
   @ApiOkResponse({ description: 'Category deleted successfully' })
   async remove(@Param('id') id: string) {

@@ -1,5 +1,10 @@
 import { HttpService } from '@nestjs/axios';
-import { BadRequestException, Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { firstValueFrom } from 'rxjs';
 
@@ -17,7 +22,11 @@ export type GooglePlaceDetails = {
   formattedAddress?: string;
   lat?: number;
   lng?: number;
-  addressComponents?: Array<{ longName: string; shortName: string; types: string[] }>;
+  addressComponents?: Array<{
+    longName: string;
+    shortName: string;
+    types: string[];
+  }>;
   types?: string[];
   raw: unknown;
 };
@@ -81,11 +90,13 @@ export class GooglePlacesService {
       );
 
       const data: any = res.data;
-      if (!data) throw new ServiceUnavailableException('Google Places returned no data');
+      if (!data)
+        throw new ServiceUnavailableException('Google Places returned no data');
 
       if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
         throw new BadRequestException(
-          data.error_message || `Google Places autocomplete failed (${data.status})`,
+          data.error_message ||
+            `Google Places autocomplete failed (${data.status})`,
         );
       }
 
@@ -98,9 +109,13 @@ export class GooglePlacesService {
         types: p.types,
       }));
     } catch (err: any) {
-      this.logger.warn(`autocomplete failed: ${err?.message ?? 'unknown error'}`);
+      this.logger.warn(
+        `autocomplete failed: ${err?.message ?? 'unknown error'}`,
+      );
       if (err instanceof BadRequestException) throw err;
-      throw new ServiceUnavailableException('Google Places autocomplete unavailable');
+      throw new ServiceUnavailableException(
+        'Google Places autocomplete unavailable',
+      );
     }
   }
 
@@ -138,7 +153,8 @@ export class GooglePlacesService {
       );
 
       const data: any = res.data;
-      if (!data) throw new ServiceUnavailableException('Google Places returned no data');
+      if (!data)
+        throw new ServiceUnavailableException('Google Places returned no data');
 
       if (data.status !== 'OK') {
         throw new BadRequestException(
@@ -166,17 +182,25 @@ export class GooglePlacesService {
         raw: r,
       };
     } catch (err: any) {
-      this.logger.warn(`placeDetails failed: ${err?.message ?? 'unknown error'}`);
+      this.logger.warn(
+        `placeDetails failed: ${err?.message ?? 'unknown error'}`,
+      );
       if (err instanceof BadRequestException) throw err;
-      throw new ServiceUnavailableException('Google Places details unavailable');
+      throw new ServiceUnavailableException(
+        'Google Places details unavailable',
+      );
     }
   }
 
   mapPlaceDetailsToAddress(details: GooglePlaceDetails): GoogleMappedAddress {
-    const compByType = new Map<string, { longName: string; shortName: string }>();
+    const compByType = new Map<
+      string,
+      { longName: string; shortName: string }
+    >();
     for (const c of details.addressComponents ?? []) {
       for (const t of c.types ?? []) {
-        if (!compByType.has(t)) compByType.set(t, { longName: c.longName, shortName: c.shortName });
+        if (!compByType.has(t))
+          compByType.set(t, { longName: c.longName, shortName: c.shortName });
       }
     }
 
@@ -211,7 +235,10 @@ export class GooglePlacesService {
       district: admin2?.longName,
       postalCode,
       formattedAddress: details.formattedAddress,
-      geo: details.lat !== undefined && details.lng !== undefined ? { lat: details.lat, lng: details.lng } : undefined,
+      geo:
+        details.lat !== undefined && details.lng !== undefined
+          ? { lat: details.lat, lng: details.lng }
+          : undefined,
       google: {
         placeId: details.placeId,
         name: details.name,

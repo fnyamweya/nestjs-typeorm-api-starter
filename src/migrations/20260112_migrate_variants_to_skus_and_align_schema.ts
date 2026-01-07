@@ -143,8 +143,12 @@ export class MigrateVariantsToSkusAndAlignSchema20260112_1769000000000
       "updated_at" timestamptz NOT NULL DEFAULT now()
     );`);
 
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_sku_sku" ON "product_sku" ("sku")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "idx_product_sku_product" ON "product_sku" ("product_id", "is_default")');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_sku_sku" ON "product_sku" ("sku")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "idx_product_sku_product" ON "product_sku" ("product_id", "is_default")',
+    );
 
     await queryRunner.query(`DO $$
     DECLARE
@@ -257,7 +261,9 @@ export class MigrateVariantsToSkusAndAlignSchema20260112_1769000000000
     await queryRunner.query('DROP INDEX IF EXISTS "uq_product_sku_sku"');
     await queryRunner.query('DROP TABLE IF EXISTS "product_sku" CASCADE');
 
-    await queryRunner.query('DROP TABLE IF EXISTS "product_option_definition" CASCADE');
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_option_definition" CASCADE',
+    );
 
     await queryRunner.query(`DO $$
     BEGIN

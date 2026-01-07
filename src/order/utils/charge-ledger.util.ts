@@ -13,10 +13,7 @@ type ChargeLike = {
   metaJson?: Record<string, unknown> | null;
 };
 
-export type OrderLevelChargeCreate = Omit<
-  ChargeLike,
-  'id'
-> & {
+export type OrderLevelChargeCreate = Omit<ChargeLike, 'id'> & {
   orderId: string;
   appliesToShipping: boolean;
 };
@@ -26,7 +23,9 @@ export type OrderItemChargeCreate = Omit<ChargeLike, 'id'> & {
   quantityBasis?: number | null;
 };
 
-function safeMeta(meta: Record<string, unknown> | null | undefined): Record<string, unknown> {
+function safeMeta(
+  meta: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
   if (!meta || typeof meta !== 'object') return {};
   return meta;
 }

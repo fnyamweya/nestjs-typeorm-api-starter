@@ -8,7 +8,10 @@ export type CacheRememberOptions = {
 @Injectable()
 export class AppCacheService {
   private readonly logger = new Logger(AppCacheService.name);
-  private readonly inMemory = new Map<string, { value: string; expiresAt: number }>();
+  private readonly inMemory = new Map<
+    string,
+    { value: string; expiresAt: number }
+  >();
   private readonly useMemory = process.env.NODE_ENV === 'test';
 
   constructor(private readonly redisService: RedisService) {}
@@ -35,7 +38,9 @@ export class AppCacheService {
       if (!value) return null;
       return JSON.parse(value) as T;
     } catch (err: any) {
-      this.logger.debug(`Cache get failed (${key}): ${err?.message ?? 'unknown error'}`);
+      this.logger.debug(
+        `Cache get failed (${key}): ${err?.message ?? 'unknown error'}`,
+      );
       return null;
     }
   }
@@ -53,7 +58,9 @@ export class AppCacheService {
       const redis = this.redisService.getClient();
       await redis.set(key, JSON.stringify(value), 'EX', ttlSeconds);
     } catch (err: any) {
-      this.logger.debug(`Cache set failed (${key}): ${err?.message ?? 'unknown error'}`);
+      this.logger.debug(
+        `Cache set failed (${key}): ${err?.message ?? 'unknown error'}`,
+      );
     }
   }
 
@@ -67,7 +74,9 @@ export class AppCacheService {
       const redis = this.redisService.getClient();
       await redis.del(key);
     } catch (err: any) {
-      this.logger.debug(`Cache del failed (${key}): ${err?.message ?? 'unknown error'}`);
+      this.logger.debug(
+        `Cache del failed (${key}): ${err?.message ?? 'unknown error'}`,
+      );
     }
   }
 
@@ -86,7 +95,13 @@ export class AppCacheService {
       let cursor = '0';
 
       do {
-        const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 200);
+        const [nextCursor, keys] = await redis.scan(
+          cursor,
+          'MATCH',
+          pattern,
+          'COUNT',
+          200,
+        );
         cursor = nextCursor;
 
         if (keys.length) {
@@ -100,7 +115,11 @@ export class AppCacheService {
     }
   }
 
-  async remember<T>(key: string, factory: () => Promise<T>, options: CacheRememberOptions): Promise<T> {
+  async remember<T>(
+    key: string,
+    factory: () => Promise<T>,
+    options: CacheRememberOptions,
+  ): Promise<T> {
     const cached = await this.get<T>(key);
     if (cached !== null) return cached;
 

@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { CategoryService } from '../../services/category.service';
@@ -6,7 +13,13 @@ import { PublicListCategoriesDto } from '../../dto/public/public-list-categories
 
 @Controller('public/catalog/categories')
 @ApiTags('Public Catalog: Categories')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class PublicCategoriesController {
   constructor(private readonly categoryService: CategoryService) {}
 
@@ -14,7 +27,10 @@ export class PublicCategoriesController {
   @ApiOkResponse({ description: 'Public categories retrieved successfully' })
   async list(@Query() query: PublicListCategoriesDto) {
     const rows = await this.categoryService.findAllPublic(query);
-    return ResponseUtil.success(rows, 'Public categories retrieved successfully');
+    return ResponseUtil.success(
+      rows,
+      'Public categories retrieved successfully',
+    );
   }
 
   @Get(':id')

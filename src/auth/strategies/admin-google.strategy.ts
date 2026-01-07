@@ -19,7 +19,6 @@ export class AdminGoogleStrategy extends PassportStrategy(
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
 
     if (!clientID || !clientSecret) {
-      // eslint-disable-next-line no-console
       console.warn(
         'Google OAuth credentials are not configured. Admin Google login will not function until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set.',
       );
@@ -53,9 +52,11 @@ export class AdminGoogleStrategy extends PassportStrategy(
       provider: 'google',
       providerId: profile.id,
       email: email.toLowerCase(),
-      firstName: profile.name?.givenName || profile.displayName?.split(' ')?.[0],
+      firstName:
+        profile.name?.givenName || profile.displayName?.split(' ')?.[0],
       lastName:
-        profile.name?.familyName || profile.displayName?.split(' ')?.slice(1).join(' '),
+        profile.name?.familyName ||
+        profile.displayName?.split(' ')?.slice(1).join(' '),
       picture: profile.photos?.[0]?.value,
     };
   }

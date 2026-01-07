@@ -13,9 +13,11 @@ import { Readable } from 'stream';
 @Injectable()
 export class S3ClientUtils {
   private readonly logger = new Logger(S3ClientUtils.name);
-  private cached:
-    | { signature: string; client: S3Client; bucketName: string }
-    | null = null;
+  private cached: {
+    signature: string;
+    client: S3Client;
+    bucketName: string;
+  } | null = null;
 
   constructor(private readonly s3Config: S3ConfigService) {}
 
@@ -30,7 +32,10 @@ export class S3ClientUtils {
     return `http://${trimmed}`;
   }
 
-  private async getClientAndBucket(): Promise<{ client: S3Client; bucketName: string }> {
+  private async getClientAndBucket(): Promise<{
+    client: S3Client;
+    bucketName: string;
+  }> {
     const config = await this.s3Config.getConfig();
 
     if (!config.enabled) {

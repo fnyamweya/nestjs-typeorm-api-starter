@@ -30,10 +30,18 @@ export class Banner {
   @Column({ type: 'int', default: 0 })
   priority: number;
 
-  @Column({ name: 'creative_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'creative_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   creativeJson: Record<string, unknown>;
 
-  @Column({ name: 'placements_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Column({
+    name: 'placements_json',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
   placementsJson: Array<Record<string, unknown>>;
 
   @Column({ name: 'targets_json', type: 'jsonb', default: () => "'[]'::jsonb" })

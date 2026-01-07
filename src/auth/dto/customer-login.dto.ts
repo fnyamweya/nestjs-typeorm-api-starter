@@ -10,7 +10,10 @@ export class CustomerLoginDto {
   @IsNotEmpty({ message: 'Email or phone is required' })
   identifier: string;
 
-  @ApiProperty({ description: 'Customer account password', example: 'Str0ngP@ssw0rd' })
+  @ApiProperty({
+    description: 'Customer account password',
+    example: 'Str0ngP@ssw0rd',
+  })
   @IsString({ message: 'Password must be a string' })
   @IsNotEmpty({ message: 'Password is required' })
   password: string;

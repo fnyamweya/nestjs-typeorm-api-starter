@@ -89,8 +89,12 @@ export class AddPaymentMethodChannelsAndCountries20260106020000
       );
     `);
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_payment_method_country_codes"');
-    await queryRunner.query('ALTER TABLE "payment_method" DROP COLUMN IF EXISTS "country_codes"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_payment_method_country_codes"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "payment_method" DROP COLUMN IF EXISTS "country_codes"',
+    );
 
     await queryRunner.query('DROP TABLE IF EXISTS "payment_method_channel"');
   }

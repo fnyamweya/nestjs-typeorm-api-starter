@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProductContextOverride20260110_1768600000000 implements MigrationInterface {
+export class AddProductContextOverride20260110_1768600000000
+  implements MigrationInterface
+{
   name = 'AddProductContextOverride20260110_1768600000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -33,8 +35,12 @@ export class AddProductContextOverride20260110_1768600000000 implements Migratio
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_context_override_valid"');
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_context_override_product"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_context_override_valid"',
+    );
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_context_override_product"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_context_override"');
   }
 }

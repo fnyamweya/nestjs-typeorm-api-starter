@@ -5,9 +5,14 @@ import { ShippingMethod } from '../entities/shipping-method.entity';
 import { ShippingRate } from '../entities/shipping-rate.entity';
 import { ShippingZoneLocation } from '../entities/shipping-zone-location.entity';
 import { ShippingZone } from '../entities/shipping-zone.entity';
+import { ShippingZoneMethod } from '../entities/shipping-zone-method.entity';
 import { evaluateFormula } from '../utils/formula-evaluator';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
+import { Channel } from 'src/channels/entities/channel.entity';
 
 interface ShippingContext {
   locationId?: string;
@@ -15,6 +20,7 @@ interface ShippingContext {
   totalWeight?: number;
   itemCount?: number;
   currencyCode?: string;
+  channelCode?: string;
 
   // Optional catalog-derived constraints
   allowedMethodCodes?: string[];
@@ -36,8 +42,12 @@ export class ShippingMatrixService {
     private readonly locationRepo: Repository<ShippingZoneLocation>,
     @InjectRepository(ShippingMethod)
     private readonly methodRepo: Repository<ShippingMethod>,
+    @InjectRepository(ShippingZoneMethod)
+    private readonly zoneMethodRepo: Repository<ShippingZoneMethod>,
     @InjectRepository(ShippingRate)
     private readonly rateRepo: Repository<ShippingRate>,
+    @InjectRepository(Channel)
+    private readonly channelRepo: Repository<Channel>,
     private readonly cache: AppCacheService,
   ) {}
 
@@ -50,16 +60,28 @@ export class ShippingMatrixService {
       subtotal: ctx.subtotal,
       totalWeight: ctx.totalWeight,
       itemCount: ctx.itemCount,
-      currencyCode: ctx.currencyCode,
-      allowedMethodCodes: (ctx.allowedMethodCodes ?? []).slice().map(String).sort(),
-      excludedMethodCodes: (ctx.excludedMethodCodes ?? []).slice().map(String).sort(),
+      currencyCode: ctx.currencyCode ? String(ctx.currencyCode).toUpperCase() : undefined,
+      channelCode: ctx.channelCode ? String(ctx.channelCode).trim() : undefined,
+      allowedMethodCodes: (ctx.allowedMethodCodes ?? [])
+        .slice()
+        .map(String)
+        .sort(),
+      excludedMethodCodes: (ctx.excludedMethodCodes ?? [])
+        .slice()
+        .map(String)
+        .sort(),
       ratePriorityBoost: ctx.ratePriorityBoost,
       productIds: (ctx.productIds ?? []).slice().map(String).sort(),
       categoryIds: (ctx.categoryIds ?? []).slice().map(String).sort(),
       taxonomyIds: (ctx.taxonomyIds ?? []).slice().map(String).sort(),
     };
 
-    const rawKey = cacheKeyFromParts('shipping', 'matrix', 'quotes', normalized);
+    const rawKey = cacheKeyFromParts(
+      'shipping',
+      'matrix',
+      'quotes',
+      normalized,
+    );
     const key = `shipping:matrix:quotes:${cacheKeyHash(rawKey)}`;
 
     return this.cache.remember(
@@ -70,14 +92,32 @@ export class ShippingMatrixService {
   }
 
   private async computeQuotes(ctx: ShippingContext) {
+        const ctxCurrency = ctx.currencyCode
+          ? String(ctx.currencyCode).toUpperCase()
+          : undefined;
+
+        const channelCode = ctx.channelCode ? String(ctx.channelCode).trim() : undefined;
+        const channelId = channelCode
+          ? (
+              await this.channelRepo
+                .findOne({ where: { code: channelCode }, select: { id: true } as any })
+                .catch(() => null)
+            )?.id
+          : undefined;
+
     // 1) Find matching zones (locationId-only)
     const zoneIds = await this.resolveZoneIdsByLocation(ctx.locationId);
     if (zoneIds.length === 0) return [];
 
-    // 2) Find active methods in those zones
-    let methods = await this.methodRepo.find({
+    // 2) Find active methods attached to those zones
+    const zoneMethods = await this.zoneMethodRepo.find({
       where: { zoneId: In(zoneIds), isActive: true },
+      relations: ['method'] as any,
     });
+
+    let methods = zoneMethods
+      .map((zm) => zm.method)
+      .filter((m): m is ShippingMethod => Boolean(m && m.isActive));
 
     if (ctx.allowedMethodCodes?.length) {
       const allowed = new Set(ctx.allowedMethodCodes);
@@ -101,19 +141,45 @@ export class ShippingMatrixService {
     }> = [];
 
     for (const method of methods) {
-      const rates = await this.rateRepo.find({ where: { methodId: method.id }, order: { priority: 'DESC' } });
+      const rates = await this.rateRepo.find({
+        where: { methodId: method.id },
+        order: { priority: 'DESC' },
+        relations: ['channels'] as any,
+      });
 
       for (const rate of rates) {
+        // Currency targeting: if the rate is currency-scoped, require a match.
+        if (rate.currencyCode && ctxCurrency && rate.currencyCode !== ctxCurrency) {
+          continue;
+        }
+        if (rate.currencyCode && !ctxCurrency) {
+          // If caller didn't specify a currency, skip currency-scoped rates.
+          continue;
+        }
+
+        // Channel targeting: if the rate is channel-scoped, require a match.
+        if (rate.channels && rate.channels.length > 0) {
+          if (!channelId) continue;
+          const ok = rate.channels.some((c) => c.id === channelId);
+          if (!ok) continue;
+        }
+
         const meta: any = rate.metaJson || {};
 
         // Rate targeting (optional): if the rate declares targets, it must match the order context.
-        const targetProductIds: string[] | undefined = Array.isArray(meta.productIds)
+        const targetProductIds: string[] | undefined = Array.isArray(
+          meta.productIds,
+        )
           ? meta.productIds
           : undefined;
-        const targetCategoryIds: string[] | undefined = Array.isArray(meta.categoryIds)
+        const targetCategoryIds: string[] | undefined = Array.isArray(
+          meta.categoryIds,
+        )
           ? meta.categoryIds
           : undefined;
-        const targetTaxonomyIds: string[] | undefined = Array.isArray(meta.taxonomyIds)
+        const targetTaxonomyIds: string[] | undefined = Array.isArray(
+          meta.taxonomyIds,
+        )
           ? meta.taxonomyIds
           : undefined;
 
@@ -127,9 +193,11 @@ export class ShippingMatrixService {
           const productMatch =
             targetProductIds?.some((id) => productIds.has(String(id))) ?? false;
           const categoryMatch =
-            targetCategoryIds?.some((id) => categoryIds.has(String(id))) ?? false;
+            targetCategoryIds?.some((id) => categoryIds.has(String(id))) ??
+            false;
           const taxonomyMatch =
-            targetTaxonomyIds?.some((id) => taxonomyIds.has(String(id))) ?? false;
+            targetTaxonomyIds?.some((id) => taxonomyIds.has(String(id))) ??
+            false;
 
           if (!productMatch && !categoryMatch && !taxonomyMatch) {
             continue;
@@ -141,13 +209,23 @@ export class ShippingMatrixService {
           else if (taxonomyMatch) targetBonus = 100;
         }
 
-        const minWeight = rate.minWeight ? parseFloat(rate.minWeight) : undefined;
-        const maxWeight = rate.maxWeight ? parseFloat(rate.maxWeight) : undefined;
-        const minSubtotal = rate.minSubtotal ? parseFloat(rate.minSubtotal) : undefined;
-        const maxSubtotal = rate.maxSubtotal ? parseFloat(rate.maxSubtotal) : undefined;
+        const minWeight = rate.minWeight
+          ? parseFloat(rate.minWeight)
+          : undefined;
+        const maxWeight = rate.maxWeight
+          ? parseFloat(rate.maxWeight)
+          : undefined;
+        const minSubtotal = rate.minSubtotal
+          ? parseFloat(rate.minSubtotal)
+          : undefined;
+        const maxSubtotal = rate.maxSubtotal
+          ? parseFloat(rate.maxSubtotal)
+          : undefined;
 
-        if (minWeight !== undefined && (ctx.totalWeight ?? 0) < minWeight) continue;
-        if (maxWeight !== undefined && (ctx.totalWeight ?? 0) > maxWeight) continue;
+        if (minWeight !== undefined && (ctx.totalWeight ?? 0) < minWeight)
+          continue;
+        if (maxWeight !== undefined && (ctx.totalWeight ?? 0) > maxWeight)
+          continue;
         if (minSubtotal !== undefined && ctx.subtotal < minSubtotal) continue;
         if (maxSubtotal !== undefined && ctx.subtotal > maxSubtotal) continue;
 
@@ -173,7 +251,8 @@ export class ShippingMatrixService {
           const measure = meta.measure || 'subtotal';
           const tiers: any[] = meta.tiers || [];
 
-          const v = measure === 'subtotal' ? ctx.subtotal : (ctx.totalWeight ?? 0);
+          const v =
+            measure === 'subtotal' ? ctx.subtotal : (ctx.totalWeight ?? 0);
           let matched = tiers.find((t: any) => Number(t.upto) >= Number(v));
           if (!matched && tiers.length > 0) matched = tiers[tiers.length - 1];
           amount = matched ? parseFloat(matched.price) : 0;
@@ -202,33 +281,50 @@ export class ShippingMatrixService {
     }
 
     // Priority-first: choose the highest priority candidate; tie-break by lowest amount.
-    candidates.sort((a, b) => b.effectivePriority - a.effectivePriority || a.amount - b.amount);
+    candidates.sort(
+      (a, b) =>
+        b.effectivePriority - a.effectivePriority || a.amount - b.amount,
+    );
 
     return candidates;
   }
 
-  private async resolveZoneIdsByLocation(locationId?: string): Promise<string[]> {
+  private async resolveZoneIdsByLocation(
+    locationId?: string,
+  ): Promise<string[]> {
     if (!locationId) {
-      const globalZone = await this.zoneRepo.findOne({ where: { code: 'global' } });
+      const globalZone = await this.zoneRepo.findOne({
+        where: { code: 'global' },
+      });
       return globalZone ? [globalZone.id] : [];
     }
 
-    // Pull ancestors (including self) with depth, smallest depth = most specific.
-    const closureRows: Array<{ id_ancestor: string; depth: number }> =
+    // Compute ancestors (including self) with depth, smallest depth = most specific.
+    // Note: TypeORM's closure-table tree does not always include a `depth` column.
+    // We derive it via recursion over `location.parent_id`.
+    const rows: Array<{ id_ancestor: string; depth: number }> =
       await this.locationRepo.query(
-        `SELECT id_ancestor, depth FROM "location_closure" WHERE id_descendant = $1 ORDER BY depth ASC;`,
+        `
+        WITH RECURSIVE ancestors AS (
+          SELECT id AS id_ancestor, parent_id, 0::int AS depth
+          FROM "location"
+          WHERE id = $1
+          UNION ALL
+          SELECT l.id AS id_ancestor, l.parent_id, (a.depth + 1)::int AS depth
+          FROM "location" l
+          INNER JOIN ancestors a ON a.parent_id = l.id
+          WHERE a.parent_id IS NOT NULL AND a.depth < 50
+        )
+        SELECT id_ancestor, depth FROM ancestors ORDER BY depth ASC;
+        `,
         [locationId],
       );
 
     const ancestorDepth = new Map<string, number>();
-    for (const r of closureRows) {
-      ancestorDepth.set(r.id_ancestor, Number(r.depth));
-    }
+    for (const r of rows) ancestorDepth.set(r.id_ancestor, Number(r.depth));
 
-    // Some DBs may not have the self row yet; be defensive.
-    if (!ancestorDepth.has(locationId)) {
-      ancestorDepth.set(locationId, 0);
-    }
+    // If the location doesn't exist (or recursion returned nothing), fall back to itself.
+    if (!ancestorDepth.size) ancestorDepth.set(locationId, 0);
 
     const ancestorIds = Array.from(ancestorDepth.keys());
     const matches = await this.locationRepo.find({
@@ -236,7 +332,9 @@ export class ShippingMatrixService {
     });
 
     if (!matches.length) {
-      const globalZone = await this.zoneRepo.findOne({ where: { code: 'global' } });
+      const globalZone = await this.zoneRepo.findOne({
+        where: { code: 'global' },
+      });
       return globalZone ? [globalZone.id] : [];
     }
 

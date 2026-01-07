@@ -6,7 +6,10 @@ import { ProductCategory } from '../../catalog/entities/product-category.entity'
 import { CategoryClosure } from '../../catalog/entities/category-closure.entity';
 import { Taxonomy } from '../../catalog/entities/taxonomy.entity';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { ShippingCatalogContextCacheIndexService } from 'src/common/cache/shipping-catalog-context-cache-index.service';
 
 @Injectable()
@@ -36,7 +39,9 @@ export class CatalogShippingContextService {
       return { productIds: [], categoryIds: [], taxonomyIds: [] };
     }
 
-    const normalizedProductIds = Array.from(new Set(productIds.map(String))).sort();
+    const normalizedProductIds = Array.from(
+      new Set(productIds.map(String)),
+    ).sort();
     const rawKey = cacheKeyFromParts('shipping', 'catalog-context', {
       productIds: normalizedProductIds,
     });
@@ -53,7 +58,8 @@ export class CatalogShippingContextService {
     if (cached !== null) return cached;
 
     const ttlSeconds = 300;
-    const value = await this.computeCatalogShippingContext(normalizedProductIds);
+    const value =
+      await this.computeCatalogShippingContext(normalizedProductIds);
     await this.cache.set(key, value, ttlSeconds);
     await this.cacheIndex.indexCacheKey(key, value, ttlSeconds);
     return value;
@@ -67,14 +73,18 @@ export class CatalogShippingContextService {
     excludedMethodCodes?: string[];
     ratePriorityBoost?: number;
   }> {
-    const products = await this.productRepository.find({ where: { id: In(productIds) } });
+    const products = await this.productRepository.find({
+      where: { id: In(productIds) },
+    });
 
     const productCategories = await this.productCategoryRepository.find({
       where: { productId: In(productIds) },
       relations: ['category'],
     });
 
-    const allCategoryIds = Array.from(new Set(productCategories.map((pc) => pc.categoryId)));
+    const allCategoryIds = Array.from(
+      new Set(productCategories.map((pc) => pc.categoryId)),
+    );
 
     // Compute a "specificity" depth for each category (bigger = deeper in tree)
     const depthByCategoryId = new Map<string, number>();
@@ -131,9 +141,9 @@ export class CatalogShippingContextService {
       const catMeta: any = category?.metaJson || {};
       const taxMeta: any = taxonomy?.metaJson || {};
 
-      const productRules = (prodMeta.shipping ?? {}) as any;
-      const categoryRules = (catMeta.shipping ?? {}) as any;
-      const taxonomyRules = (taxMeta.shipping ?? {}) as any;
+      const productRules = prodMeta.shipping ?? {};
+      const categoryRules = catMeta.shipping ?? {};
+      const taxonomyRules = taxMeta.shipping ?? {};
 
       const productProfile = prodMeta.shippingProfile;
       const categoryProfile = catMeta.shippingProfile;

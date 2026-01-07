@@ -1,5 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, ValidateNested, IsOptional, IsUUID, IsString, IsNotEmpty } from 'class-validator';
+import {
+  IsArray,
+  ValidateNested,
+  IsOptional,
+  IsUUID,
+  IsString,
+  IsNotEmpty,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { CreateOrderItemDto } from './create-order-item.dto';
 import { UpsertAddressDto } from '../../address/dto/upsert-address.dto';
@@ -32,7 +39,7 @@ export class CreateOrderDto {
 
   @ApiPropertyOptional({
     description:
-      'Shipping address created at checkout. This will be saved as the customer\'s shipping address and snapshotted onto the order so the order remains immutable.',
+      "Shipping address created at checkout. This will be saved as the customer's shipping address and snapshotted onto the order so the order remains immutable.",
     type: UpsertAddressDto,
   })
   @IsOptional()

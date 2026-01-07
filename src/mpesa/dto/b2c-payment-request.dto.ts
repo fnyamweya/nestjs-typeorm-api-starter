@@ -10,8 +10,7 @@ import {
 
 export class B2CPaymentRequestDto {
   @ApiPropertyOptional({
-    description:
-      'Optional internal Order ID (UUID) to link this payout to',
+    description: 'Optional internal Order ID (UUID) to link this payout to',
     example: 'b9a1c0d2-9e9a-4a2a-bb8e-4d5c1c0a1e2f',
   })
   @IsOptional()

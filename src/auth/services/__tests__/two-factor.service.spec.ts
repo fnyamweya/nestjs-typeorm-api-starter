@@ -2,7 +2,11 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { TwoFactorService } from '../two-factor.service';
-import { CacheKey, CacheKeyService, CacheKeyStatus } from '../../entities/cache-key.entity';
+import {
+  CacheKey,
+  CacheKeyService,
+  CacheKeyStatus,
+} from '../../entities/cache-key.entity';
 import { User } from 'src/user/entities/user.entity';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
@@ -10,7 +14,10 @@ import { WhatsappMessageService } from 'src/whatsapp/services/whatsapp-message.s
 import { ConfigService } from '@nestjs/config';
 import { QueueService } from 'src/queue/queue.service';
 import { RateLimitService } from 'src/common/security/rate-limit.service';
-import { AUTH_OTP_JOB_SEND_TWO_FACTOR, AUTH_OTP_QUEUE } from '../../workers/auth-otp.worker';
+import {
+  AUTH_OTP_JOB_SEND_TWO_FACTOR,
+  AUTH_OTP_QUEUE,
+} from '../../workers/auth-otp.worker';
 import { MfaChannel } from 'src/user/enums';
 
 describe('TwoFactorService', () => {
@@ -95,11 +102,13 @@ describe('TwoFactorService', () => {
       mfaChannel: MfaChannel.EMAIL,
     } as any);
 
-    rateLimitService.assertWithinLimit.mockRejectedValueOnce(new Error('rate limited'));
-
-    await expect(service.sendVerificationCode('u1', MfaChannel.EMAIL)).rejects.toThrow(
-      'rate limited',
+    rateLimitService.assertWithinLimit.mockRejectedValueOnce(
+      new Error('rate limited'),
     );
+
+    await expect(
+      service.sendVerificationCode('u1', MfaChannel.EMAIL),
+    ).rejects.toThrow('rate limited');
 
     expect(queueService.addJob).not.toHaveBeenCalled();
     expect(cacheKeyRepo.save).not.toHaveBeenCalled();

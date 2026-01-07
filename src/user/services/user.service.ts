@@ -29,13 +29,17 @@ export class UserService {
   ) {}
 
   async createCustomer(payload: CreateCustomerDto): Promise<User> {
-    const existingByPhone = await this.userRepository.findOne({ where: { phone: payload.phone } });
+    const existingByPhone = await this.userRepository.findOne({
+      where: { phone: payload.phone },
+    });
     if (existingByPhone) {
       throw new ConflictException('Phone number is already registered');
     }
 
     if (payload.email) {
-      const existingByEmail = await this.userRepository.findOne({ where: { email: payload.email } });
+      const existingByEmail = await this.userRepository.findOne({
+        where: { email: payload.email },
+      });
       if (existingByEmail) {
         throw new ConflictException('Email is already registered');
       }
@@ -65,7 +69,9 @@ export class UserService {
 
     const savedUser = await this.userRepository.save(user);
 
-    const profileExists = await this.customerProfileRepository.findOne({ where: { userId: savedUser.id } as any });
+    const profileExists = await this.customerProfileRepository.findOne({
+      where: { userId: savedUser.id } as any,
+    });
     if (!profileExists) {
       await this.customerProfileRepository.save(
         this.customerProfileRepository.create({ userId: savedUser.id }),

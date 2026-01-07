@@ -103,6 +103,9 @@ export class PublicProductDto {
   @ApiProperty({ type: () => PublicProductCategoryRefDto, isArray: true })
   categories: PublicProductCategoryRefDto[];
 
-  @ApiPropertyOptional({ type: () => PublicProductTranslationDto, isArray: true })
+  @ApiPropertyOptional({
+    type: () => PublicProductTranslationDto,
+    isArray: true,
+  })
   translations?: PublicProductTranslationDto[];
 }

@@ -19,7 +19,9 @@ export class ProductOptionDefinition {
   @Column({ name: 'product_id', type: 'uuid' })
   productId: string;
 
-  @ManyToOne(() => Product, (product) => product.optionDefinitions, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Product, (product) => product.optionDefinitions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'product_id' })
   product: Product;
 

@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPaymentMethodRelationships20260106020000 implements MigrationInterface {
+export class AddPaymentMethodRelationships20260106020000
+  implements MigrationInterface
+{
   name = 'AddPaymentMethodRelationships20260106020000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -151,7 +153,9 @@ export class AddPaymentMethodRelationships20260106020000 implements MigrationInt
     `);
 
     await queryRunner.query('DROP TABLE IF EXISTS "payment_method_currency"');
-    await queryRunner.query('DROP TABLE IF EXISTS "payment_method_country_config"');
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "payment_method_country_config"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "payment_method_channel"');
   }
 }

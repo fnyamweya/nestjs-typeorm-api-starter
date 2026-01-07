@@ -47,29 +47,61 @@ export class ProductSku {
   @Column({ name: 'options_json', type: 'jsonb', default: () => "'{}'::jsonb" })
   options: Record<string, string>;
 
-  @Column({ name: 'attributes_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'attributes_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   attributes: Record<string, unknown>;
 
   @Column({ name: 'requires_shipping', type: 'boolean', default: true })
   requiresShipping: boolean;
 
   // Inventory stored as structured json (validated at API layer)
-  @Column({ name: 'inventory_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'inventory_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   inventory: Record<string, unknown>;
 
   @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
   imagesJson: string[];
 
-  @Column({ name: 'weight', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  @Column({
+    name: 'weight',
+    type: 'numeric',
+    precision: 18,
+    scale: 6,
+    nullable: true,
+  })
   weight?: string;
 
-  @Column({ name: 'length', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  @Column({
+    name: 'length',
+    type: 'numeric',
+    precision: 18,
+    scale: 6,
+    nullable: true,
+  })
   length?: string;
 
-  @Column({ name: 'width', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  @Column({
+    name: 'width',
+    type: 'numeric',
+    precision: 18,
+    scale: 6,
+    nullable: true,
+  })
   width?: string;
 
-  @Column({ name: 'height', type: 'numeric', precision: 18, scale: 6, nullable: true })
+  @Column({
+    name: 'height',
+    type: 'numeric',
+    precision: 18,
+    scale: 6,
+    nullable: true,
+  })
   height?: string;
 
   @Column({ name: 'dimension_unit', type: 'text', default: 'cm' })

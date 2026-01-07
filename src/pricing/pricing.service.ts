@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, Repository } from 'typeorm';
 import { PriceList } from 'src/catalog/entities/price-list.entity';
@@ -16,12 +20,18 @@ export class PricingService {
   ) {}
 
   async createPriceList(payload: CreatePriceListDto) {
-    const existing = await this.priceListRepo.findOne({ where: { code: payload.code } });
+    const existing = await this.priceListRepo.findOne({
+      where: { code: payload.code },
+    });
     if (existing) {
-      throw new ConflictException(`PriceList with code '${payload.code}' already exists`);
+      throw new ConflictException(
+        `PriceList with code '${payload.code}' already exists`,
+      );
     }
 
-    const currencyCode = await this.currencyService.assertExists(payload.currency);
+    const currencyCode = await this.currencyService.assertExists(
+      payload.currency,
+    );
 
     const row = this.priceListRepo.create({
       code: payload.code,
@@ -42,19 +52,26 @@ export class PricingService {
     const { getAll, limit, page } = filter;
     const skip = (page - 1) * limit;
 
-    const qb = this.priceListRepo.createQueryBuilder('pl').orderBy('pl.priority', 'DESC').addOrderBy('pl.created_at', 'DESC');
+    const qb = this.priceListRepo
+      .createQueryBuilder('pl')
+      .orderBy('pl.priority', 'DESC')
+      .addOrderBy('pl.created_at', 'DESC');
 
     if (filter.search) {
       const q = `%${filter.search}%`;
       qb.andWhere(
         new Brackets((where) => {
-          where.where('pl.code ILIKE :q', { q }).orWhere('pl.name ILIKE :q', { q });
+          where
+            .where('pl.code ILIKE :q', { q })
+            .orWhere('pl.name ILIKE :q', { q });
         }),
       );
     }
 
     if (filter.currency) {
-      const currencyCode = await this.currencyService.assertExists(filter.currency);
+      const currencyCode = await this.currencyService.assertExists(
+        filter.currency,
+      );
       qb.andWhere('pl.currency_code = :currency', { currency: currencyCode });
     }
 
@@ -73,7 +90,8 @@ export class PricingService {
 
   async getPriceList(id: string) {
     const row = await this.priceListRepo.findOne({ where: { id } });
-    if (!row) throw new NotFoundException(`PriceList with ID '${id}' not found`);
+    if (!row)
+      throw new NotFoundException(`PriceList with ID '${id}' not found`);
     return row;
   }
 
@@ -81,23 +99,35 @@ export class PricingService {
     const existing = await this.getPriceList(id);
 
     if (payload.code && payload.code !== existing.code) {
-      const dup = await this.priceListRepo.findOne({ where: { code: payload.code } });
+      const dup = await this.priceListRepo.findOne({
+        where: { code: payload.code },
+      });
       if (dup) {
-        throw new ConflictException(`PriceList with code '${payload.code}' already exists`);
+        throw new ConflictException(
+          `PriceList with code '${payload.code}' already exists`,
+        );
       }
       existing.code = payload.code;
     }
 
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
     if (typeof payload.currency !== 'undefined') {
-      existing.currency = await this.currencyService.assertExists(payload.currency);
+      existing.currency = await this.currencyService.assertExists(
+        payload.currency,
+      );
     }
-    if (typeof payload.priority !== 'undefined') existing.priority = payload.priority;
-    if (typeof payload.scope !== 'undefined') existing.scope = payload.scope ?? {};
-    if (typeof payload.status !== 'undefined') existing.status = payload.status as any;
-    if (typeof payload.stackingPolicy !== 'undefined') existing.stackingPolicy = payload.stackingPolicy as any;
-    if (typeof payload.matchPolicy !== 'undefined') existing.matchPolicy = payload.matchPolicy as any;
-    if (typeof payload.stopAfterMatch !== 'undefined') existing.stopAfterMatch = payload.stopAfterMatch;
+    if (typeof payload.priority !== 'undefined')
+      existing.priority = payload.priority;
+    if (typeof payload.scope !== 'undefined')
+      existing.scope = payload.scope ?? {};
+    if (typeof payload.status !== 'undefined')
+      existing.status = payload.status as any;
+    if (typeof payload.stackingPolicy !== 'undefined')
+      existing.stackingPolicy = payload.stackingPolicy as any;
+    if (typeof payload.matchPolicy !== 'undefined')
+      existing.matchPolicy = payload.matchPolicy as any;
+    if (typeof payload.stopAfterMatch !== 'undefined')
+      existing.stopAfterMatch = payload.stopAfterMatch;
 
     return this.priceListRepo.save(existing);
   }

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Brackets, ILike, In, Repository } from 'typeorm';
 import { PaymentMethod } from '../entities/payment-method.entity';
@@ -41,30 +45,48 @@ export class PaymentMethodService {
     return (code || '').trim().toUpperCase();
   }
 
-  private normalizeStringCodes(values: string[] | undefined): string[] | undefined {
+  private normalizeStringCodes(
+    values: string[] | undefined,
+  ): string[] | undefined {
     if (!values) return undefined;
     return Array.from(
-      new Set(values.map((c) => String(c ?? '').trim().toUpperCase()).filter(Boolean)),
+      new Set(
+        values
+          .map((c) =>
+            String(c ?? '')
+              .trim()
+              .toUpperCase(),
+          )
+          .filter(Boolean),
+      ),
     );
   }
 
-  private normalizeCountryCodes(values: string[] | undefined): string[] | undefined {
+  private normalizeCountryCodes(
+    values: string[] | undefined,
+  ): string[] | undefined {
     const normalized = this.normalizeStringCodes(values);
     if (!normalized) return undefined;
     const bad = normalized.find((c) => c.length !== 2);
-    if (bad) throw new BadRequestException('countryCodes must be 2-letter ISO codes');
+    if (bad)
+      throw new BadRequestException('countryCodes must be 2-letter ISO codes');
     return normalized;
   }
 
-  private normalizeCurrencyCodes(values: string[] | undefined): string[] | undefined {
+  private normalizeCurrencyCodes(
+    values: string[] | undefined,
+  ): string[] | undefined {
     const normalized = this.normalizeStringCodes(values);
     if (!normalized) return undefined;
     const bad = normalized.find((c) => c.length !== 3);
-    if (bad) throw new BadRequestException('currencyCodes must be 3-letter ISO codes');
+    if (bad)
+      throw new BadRequestException('currencyCodes must be 3-letter ISO codes');
     return normalized;
   }
 
-  private async validateCountryCodesBestEffort(countryCodes: string[]): Promise<void> {
+  private async validateCountryCodesBestEffort(
+    countryCodes: string[],
+  ): Promise<void> {
     if (countryCodes.length === 0) return;
     const anyConfigured = await this.countryConfigRepo.count();
     if (!anyConfigured) return;
@@ -73,10 +95,14 @@ export class PaymentMethodService {
       where: { countryCode: In(countryCodes), isActive: true },
       select: { countryCode: true } as any,
     });
-    const existingSet = new Set(existing.map((c) => String(c.countryCode).toUpperCase()));
+    const existingSet = new Set(
+      existing.map((c) => String(c.countryCode).toUpperCase()),
+    );
     const missing = countryCodes.filter((c) => !existingSet.has(c));
     if (missing.length) {
-      throw new BadRequestException(`Unknown countryCodes: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown countryCodes: ${missing.join(', ')}`,
+      );
     }
   }
 
@@ -86,14 +112,21 @@ export class PaymentMethodService {
       where: { code: In(currencyCodes) },
       select: { code: true } as any,
     });
-    const existingSet = new Set(existing.map((c) => String(c.code).toUpperCase()));
+    const existingSet = new Set(
+      existing.map((c) => String(c.code).toUpperCase()),
+    );
     const missing = currencyCodes.filter((c) => !existingSet.has(c));
     if (missing.length) {
-      throw new BadRequestException(`Unknown currencyCodes: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown currencyCodes: ${missing.join(', ')}`,
+      );
     }
   }
 
-  private async setChannelsForMethod(methodId: string, channelCodes: string[]): Promise<void> {
+  private async setChannelsForMethod(
+    methodId: string,
+    channelCodes: string[],
+  ): Promise<void> {
     await this.methodChannelRepo.delete({ paymentMethodId: methodId } as any);
     if (!channelCodes.length) return;
 
@@ -103,7 +136,9 @@ export class PaymentMethodService {
     const foundSet = new Set(channels.map((c) => c.code.toUpperCase()));
     const missing = channelCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new BadRequestException(`Unknown channelCodes: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown channelCodes: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodChannelRepo.save(
@@ -117,7 +152,10 @@ export class PaymentMethodService {
     );
   }
 
-  private async setCountriesForMethod(methodId: string, countryCodes: string[]): Promise<void> {
+  private async setCountriesForMethod(
+    methodId: string,
+    countryCodes: string[],
+  ): Promise<void> {
     await this.methodCountryRepo.delete({ paymentMethodId: methodId } as any);
     if (!countryCodes.length) return;
 
@@ -127,10 +165,14 @@ export class PaymentMethodService {
     const configs = await this.countryConfigRepo.find({
       where: { countryCode: In(countryCodes), isActive: true },
     });
-    const foundSet = new Set(configs.map((c) => String(c.countryCode).toUpperCase()));
+    const foundSet = new Set(
+      configs.map((c) => String(c.countryCode).toUpperCase()),
+    );
     const missing = countryCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new BadRequestException(`Unknown countryCodes: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown countryCodes: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodCountryRepo.save(
@@ -144,15 +186,24 @@ export class PaymentMethodService {
     );
   }
 
-  private async setCurrenciesForMethod(methodId: string, currencyCodes: string[]): Promise<void> {
+  private async setCurrenciesForMethod(
+    methodId: string,
+    currencyCodes: string[],
+  ): Promise<void> {
     await this.methodCurrencyRepo.delete({ paymentMethodId: methodId } as any);
     if (!currencyCodes.length) return;
 
-    const currencies = await this.currencyRepo.find({ where: { code: In(currencyCodes) } });
-    const foundSet = new Set(currencies.map((c) => String(c.code).toUpperCase()));
+    const currencies = await this.currencyRepo.find({
+      where: { code: In(currencyCodes) },
+    });
+    const foundSet = new Set(
+      currencies.map((c) => String(c.code).toUpperCase()),
+    );
     const missing = currencyCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new BadRequestException(`Unknown currencyCodes: ${missing.join(', ')}`);
+      throw new BadRequestException(
+        `Unknown currencyCodes: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodCurrencyRepo.save(
@@ -181,7 +232,9 @@ export class PaymentMethodService {
       qb.andWhere('pm.is_active = :isActive', { isActive: params.isActive });
     }
     if (params.providerId) {
-      qb.andWhere('pm.provider_id = :providerId', { providerId: params.providerId });
+      qb.andWhere('pm.provider_id = :providerId', {
+        providerId: params.providerId,
+      });
     }
     if (params.channel) {
       const channelCode = this.normalizeCode(params.channel);
@@ -295,12 +348,14 @@ export class PaymentMethodService {
     if (!code) throw new BadRequestException('code is required');
 
     const existing = await this.methodRepo.findOne({ where: { code } });
-    if (existing) throw new BadRequestException('Payment method code already exists');
+    if (existing)
+      throw new BadRequestException('Payment method code already exists');
 
     const channelCodes =
       this.normalizeStringCodes(payload.channelCodes ?? payload.channels) ?? [];
     const countryCodes = this.normalizeCountryCodes(payload.countryCodes) ?? [];
-    const currencyCodes = this.normalizeCurrencyCodes(payload.currencyCodes) ?? [];
+    const currencyCodes =
+      this.normalizeCurrencyCodes(payload.currencyCodes) ?? [];
     await this.validateCountryCodesBestEffort(countryCodes);
     await this.validateCurrencyCodes(currencyCodes);
 
@@ -321,7 +376,10 @@ export class PaymentMethodService {
     return this.getById(saved.id);
   }
 
-  async update(id: string, payload: UpdatePaymentMethodDto): Promise<PaymentMethod> {
+  async update(
+    id: string,
+    payload: UpdatePaymentMethodDto,
+  ): Promise<PaymentMethod> {
     const existing = await this.methodRepo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Payment method not found');
 
@@ -335,28 +393,38 @@ export class PaymentMethodService {
       existing.code = code;
     }
 
-    if (typeof payload.providerId !== 'undefined') existing.providerId = payload.providerId;
+    if (typeof payload.providerId !== 'undefined')
+      existing.providerId = payload.providerId;
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
-    if (typeof payload.description !== 'undefined') existing.description = payload.description;
-    if (typeof payload.isActive !== 'undefined') existing.isActive = payload.isActive;
+    if (typeof payload.description !== 'undefined')
+      existing.description = payload.description;
+    if (typeof payload.isActive !== 'undefined')
+      existing.isActive = payload.isActive;
     if (typeof payload.countryCodes !== 'undefined') {
       const normalized = this.normalizeCountryCodes(payload.countryCodes) ?? [];
       await this.validateCountryCodesBestEffort(normalized);
       await this.setCountriesForMethod(existing.id, normalized);
     }
     if (typeof payload.currencyCodes !== 'undefined') {
-      const normalized = this.normalizeCurrencyCodes(payload.currencyCodes) ?? [];
+      const normalized =
+        this.normalizeCurrencyCodes(payload.currencyCodes) ?? [];
       await this.validateCurrencyCodes(normalized);
       await this.setCurrenciesForMethod(existing.id, normalized);
     }
-    if (typeof payload.configJson !== 'undefined') existing.configJson = payload.configJson ?? {};
-    if (typeof payload.metadata !== 'undefined') existing.metadata = payload.metadata ?? {};
+    if (typeof payload.configJson !== 'undefined')
+      existing.configJson = payload.configJson ?? {};
+    if (typeof payload.metadata !== 'undefined')
+      existing.metadata = payload.metadata ?? {};
 
     const saved = await this.methodRepo.save(existing);
 
-    if (typeof payload.channelCodes !== 'undefined' || typeof payload.channels !== 'undefined') {
+    if (
+      typeof payload.channelCodes !== 'undefined' ||
+      typeof payload.channels !== 'undefined'
+    ) {
       const channelCodes =
-        this.normalizeStringCodes(payload.channelCodes ?? payload.channels) ?? [];
+        this.normalizeStringCodes(payload.channelCodes ?? payload.channels) ??
+        [];
       await this.setChannelsForMethod(saved.id, channelCodes);
     }
 

@@ -13,7 +13,6 @@ import { PaymentProviderSeeder } from '../payment-provider/seeders/payment-provi
 import { PaymentMethodSeeder } from '../payment-method/seeders/payment-method.seeder';
 
 async function runSeeders() {
-  // eslint-disable-next-line no-console
   console.log('🌱 Starting database seeding...');
 
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -31,74 +30,69 @@ async function runSeeders() {
     const paymentProviderSeeder = app.get(PaymentProviderSeeder);
     const paymentMethodSeeder = app.get(PaymentMethodSeeder);
 
-    // eslint-disable-next-line no-console
     console.log('⚙️ Seeding application settings...');
     await settingSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Settings seeding completed');
 
-    // eslint-disable-next-line no-console
     console.log('💱 Seeding currencies (KES, USD, EUR, ...)...');
     await currencySeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Currencies seeding completed');
 
-    // eslint-disable-next-line no-console
     console.log('🗺️ Seeding locations (Kenya)...');
     await locationSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Locations seeding completed');
 
-    // eslint-disable-next-line no-console
     console.log('📡 Seeding channels (WEB, MOBILE, WHATSAPP)...');
     await channelsSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Channels seeding completed');
 
-    // eslint-disable-next-line no-console
-    console.log('💳 Seeding payment providers & methods (Safaricom / M-Pesa)...');
+    console.log(
+      '💳 Seeding payment providers & methods (Safaricom / M-Pesa)...',
+    );
     await paymentProviderSeeder.seed();
     await paymentMethodSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Payments seeding completed');
 
-    // eslint-disable-next-line no-console
-    console.log('💬 Seeding WhatsApp templates (order success, customer registration)...');
+    console.log(
+      '💬 Seeding WhatsApp templates (order success, customer registration)...',
+    );
     await whatsappTemplateSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ WhatsApp templates seeding completed');
 
-    // eslint-disable-next-line no-console
     console.log('🏷️ Seeding customer tiers (BASE)...');
     await customerTierSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Customer tiers seeding completed');
 
-    // eslint-disable-next-line no-console
-    console.log('📝 Seeding authentication data (roles, permissions, users)...');
+    console.log(
+      '📝 Seeding authentication data (roles, permissions, users)...',
+    );
     await authSeeder.seed();
-    // eslint-disable-next-line no-console
+
     console.log('✅ Authentication seeding completed');
 
-    // eslint-disable-next-line no-console
     console.log('🗂️ Seeding catalog data...');
     await catalogSeeder.seed();
 
-    // eslint-disable-next-line no-console
     console.log('🚚 Seeding shipping data...');
     try {
       await shippingSeeder.seed();
-      // eslint-disable-next-line no-console
+
       console.log('✅ Shipping seeding completed');
     } catch {
-      // eslint-disable-next-line no-console
-      console.warn('⚠️ Shipping seeder skipped/unavailable in this environment');
+      console.warn(
+        '⚠️ Shipping seeder skipped/unavailable in this environment',
+      );
     }
 
-    // eslint-disable-next-line no-console
     console.log('🎉 All seeders completed successfully!');
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('❌ Seeding failed:', error);
     process.exit(1);
   } finally {
@@ -107,7 +101,6 @@ async function runSeeders() {
 }
 
 runSeeders().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error('❌ Fatal error during seeding:', error);
   process.exit(1);
 });

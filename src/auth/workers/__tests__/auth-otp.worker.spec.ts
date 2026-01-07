@@ -3,7 +3,11 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { AuthOtpWorkerService } from '../auth-otp.worker';
 import { QueueService } from 'src/queue/queue.service';
-import { CacheKey, CacheKeyService, CacheKeyStatus } from '../../entities/cache-key.entity';
+import {
+  CacheKey,
+  CacheKeyService,
+  CacheKeyStatus,
+} from '../../entities/cache-key.entity';
 import { User } from 'src/user/entities/user.entity';
 import { EmailServiceUtils } from 'src/common/utils/email-service.utils';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
@@ -22,8 +26,14 @@ describe('AuthOtpWorkerService', () => {
 
   const userRepository = { findOne: jest.fn() };
 
-  const emailServiceUtils = { sendTwoFactorCode: jest.fn(), sendForgotPasswordResetCode: jest.fn() };
-  const smsServiceUtils = { sendTwoFactorCodeSMS: jest.fn(), sendSms: jest.fn() };
+  const emailServiceUtils = {
+    sendTwoFactorCode: jest.fn(),
+    sendForgotPasswordResetCode: jest.fn(),
+  };
+  const smsServiceUtils = {
+    sendTwoFactorCodeSMS: jest.fn(),
+    sendSms: jest.fn(),
+  };
   const whatsappMessageService = { send: jest.fn() };
   const configService = { get: jest.fn().mockReturnValue('Application') };
 
@@ -69,7 +79,10 @@ describe('AuthOtpWorkerService', () => {
     whatsappMessageService.send.mockRejectedValue(new Error('wa down'));
     smsServiceUtils.sendTwoFactorCodeSMS.mockResolvedValue(undefined);
 
-    await (worker as any).handleSendTwoFactor({ cacheKeyId: 'ck1', channel: MfaChannel.SMS });
+    await (worker as any).handleSendTwoFactor({
+      cacheKeyId: 'ck1',
+      channel: MfaChannel.SMS,
+    });
 
     expect(emailServiceUtils.sendTwoFactorCode).toHaveBeenCalled();
     expect(smsServiceUtils.sendTwoFactorCodeSMS).toHaveBeenCalled();
@@ -94,14 +107,21 @@ describe('AuthOtpWorkerService', () => {
       mfaChannel: MfaChannel.EMAIL,
     } as any);
 
-    emailServiceUtils.sendTwoFactorCode.mockRejectedValue(new Error('smtp down'));
+    emailServiceUtils.sendTwoFactorCode.mockRejectedValue(
+      new Error('smtp down'),
+    );
     whatsappMessageService.send.mockRejectedValue(new Error('wa down'));
-    smsServiceUtils.sendTwoFactorCodeSMS.mockRejectedValue(new Error('sms down'));
+    smsServiceUtils.sendTwoFactorCodeSMS.mockRejectedValue(
+      new Error('sms down'),
+    );
 
     cacheKeyRepository.save.mockResolvedValue(undefined);
 
     await expect(
-      (worker as any).handleSendTwoFactor({ cacheKeyId: 'ck1', channel: MfaChannel.SMS }),
+      (worker as any).handleSendTwoFactor({
+        cacheKeyId: 'ck1',
+        channel: MfaChannel.SMS,
+      }),
     ).rejects.toThrow('Failed to deliver 2FA code');
 
     expect(cacheKeyRepository.save).toHaveBeenCalledWith(

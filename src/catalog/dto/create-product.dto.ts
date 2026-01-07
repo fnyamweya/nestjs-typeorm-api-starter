@@ -33,17 +33,26 @@ export class CreateProductDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Product status', enum: ProductStatus, default: ProductStatus.DRAFT })
+  @ApiPropertyOptional({
+    description: 'Product status',
+    enum: ProductStatus,
+    default: ProductStatus.DRAFT,
+  })
   @IsOptional()
   @IsEnum(ProductStatus)
   status?: ProductStatus;
 
-  @ApiPropertyOptional({ description: 'Product slug (auto-generated from title if omitted)' })
+  @ApiPropertyOptional({
+    description: 'Product slug (auto-generated from title if omitted)',
+  })
   @IsOptional()
   @IsString()
   slug?: string;
 
-  @ApiPropertyOptional({ description: 'External reference', example: 'erp-1234' })
+  @ApiPropertyOptional({
+    description: 'External reference',
+    example: 'erp-1234',
+  })
   @IsOptional()
   @IsString()
   externalRef?: string;
@@ -53,43 +62,69 @@ export class CreateProductDto {
   @IsUUID()
   brandId?: string;
 
-  @ApiPropertyOptional({ description: 'Category ids to attach', isArray: true, type: String })
+  @ApiPropertyOptional({
+    description: 'Category ids to attach',
+    isArray: true,
+    type: String,
+  })
   @IsOptional()
   @IsArray()
   @IsUUID('4', { each: true })
   categoryIds?: string[];
 
-  @ApiPropertyOptional({ description: 'Product option definitions (used to validate SKU options)', type: () => ProductOptionDefinitionDto, isArray: true })
+  @ApiPropertyOptional({
+    description: 'Product option definitions (used to validate SKU options)',
+    type: () => ProductOptionDefinitionDto,
+    isArray: true,
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ProductOptionDefinitionDto)
   optionDefinitions?: ProductOptionDefinitionDto[];
 
-  @ApiPropertyOptional({ description: 'Availability configuration', type: () => ProductAvailabilityDto })
+  @ApiPropertyOptional({
+    description: 'Availability configuration',
+    type: () => ProductAvailabilityDto,
+  })
   @IsOptional()
   @ValidateNested()
   @Type(() => ProductAvailabilityDto)
   availability?: ProductAvailabilityDto;
 
-  @ApiPropertyOptional({ description: 'Product images', example: ['https://cdn.example.com/img.png'] })
+  @ApiPropertyOptional({
+    description: 'Product images',
+    example: ['https://cdn.example.com/img.png'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   images?: string[];
 
-  @ApiPropertyOptional({ description: 'Translations', type: () => ProductTranslationDto, isArray: true })
+  @ApiPropertyOptional({
+    description: 'Translations',
+    type: () => ProductTranslationDto,
+    isArray: true,
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => ProductTranslationDto)
   translations?: ProductTranslationDto[];
 
-  @ApiPropertyOptional({ description: 'SKUs', type: () => CreateProductSkuDto, isArray: true })
+  @ApiPropertyOptional({
+    description: 'SKUs',
+    type: () => CreateProductSkuDto,
+    isArray: true,
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateProductSkuDto)
   skus?: CreateProductSkuDto[];
 
-  @ApiPropertyOptional({ description: 'Product-level prices', type: () => CreateProductPriceDto, isArray: true })
+  @ApiPropertyOptional({
+    description: 'Product-level prices',
+    type: () => CreateProductPriceDto,
+    isArray: true,
+  })
   @IsOptional()
   @ValidateNested({ each: true })
   @Type(() => CreateProductPriceDto)

@@ -34,10 +34,12 @@ export class CheckoutQueueProcessor implements OnModuleInit {
       async (job) => {
         if (job.name !== EXPIRE_JOB) return;
 
-        const sessionId = String((job.data as any)?.sessionId);
+        const sessionId = String(job.data?.sessionId);
         if (!sessionId) return;
 
-        const row = await this.checkoutSessionRepo.findOne({ where: { id: sessionId } });
+        const row = await this.checkoutSessionRepo.findOne({
+          where: { id: sessionId },
+        });
         if (!row) {
           await this.cache.del(this.key(sessionId));
           return;

@@ -10,7 +10,12 @@ import { GoogleLocationsController } from './controllers/google-locations.contro
 import { CountryModule } from 'src/country/country.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Location]), AddressModule, GooglePlacesModule, CountryModule],
+  imports: [
+    TypeOrmModule.forFeature([Location]),
+    AddressModule,
+    GooglePlacesModule,
+    CountryModule,
+  ],
   providers: [LocationService, LocationSeeder],
   controllers: [LocationController, GoogleLocationsController],
   exports: [LocationService, LocationSeeder, TypeOrmModule],

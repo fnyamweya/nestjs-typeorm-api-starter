@@ -55,12 +55,36 @@ export class CatalogSeeder {
   }
 
   private async resetCatalogData(): Promise<void> {
-    await this.priceRowRepository.createQueryBuilder().delete().from(PriceRow).execute();
-    await this.skuRepository.createQueryBuilder().delete().from(ProductSku).execute();
-    await this.productRepository.createQueryBuilder().delete().from(Product).execute();
-    await this.categoryRepository.createQueryBuilder().delete().from(Category).execute();
-    await this.taxonomyRepository.createQueryBuilder().delete().from(Taxonomy).execute();
-    await this.brandRepository.createQueryBuilder().delete().from(Brand).execute();
+    await this.priceRowRepository
+      .createQueryBuilder()
+      .delete()
+      .from(PriceRow)
+      .execute();
+    await this.skuRepository
+      .createQueryBuilder()
+      .delete()
+      .from(ProductSku)
+      .execute();
+    await this.productRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Product)
+      .execute();
+    await this.categoryRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Category)
+      .execute();
+    await this.taxonomyRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Taxonomy)
+      .execute();
+    await this.brandRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Brand)
+      .execute();
   }
 
   private async ensureDefaultTaxonomy(): Promise<Taxonomy> {
@@ -157,13 +181,19 @@ export class CatalogSeeder {
     // Ensure KES exists
     let kes = await this.currencyRepository.findOne({ where: { code: 'KES' } });
     if (!kes) {
-      kes = this.currencyRepository.create({ code: 'KES', precision: 2, symbol: 'KES' });
+      kes = this.currencyRepository.create({
+        code: 'KES',
+        precision: 2,
+        symbol: 'KES',
+      });
       kes = await this.currencyRepository.save(kes);
       this.logger.log('Created currency KES');
     }
 
     // Ensure price list exists
-    let priceList = await this.priceListRepository.findOne({ where: { code: 'retail-kes' } });
+    let priceList = await this.priceListRepository.findOne({
+      where: { code: 'retail-kes' },
+    });
     if (!priceList) {
       priceList = this.priceListRepository.create({
         code: 'retail-kes',
@@ -194,13 +224,18 @@ export class CatalogSeeder {
       countries: ['KE', 'TZ'],
       locations: ['Nairobi', 'Dar es Salaam'],
       stock: { type: 'FINITE', quantity: 120 },
-      schedule: { startAt: '2025-01-01T00:00:00Z', endAt: '2026-01-01T00:00:00Z', timezone: 'UTC' },
+      schedule: {
+        startAt: '2025-01-01T00:00:00Z',
+        endAt: '2026-01-01T00:00:00Z',
+        timezone: 'UTC',
+      },
       meta: { source: 'seed' },
     };
 
     const phone = await this.productService.create({
       title: 'Nova X Phone',
-      description: 'Flagship smartphone with pro-grade camera and long battery life.',
+      description:
+        'Flagship smartphone with pro-grade camera and long battery life.',
       status: ProductStatus.ACTIVE,
       slug: 'nova-x-phone',
       externalRef: 'NOVA-X-001',
@@ -212,8 +247,16 @@ export class CatalogSeeder {
         'https://cdn.example.com/products/nova-x/alt.png',
       ],
       translations: [
-        { locale: 'en', title: 'Nova X Phone', description: 'Flagship smartphone with pro-grade camera.' },
-        { locale: 'sw', title: 'Simu ya Nova X', description: 'Simu ya kisasa yenye kamera bora.' },
+        {
+          locale: 'en',
+          title: 'Nova X Phone',
+          description: 'Flagship smartphone with pro-grade camera.',
+        },
+        {
+          locale: 'sw',
+          title: 'Simu ya Nova X',
+          description: 'Simu ya kisasa yenye kamera bora.',
+        },
       ],
       skus: [
         {
@@ -263,8 +306,16 @@ export class CatalogSeeder {
       },
       images: ['https://cdn.example.com/products/acme-charger/main.png'],
       translations: [
-        { locale: 'en', title: 'Acme Fast Charger', description: 'Compact USB-C charger.' },
-        { locale: 'sw', title: 'Chaja ya Haraka Acme', description: 'Chaja ndogo ya USB-C.' },
+        {
+          locale: 'en',
+          title: 'Acme Fast Charger',
+          description: 'Compact USB-C charger.',
+        },
+        {
+          locale: 'sw',
+          title: 'Chaja ya Haraka Acme',
+          description: 'Chaja ndogo ya USB-C.',
+        },
       ],
       prices: [
         {
@@ -296,12 +347,24 @@ export class CatalogSeeder {
       availability: {
         ...availability,
         stock: { type: 'FINITE', quantity: 80 },
-        schedule: { startAt: '2025-03-01T00:00:00Z', endAt: '2026-03-01T00:00:00Z', timezone: 'UTC' },
+        schedule: {
+          startAt: '2025-03-01T00:00:00Z',
+          endAt: '2026-03-01T00:00:00Z',
+          timezone: 'UTC',
+        },
       },
       images: ['https://cdn.example.com/products/lantern/main.png'],
       translations: [
-        { locale: 'en', title: 'Solar Lantern', description: 'Portable lantern with long-lasting light.' },
-        { locale: 'sw', title: 'Taa ya Jua', description: 'Taa inayochajiwa kwa jua.' },
+        {
+          locale: 'en',
+          title: 'Solar Lantern',
+          description: 'Portable lantern with long-lasting light.',
+        },
+        {
+          locale: 'sw',
+          title: 'Taa ya Jua',
+          description: 'Taa inayochajiwa kwa jua.',
+        },
       ],
       skus: [
         {

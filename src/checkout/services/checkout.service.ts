@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CheckoutSession } from '../entities/checkout-session.entity';
@@ -43,7 +47,9 @@ export class CheckoutService {
   }
 
   private async loadRowOrThrow(userId: string, sessionId: string) {
-    const row = await this.checkoutSessionRepo.findOne({ where: { id: sessionId, userId } });
+    const row = await this.checkoutSessionRepo.findOne({
+      where: { id: sessionId, userId },
+    });
     if (!row) throw new NotFoundException('Checkout session not found');
     if (row.status !== 'active') {
       throw new BadRequestException(`Checkout session is ${row.status}`);
@@ -54,8 +60,12 @@ export class CheckoutService {
     return row;
   }
 
-  private async loadStateOrThrow(sessionId: string): Promise<CheckoutSessionState> {
-    const state = await this.cache.get<CheckoutSessionState>(this.key(sessionId));
+  private async loadStateOrThrow(
+    sessionId: string,
+  ): Promise<CheckoutSessionState> {
+    const state = await this.cache.get<CheckoutSessionState>(
+      this.key(sessionId),
+    );
     if (!state) throw new NotFoundException('Checkout session state not found');
     if (!Array.isArray(state.orderItems) || !state.orderItems.length) {
       throw new BadRequestException('Checkout session has no items');
@@ -65,10 +75,14 @@ export class CheckoutService {
 
   async createSession(userId: string, payload: CreateCheckoutSessionDto) {
     const orderItems = (payload.orderItems ?? [])
-      .map((i) => ({ productSkuId: String(i.productSkuId), quantity: Number(i.quantity) }))
+      .map((i) => ({
+        productSkuId: String(i.productSkuId),
+        quantity: Number(i.quantity),
+      }))
       .filter((i) => i.productSkuId && i.quantity > 0);
 
-    if (!orderItems.length) throw new BadRequestException('orderItems is required');
+    if (!orderItems.length)
+      throw new BadRequestException('orderItems is required');
 
     const expiresAt = new Date(Date.now() + this.ttlSeconds * 1000);
 
@@ -105,7 +119,11 @@ export class CheckoutService {
     };
   }
 
-  async setDelivery(userId: string, sessionId: string, payload: SetCheckoutDeliveryDto) {
+  async setDelivery(
+    userId: string,
+    sessionId: string,
+    payload: SetCheckoutDeliveryDto,
+  ) {
     await this.loadRowOrThrow(userId, sessionId);
     const state = await this.loadStateOrThrow(sessionId);
 
@@ -113,7 +131,10 @@ export class CheckoutService {
       throw new BadRequestException('shippingAddress.locationId is required');
     }
 
-    await this.customerShippingAddressService.upsertForUser(userId, payload.shippingAddress);
+    await this.customerShippingAddressService.upsertForUser(
+      userId,
+      payload.shippingAddress,
+    );
 
     const next: CheckoutSessionState = {
       ...state,
@@ -136,7 +157,9 @@ export class CheckoutService {
 
     const shippingLocationId = state.shippingLocationId;
     if (!shippingLocationId) {
-      throw new BadRequestException('Delivery is required before listing shipping methods');
+      throw new BadRequestException(
+        'Delivery is required before listing shipping methods',
+      );
     }
 
     const quotes = await this.shippingQuotesService.getQuotes({
@@ -149,13 +172,19 @@ export class CheckoutService {
     return { shippingLocationId, quotes };
   }
 
-  async setShippingMethod(userId: string, sessionId: string, payload: SetCheckoutShippingMethodDto) {
+  async setShippingMethod(
+    userId: string,
+    sessionId: string,
+    payload: SetCheckoutShippingMethodDto,
+  ) {
     await this.loadRowOrThrow(userId, sessionId);
     const state = await this.loadStateOrThrow(sessionId);
 
     const shippingLocationId = state.shippingLocationId;
     if (!shippingLocationId) {
-      throw new BadRequestException('Delivery is required before choosing a shipping method');
+      throw new BadRequestException(
+        'Delivery is required before choosing a shipping method',
+      );
     }
 
     const quotes = await this.shippingQuotesService.getQuotes({
@@ -168,7 +197,9 @@ export class CheckoutService {
     const code = String(payload.shippingMethodCode).trim();
     const exists = quotes.some((q: any) => q?.method?.code === code);
     if (!exists) {
-      throw new BadRequestException('Selected shipping method is not available for this destination');
+      throw new BadRequestException(
+        'Selected shipping method is not available for this destination',
+      );
     }
 
     const next: CheckoutSessionState = {
@@ -196,7 +227,8 @@ export class CheckoutService {
 
     const shippingAddress = shippingAddressRow?.address ?? null;
 
-    const shippingLocationId = state.shippingLocationId ?? shippingAddress?.locationId ?? null;
+    const shippingLocationId =
+      state.shippingLocationId ?? shippingAddress?.locationId ?? null;
 
     const quotes = shippingLocationId
       ? await this.shippingQuotesService.getQuotes({
@@ -208,7 +240,9 @@ export class CheckoutService {
       : [];
 
     const selected = state.shippingMethodCode
-      ? quotes.find((q: any) => q?.method?.code === state.shippingMethodCode) ?? null
+      ? (quotes.find(
+          (q: any) => q?.method?.code === state.shippingMethodCode,
+        ) ?? null)
       : null;
 
     return {
@@ -220,7 +254,10 @@ export class CheckoutService {
       shippingMethodCode: state.shippingMethodCode ?? null,
       selectedShippingQuote: selected,
       quotes,
-      expiresInSeconds: Math.max(0, Math.floor((row.expiresAt.getTime() - Date.now()) / 1000)),
+      expiresInSeconds: Math.max(
+        0,
+        Math.floor((row.expiresAt.getTime() - Date.now()) / 1000),
+      ),
     };
   }
 
@@ -233,7 +270,9 @@ export class CheckoutService {
       .catch(() => null);
 
     const shippingLocationId =
-      state.shippingLocationId ?? shippingAddress?.address?.locationId ?? undefined;
+      state.shippingLocationId ??
+      shippingAddress?.address?.locationId ??
+      undefined;
 
     if (shippingLocationId && !state.shippingMethodCode) {
       throw new BadRequestException('Shipping method is required');

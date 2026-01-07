@@ -38,7 +38,8 @@ export class SmsServiceUtils {
       where: smsKeys.map((key) => ({ key })),
     });
 
-    const provider = this.getSettingValue(settings, 'sms_provider') || 'africastalking';
+    const provider =
+      this.getSettingValue(settings, 'sms_provider') || 'africastalking';
 
     return {
       provider,
@@ -97,7 +98,10 @@ export class SmsServiceUtils {
       });
       this.logger.log(`SMS sent to ${recipients.join(',')}`);
     } catch (error) {
-      this.logger.error(`Failed to send SMS to ${recipients.join(',')}`, error as Error);
+      this.logger.error(
+        `Failed to send SMS to ${recipients.join(',')}`,
+        error as Error,
+      );
       throw new Error('Failed to send SMS');
     }
   }

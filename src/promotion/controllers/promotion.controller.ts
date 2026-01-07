@@ -31,14 +31,23 @@ import { PromotionService } from '../services/promotion.service';
 
 @Controller('promotions')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Promotions')
 @ApiBearerAuth('access-token')
 export class PromotionController {
   constructor(private readonly promotionService: PromotionService) {}
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PROMOTIONS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PROMOTIONS,
+    permission: 'read',
+  })
   @ApiOperation({ summary: 'List promotions (admin)' })
   @ApiOkResponse({ description: 'Promotions retrieved' })
   async list() {
@@ -47,7 +56,10 @@ export class PromotionController {
   }
 
   @Get(':id')
-  @RequirePermissions({ module: PermissionModule.PROMOTIONS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PROMOTIONS,
+    permission: 'read',
+  })
   @ApiOperation({ summary: 'Get promotion (admin)' })
   @ApiOkResponse({ description: 'Promotion retrieved' })
   async get(@Param('id') id: string) {
@@ -56,7 +68,10 @@ export class PromotionController {
   }
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.PROMOTIONS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PROMOTIONS,
+    permission: 'create',
+  })
   @HttpCode(HttpStatus.CREATED)
   @ApiOperation({ summary: 'Create promotion (rule + conditions + actions)' })
   @ApiBody({ type: CreatePromotionDto })
@@ -67,7 +82,10 @@ export class PromotionController {
   }
 
   @Put(':id')
-  @RequirePermissions({ module: PermissionModule.PROMOTIONS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PROMOTIONS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update promotion (admin)' })
   @ApiBody({ type: UpdatePromotionDto })
   @ApiOkResponse({ description: 'Promotion updated' })
@@ -77,7 +95,10 @@ export class PromotionController {
   }
 
   @Delete(':id')
-  @RequirePermissions({ module: PermissionModule.PROMOTIONS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PROMOTIONS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete promotion (admin)' })
   @ApiOkResponse({ description: 'Promotion deleted' })
   async delete(@Param('id') id: string) {

@@ -31,7 +31,10 @@ export type ApiClientRequest<TResponse = unknown> = {
   /**
    * Extra Axios options when needed.
    */
-  axios?: Omit<AxiosRequestConfig, 'url' | 'baseURL' | 'method' | 'headers' | 'params' | 'data' | 'timeout'>;
+  axios?: Omit<
+    AxiosRequestConfig,
+    'url' | 'baseURL' | 'method' | 'headers' | 'params' | 'data' | 'timeout'
+  >;
 };
 
 export type ApiClientResponse<TResponse = unknown> = {

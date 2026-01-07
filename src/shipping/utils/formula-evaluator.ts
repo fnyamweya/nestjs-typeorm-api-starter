@@ -1,7 +1,20 @@
-const ALLOWED_FUNCTIONS = new Set(['min', 'max', 'abs', 'ceil', 'floor', 'round', 'pow', 'sqrt']);
+const ALLOWED_FUNCTIONS = new Set([
+  'min',
+  'max',
+  'abs',
+  'ceil',
+  'floor',
+  'round',
+  'pow',
+  'sqrt',
+]);
 
-export function evaluateFormula(expression: string, context: Record<string, number>): number {
-  if (!expression || typeof expression !== 'string') throw new Error('Invalid formula');
+export function evaluateFormula(
+  expression: string,
+  context: Record<string, number>,
+): number {
+  if (!expression || typeof expression !== 'string')
+    throw new Error('Invalid formula');
 
   // 1) normalize whitespace
   let expr = expression.trim();
@@ -17,7 +30,7 @@ export function evaluateFormula(expression: string, context: Record<string, numb
     if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(k)) continue;
     const v = Number(context[k]);
     const safe = Number.isFinite(v) ? v : 0;
-    const re = new RegExp("\\b" + k + "\\b", 'g');
+    const re = new RegExp('\\b' + k + '\\b', 'g');
     expr = expr.replace(re, `(${safe})`);
   }
 
@@ -33,7 +46,7 @@ export function evaluateFormula(expression: string, context: Record<string, numb
 
   // 5) map allowed function names to Math.<fn>
   for (const fn of ALLOWED_FUNCTIONS) {
-    const re = new RegExp("\\b" + fn + "\\b", 'g');
+    const re = new RegExp('\\b' + fn + '\\b', 'g');
     expr = expr.replace(re, `Math.${fn}`);
   }
 
@@ -45,19 +58,26 @@ export function evaluateFormula(expression: string, context: Record<string, numb
   // 7) evaluate in a safe, minimal environment using Function
   let res: unknown;
   try {
-    // eslint-disable-next-line no-new-func
     const fn = new Function(`return (${expr});`);
     res = fn();
   } catch (err) {
     throw new Error('Error evaluating formula');
   }
 
-  if (typeof res !== 'number' || !Number.isFinite(res)) throw new Error('Formula did not evaluate to a finite number');
+  if (typeof res !== 'number' || !Number.isFinite(res))
+    throw new Error('Formula did not evaluate to a finite number');
 
   return res;
 }
 
-export function validateFormula(expression: string, sampleContext: Record<string, number> = { subtotal: 100, totalWeight: 1, itemCount: 1 }) {
+export function validateFormula(
+  expression: string,
+  sampleContext: Record<string, number> = {
+    subtotal: 100,
+    totalWeight: 1,
+    itemCount: 1,
+  },
+) {
   try {
     evaluateFormula(expression, sampleContext);
     return true;

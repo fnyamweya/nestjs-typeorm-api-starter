@@ -34,7 +34,9 @@ export class OrderSmsListener implements OnModuleInit {
   }
 
   private async handleOrderPaid(payload: OrderPaymentSucceededEventPayload) {
-    const order = await this.orderRepo.findOne({ where: { id: payload.orderId } });
+    const order = await this.orderRepo.findOne({
+      where: { id: payload.orderId },
+    });
     if (!order) {
       this.logger.warn(`Order not found for paid event: ${payload.orderId}`);
       return;
@@ -42,7 +44,9 @@ export class OrderSmsListener implements OnModuleInit {
 
     // If this order is linked to a registered user, respect their SMS preferences.
     if (order.customerId) {
-      const user = await this.userRepo.findOne({ where: { id: order.customerId } });
+      const user = await this.userRepo.findOne({
+        where: { id: order.customerId },
+      });
       if (!user?.phone) return;
 
       const prefs = normalizeProfilePreferences(user.profilePreferences);

@@ -83,40 +83,102 @@ export class Order {
   @Column({ type: 'text', default: OrderStatus.PENDING })
   status: OrderStatus;
 
-  @Column({ name: 'financial_status', type: 'text', default: FinancialStatus.UNPAID })
+  @Column({
+    name: 'financial_status',
+    type: 'text',
+    default: FinancialStatus.UNPAID,
+  })
   financialStatus: FinancialStatus;
 
-  @Column({ name: 'fulfillment_status', type: 'text', default: FulfillmentStatus.UNFULFILLED })
+  @Column({
+    name: 'fulfillment_status',
+    type: 'text',
+    default: FulfillmentStatus.UNFULFILLED,
+  })
   fulfillmentStatus: FulfillmentStatus;
 
   @Column({ name: 'risk_state', type: 'text', nullable: true })
   riskState?: string;
 
-  @Column({ name: 'items_subtotal', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'items_subtotal',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   itemsSubtotal: string;
 
-  @Column({ name: 'discount_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'discount_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   discountTotal: string;
 
-  @Column({ name: 'fee_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'fee_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   feeTotal: string;
 
-  @Column({ name: 'tax_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'tax_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   taxTotal: string;
 
-  @Column({ name: 'shipping_subtotal', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'shipping_subtotal',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   shippingSubtotal: string;
 
-  @Column({ name: 'shipping_discount', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'shipping_discount',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   shippingDiscount: string;
 
-  @Column({ name: 'shipping_tax', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'shipping_tax',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   shippingTax: string;
 
-  @Column({ name: 'shipping_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'shipping_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   shippingTotal: string;
 
-  @Column({ name: 'grand_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'grand_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   grandTotal: string;
 
   @Column({ name: 'item_count', type: 'int', default: 0 })

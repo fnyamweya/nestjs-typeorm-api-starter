@@ -1,9 +1,20 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 export class ShippingQuoteItemDto {
-  @ApiProperty({ description: 'Product SKU id (UUID)', example: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11' })
+  @ApiProperty({
+    description: 'Product SKU id (UUID)',
+    example: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11',
+  })
   @IsUUID()
   productSkuId: string;
 
@@ -25,20 +36,36 @@ export class GetShippingQuotesDto {
     description: 'Order line items',
     type: ShippingQuoteItemDto,
     isArray: true,
-    example: [{ productSkuId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 }],
+    example: [
+      { productSkuId: '3a3d0e5e-5b69-4c1f-8df3-7a6d7c2c0b11', quantity: 2 },
+    ],
   })
   @ValidateNested({ each: true })
   @Type(() => ShippingQuoteItemDto)
   @IsArray()
   orderItems: ShippingQuoteItemDto[];
 
-  @ApiPropertyOptional({ description: 'Price list id to use for pricing (UUID)' })
+  @ApiPropertyOptional({
+    description: 'Price list id to use for pricing (UUID)',
+  })
   @IsOptional()
   @IsUUID()
   priceListId?: string;
 
-  @ApiPropertyOptional({ description: 'Currency code (e.g., KES)', example: 'KES' })
+  @ApiPropertyOptional({
+    description: 'Currency code (e.g., KES)',
+    example: 'KES',
+  })
   @IsOptional()
   @IsString()
   currencyCode?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'Optional sales channel code. If provided, channel-targeted shipping rates can be applied.',
+    example: 'default',
+  })
+  @IsOptional()
+  @IsString()
+  salesChannelCode?: string;
 }

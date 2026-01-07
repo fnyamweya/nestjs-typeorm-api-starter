@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddWhatsappTemplates20260108_1760340000000 implements MigrationInterface {
+export class AddWhatsappTemplates20260108_1760340000000
+  implements MigrationInterface
+{
   name = 'AddWhatsappTemplates20260108_1760340000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {

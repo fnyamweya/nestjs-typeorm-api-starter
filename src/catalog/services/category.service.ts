@@ -12,7 +12,10 @@ import { CreateCategoryDto } from '../dto/create-category.dto';
 import { UpdateCategoryDto } from '../dto/update-category.dto';
 import { FilterCategoryDto } from '../dto/filter-category.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { ShippingCatalogContextCacheIndexService } from 'src/common/cache/shipping-catalog-context-cache-index.service';
 import { PublicCategoryDto } from '../dto/public/public-category.dto';
 import { PublicListCategoriesDto } from '../dto/public/public-list-categories.dto';
@@ -55,7 +58,8 @@ export class CategoryService {
       parentId,
       key,
       slug,
-      isActive: payload.isActive ?? this.isActiveFromStatus(payload.status) ?? true,
+      isActive:
+        payload.isActive ?? this.isActiveFromStatus(payload.status) ?? true,
       isLeaf: payload.isLeaf ?? false,
       sortOrder: payload.order ?? payload.sortOrder ?? 0,
       icon: payload.icon,
@@ -144,18 +148,28 @@ export class CategoryService {
     const translations = category.translations ?? [];
     return (
       translations.find((t) => t.locale?.toLowerCase() === preferredLocale) ??
-      translations.find((t) => t.locale?.toLowerCase().startsWith(preferredLocale)) ??
+      translations.find((t) =>
+        t.locale?.toLowerCase().startsWith(preferredLocale),
+      ) ??
       translations.find((t) => t.locale?.toLowerCase() === 'en') ??
       translations[0]
     );
   }
 
-  async findAllPublic(filters: PublicListCategoriesDto): Promise<PublicCategoryDto[]> {
+  async findAllPublic(
+    filters: PublicListCategoriesDto,
+  ): Promise<PublicCategoryDto[]> {
     const locale = filters.locale;
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'categories', 'list', {
-      taxonomyId: filters.taxonomyId,
-      locale: locale || 'en',
-    });
+    const rawKey = cacheKeyFromParts(
+      'public',
+      'catalog',
+      'categories',
+      'list',
+      {
+        taxonomyId: filters.taxonomyId,
+        locale: locale || 'en',
+      },
+    );
     const key = `public:catalog:categories:list:${cacheKeyHash(rawKey)}`;
 
     return this.cache.remember(
@@ -171,7 +185,9 @@ export class CategoryService {
           .addOrderBy('category.key', 'ASC');
 
         if (filters.taxonomyId) {
-          qb.andWhere('category.taxonomy_id = :taxonomyId', { taxonomyId: filters.taxonomyId });
+          qb.andWhere('category.taxonomy_id = :taxonomyId', {
+            taxonomyId: filters.taxonomyId,
+          });
         }
 
         const rows = await qb.getMany();
@@ -196,7 +212,10 @@ export class CategoryService {
     );
   }
 
-  async findOnePublic(id: string, opts?: { locale?: string }): Promise<PublicCategoryDto> {
+  async findOnePublic(
+    id: string,
+    opts?: { locale?: string },
+  ): Promise<PublicCategoryDto> {
     const locale = opts?.locale;
     const rawKey = cacheKeyFromParts('public', 'catalog', 'categories', 'one', {
       id,
@@ -247,7 +266,9 @@ export class CategoryService {
       parentId !== category.parentId &&
       category.children?.length
     ) {
-      throw new BadRequestException('Cannot re-parent a category with children');
+      throw new BadRequestException(
+        'Cannot re-parent a category with children',
+      );
     }
 
     const metaFromUi = this.buildMetaFromUi(payload);
@@ -261,7 +282,9 @@ export class CategoryService {
       key: payload.key ?? category.key,
       slug: payload.slug ?? category.slug,
       isActive:
-        payload.isActive ?? this.isActiveFromStatus(payload.status) ?? category.isActive,
+        payload.isActive ??
+        this.isActiveFromStatus(payload.status) ??
+        category.isActive,
       isLeaf: payload.isLeaf ?? category.isLeaf,
       sortOrder: payload.order ?? payload.sortOrder ?? category.sortOrder,
       icon: payload.icon ?? category.icon,
@@ -288,7 +311,9 @@ export class CategoryService {
 
     await this.cache.delByPrefix('catalog:categories:list:');
     await this.cache.del(`catalog:categories:${saved.id}`);
-    await this.shippingCatalogContextCacheIndex.invalidateByCategoryIds([saved.id]);
+    await this.shippingCatalogContextCacheIndex.invalidateByCategoryIds([
+      saved.id,
+    ]);
     return this.findOne(saved.id);
   }
 
@@ -344,9 +369,10 @@ export class CategoryService {
     await this.createClosureRows(categoryId, parentId);
   }
 
-  private normalizeParentId(payload: { parentId?: string; parent?: string }):
-    | string
-    | undefined {
+  private normalizeParentId(payload: {
+    parentId?: string;
+    parent?: string;
+  }): string | undefined {
     if (payload.parentId) return payload.parentId;
     if (!payload.parent) return undefined;
     if (payload.parent === 'ROOT') return undefined;

@@ -25,7 +25,14 @@ export class UpsertAddressFieldConfigDto {
         summary: 'Uganda (custom structure)',
         value: {
           version: 1,
-          locationChain: ['country', 'district', 'county', 'subcounty', 'parish', 'village'],
+          locationChain: [
+            'country',
+            'district',
+            'county',
+            'subcounty',
+            'parish',
+            'village',
+          ],
           fields: [
             { key: 'firstName', type: 'text', required: true },
             { key: 'lastName', type: 'text', required: true },

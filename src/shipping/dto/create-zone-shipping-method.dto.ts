@@ -2,7 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsBoolean, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class CreateZoneShippingMethodDto {
-  @ApiProperty({ description: 'Unique code for the method', example: 'standard' })
+  @ApiProperty({
+    description: 'Unique code for the method',
+    example: 'standard',
+  })
   @IsString()
   @IsNotEmpty()
   code: string;

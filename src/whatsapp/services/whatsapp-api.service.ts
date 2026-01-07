@@ -77,7 +77,9 @@ export class WhatsappApiService {
     }
   }
 
-  async createTemplate(input: CreateTemplateInput): Promise<MetaCreateTemplateResponse> {
+  async createTemplate(
+    input: CreateTemplateInput,
+  ): Promise<MetaCreateTemplateResponse> {
     const config = await this.configService.getConfig();
     if (!config.enabled) {
       throw new BadRequestException('WhatsApp is not enabled');
@@ -85,7 +87,9 @@ export class WhatsappApiService {
     this.ensureMetaProvider(config.provider);
 
     if (!config.accessToken || !config.businessAccountId) {
-      throw new BadRequestException('WhatsApp provider credentials are missing');
+      throw new BadRequestException(
+        'WhatsApp provider credentials are missing',
+      );
     }
 
     const path = `/${config.apiVersion}/${config.businessAccountId}/message_templates`;
@@ -110,7 +114,9 @@ export class WhatsappApiService {
     return res.data;
   }
 
-  async listTemplates(input: ListTemplatesInput = {}): Promise<MetaListTemplateResponse> {
+  async listTemplates(
+    input: ListTemplatesInput = {},
+  ): Promise<MetaListTemplateResponse> {
     const config = await this.configService.getConfig();
     if (!config.enabled) {
       throw new BadRequestException('WhatsApp is not enabled');
@@ -118,7 +124,9 @@ export class WhatsappApiService {
     this.ensureMetaProvider(config.provider);
 
     if (!config.accessToken || !config.businessAccountId) {
-      throw new BadRequestException('WhatsApp provider credentials are missing');
+      throw new BadRequestException(
+        'WhatsApp provider credentials are missing',
+      );
     }
 
     const path = `/${config.apiVersion}/${config.businessAccountId}/message_templates`;
@@ -157,7 +165,9 @@ export class WhatsappApiService {
     this.ensureMetaProvider(config.provider);
 
     if (!config.accessToken) {
-      throw new BadRequestException('WhatsApp provider credentials are missing');
+      throw new BadRequestException(
+        'WhatsApp provider credentials are missing',
+      );
     }
 
     if (!templateId?.trim()) {
@@ -190,7 +200,9 @@ export class WhatsappApiService {
     this.ensureMetaProvider(config.provider);
 
     if (!config.accessToken || !config.phoneNumberId) {
-      throw new BadRequestException('WhatsApp provider credentials are missing');
+      throw new BadRequestException(
+        'WhatsApp provider credentials are missing',
+      );
     }
 
     const path = `/${config.apiVersion}/${config.phoneNumberId}/messages`;
@@ -227,7 +239,9 @@ export class WhatsappApiService {
     this.ensureMetaProvider(config.provider);
 
     if (!config.accessToken || !config.phoneNumberId) {
-      throw new BadRequestException('WhatsApp provider credentials are missing');
+      throw new BadRequestException(
+        'WhatsApp provider credentials are missing',
+      );
     }
 
     const path = `/${config.apiVersion}/${config.phoneNumberId}/messages`;

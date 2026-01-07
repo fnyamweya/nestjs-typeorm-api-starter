@@ -2,7 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export class WhatsappSecretsResponseDto {
   @ApiProperty({
-    description: 'Whether a WhatsApp app secret is configured (value is never returned).',
+    description:
+      'Whether a WhatsApp app secret is configured (value is never returned).',
     example: true,
   })
   hasAppSecret: boolean;

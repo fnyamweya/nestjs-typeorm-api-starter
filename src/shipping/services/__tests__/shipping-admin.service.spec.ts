@@ -36,18 +36,34 @@ describe('ShippingAdminService', () => {
       remember: jest.fn((_: string, fn: any) => fn()),
     };
 
-    svc = new ShippingAdminService(zoneRepo, zoneLocationRepo, methodRepo, rateRepo, cache);
+    svc = new ShippingAdminService(
+      zoneRepo,
+      zoneLocationRepo,
+      methodRepo,
+      rateRepo,
+      cache,
+    );
   });
 
   it('rejects invalid formula on createRate', async () => {
     await expect(
-      svc.createRate({ methodId: 'm1', calculationType: 'formula', price: '0', metaJson: { formula: 'process.exit()' } } as any),
+      svc.createRate({
+        methodId: 'm1',
+        calculationType: 'formula',
+        price: '0',
+        metaJson: { formula: 'process.exit()' },
+      } as any),
     ).rejects.toThrow(BadRequestException);
   });
 
   it('accepts valid formula on createRate', async () => {
     await expect(
-      svc.createRate({ methodId: 'm1', calculationType: 'formula', price: '0', metaJson: { formula: 'subtotal * 0.05' } } as any),
+      svc.createRate({
+        methodId: 'm1',
+        calculationType: 'formula',
+        price: '0',
+        metaJson: { formula: 'subtotal * 0.05' },
+      } as any),
     ).resolves.toBeDefined();
   });
 });

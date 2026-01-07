@@ -10,7 +10,10 @@ export class AdminLoginDto {
   @IsNotEmpty({ message: 'Email is required' })
   email: string;
 
-  @ApiProperty({ description: 'Admin account password', example: 'AdminPass123!' })
+  @ApiProperty({
+    description: 'Admin account password',
+    example: 'AdminPass123!',
+  })
   @IsString({ message: 'Password must be a string' })
   @IsNotEmpty({ message: 'Password is required' })
   password: string;

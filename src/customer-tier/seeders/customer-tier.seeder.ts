@@ -11,7 +11,12 @@ export class CustomerTierSeeder {
   ) {}
 
   async seed(): Promise<void> {
-    const defaults: Array<Pick<CustomerTier, 'code' | 'name' | 'priority' | 'isActive' | 'configJson' | 'metadata'>> = [
+    const defaults: Array<
+      Pick<
+        CustomerTier,
+        'code' | 'name' | 'priority' | 'isActive' | 'configJson' | 'metadata'
+      >
+    > = [
       {
         code: 'BASE',
         name: 'Base',
@@ -23,7 +28,9 @@ export class CustomerTierSeeder {
     ];
 
     for (const t of defaults) {
-      const exists = await this.tierRepository.findOne({ where: { code: t.code } as any });
+      const exists = await this.tierRepository.findOne({
+        where: { code: t.code } as any,
+      });
       if (exists) continue;
       await this.tierRepository.save(this.tierRepository.create(t as any));
     }

@@ -192,9 +192,7 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "product_variant_price" DROP CONSTRAINT IF EXISTS "fk_variant_price_pricelist";`,
       );
-      await queryRunner.query(
-        `DROP INDEX IF EXISTS "uq_variant_price_tier";`,
-      );
+      await queryRunner.query(`DROP INDEX IF EXISTS "uq_variant_price_tier";`);
       await queryRunner.query(
         `ALTER TABLE "product_variant_price" DROP COLUMN IF EXISTS "price_list_id";`,
       );
@@ -211,7 +209,9 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "order" DROP CONSTRAINT IF EXISTS "fk_order_pricelist";`,
       );
-      await queryRunner.query(`ALTER TABLE "order" DROP COLUMN IF EXISTS "price_list_id";`);
+      await queryRunner.query(
+        `ALTER TABLE "order" DROP COLUMN IF EXISTS "price_list_id";`,
+      );
       await queryRunner.query(
         `ALTER TABLE "order" RENAME COLUMN "price_list_id_uuid" TO "price_list_id";`,
       );
@@ -273,9 +273,7 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "mpesa_transaction" DROP CONSTRAINT IF EXISTS "fk_mpesa_tx_order";`,
       );
-      await queryRunner.query(
-        `DROP INDEX IF EXISTS "idx_mpesa_tx_order_id";`,
-      );
+      await queryRunner.query(`DROP INDEX IF EXISTS "idx_mpesa_tx_order_id";`);
       await queryRunner.query(
         `ALTER TABLE "mpesa_transaction" DROP COLUMN IF EXISTS "order_id";`,
       );
@@ -378,14 +376,20 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "order_item" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "order_item" ADD PRIMARY KEY ("id");`);
+      await queryRunner.query(
+        `ALTER TABLE "order_item" ADD PRIMARY KEY ("id");`,
+      );
       await queryRunner.query(`DROP SEQUENCE IF EXISTS "order_item_id_seq";`);
 
       await queryRunner.query(
         `ALTER TABLE "order" DROP CONSTRAINT IF EXISTS "order_pkey";`,
       );
-      await queryRunner.query(`ALTER TABLE "order" DROP COLUMN IF EXISTS "id";`);
-      await queryRunner.query(`ALTER TABLE "order" RENAME COLUMN "id_uuid" TO "id";`);
+      await queryRunner.query(
+        `ALTER TABLE "order" DROP COLUMN IF EXISTS "id";`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "order" RENAME COLUMN "id_uuid" TO "id";`,
+      );
       await queryRunner.query(
         `ALTER TABLE "order" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
@@ -404,7 +408,9 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "price_list" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "price_list" ADD PRIMARY KEY ("id");`);
+      await queryRunner.query(
+        `ALTER TABLE "price_list" ADD PRIMARY KEY ("id");`,
+      );
       await queryRunner.query(`DROP SEQUENCE IF EXISTS "price_list_id_seq";`);
 
       // 5) Drop helper unique indexes (now redundant)
@@ -535,8 +541,12 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "shipping_rate" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "shipping_rate" ADD PRIMARY KEY ("id");`);
-      await queryRunner.query(`DROP SEQUENCE IF EXISTS "shipping_rate_id_seq";`);
+      await queryRunner.query(
+        `ALTER TABLE "shipping_rate" ADD PRIMARY KEY ("id");`,
+      );
+      await queryRunner.query(
+        `DROP SEQUENCE IF EXISTS "shipping_rate_id_seq";`,
+      );
 
       await queryRunner.query(
         `ALTER TABLE "shipping_zone_location" DROP CONSTRAINT IF EXISTS "shipping_zone_location_pkey";`,
@@ -588,11 +598,19 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "shipping_zone" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "shipping_zone" ADD PRIMARY KEY ("id");`);
-      await queryRunner.query(`DROP SEQUENCE IF EXISTS "shipping_zone_id_seq";`);
+      await queryRunner.query(
+        `ALTER TABLE "shipping_zone" ADD PRIMARY KEY ("id");`,
+      );
+      await queryRunner.query(
+        `DROP SEQUENCE IF EXISTS "shipping_zone_id_seq";`,
+      );
 
-      await queryRunner.query(`DROP INDEX IF EXISTS "uq_shipping_zone_id_uuid";`);
-      await queryRunner.query(`DROP INDEX IF EXISTS "uq_shipping_method_id_uuid";`);
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "uq_shipping_zone_id_uuid";`,
+      );
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "uq_shipping_method_id_uuid";`,
+      );
     }
 
     // Promotion (if exists and was bigint)
@@ -609,12 +627,18 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "promotion" DROP CONSTRAINT IF EXISTS "promotion_pkey";`,
       );
-      await queryRunner.query(`ALTER TABLE "promotion" DROP COLUMN IF EXISTS "id";`);
-      await queryRunner.query(`ALTER TABLE "promotion" RENAME COLUMN "id_uuid" TO "id";`);
+      await queryRunner.query(
+        `ALTER TABLE "promotion" DROP COLUMN IF EXISTS "id";`,
+      );
+      await queryRunner.query(
+        `ALTER TABLE "promotion" RENAME COLUMN "id_uuid" TO "id";`,
+      );
       await queryRunner.query(
         `ALTER TABLE "promotion" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "promotion" ADD PRIMARY KEY ("id");`);
+      await queryRunner.query(
+        `ALTER TABLE "promotion" ADD PRIMARY KEY ("id");`,
+      );
       await queryRunner.query(`DROP SEQUENCE IF EXISTS "promotion_id_seq";`);
     }
 
@@ -789,11 +813,19 @@ export class ConvertBigintIdsToUuid20260102_1767312000000
       await queryRunner.query(
         `ALTER TABLE "feature_flags" ALTER COLUMN "id" SET DEFAULT gen_random_uuid();`,
       );
-      await queryRunner.query(`ALTER TABLE "feature_flags" ADD PRIMARY KEY ("id");`);
-      await queryRunner.query(`DROP SEQUENCE IF EXISTS "feature_flags_id_seq";`);
+      await queryRunner.query(
+        `ALTER TABLE "feature_flags" ADD PRIMARY KEY ("id");`,
+      );
+      await queryRunner.query(
+        `DROP SEQUENCE IF EXISTS "feature_flags_id_seq";`,
+      );
 
-      await queryRunner.query(`DROP INDEX IF EXISTS "uq_feature_flags_id_uuid";`);
-      await queryRunner.query(`DROP INDEX IF EXISTS "uq_feature_segments_id_uuid";`);
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "uq_feature_flags_id_uuid";`,
+      );
+      await queryRunner.query(
+        `DROP INDEX IF EXISTS "uq_feature_segments_id_uuid";`,
+      );
     }
   }
 

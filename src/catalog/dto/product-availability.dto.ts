@@ -1,6 +1,14 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsObject, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 export class ProductAvailabilityStockDto {
   @ApiPropertyOptional({ description: 'Stock type', example: 'FINITE' })
@@ -17,12 +25,18 @@ export class ProductAvailabilityStockDto {
 }
 
 export class ProductAvailabilityScheduleDto {
-  @ApiPropertyOptional({ description: 'Schedule start (ISO8601)', example: '2025-01-01T00:00:00Z' })
+  @ApiPropertyOptional({
+    description: 'Schedule start (ISO8601)',
+    example: '2025-01-01T00:00:00Z',
+  })
   @IsOptional()
   @IsString()
   startAt?: string;
 
-  @ApiPropertyOptional({ description: 'Schedule end (ISO8601)', example: '2025-12-31T23:59:59Z' })
+  @ApiPropertyOptional({
+    description: 'Schedule end (ISO8601)',
+    example: '2025-12-31T23:59:59Z',
+  })
   @IsOptional()
   @IsString()
   endAt?: string;
@@ -34,19 +48,28 @@ export class ProductAvailabilityScheduleDto {
 }
 
 export class ProductAvailabilityDto {
-  @ApiPropertyOptional({ description: 'Allowed channels', example: ['app', 'ussd'] })
+  @ApiPropertyOptional({
+    description: 'Allowed channels',
+    example: ['app', 'ussd'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   channels?: string[];
 
-  @ApiPropertyOptional({ description: 'Allowed countries', example: ['KE', 'TZ'] })
+  @ApiPropertyOptional({
+    description: 'Allowed countries',
+    example: ['KE', 'TZ'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })
   countries?: string[];
 
-  @ApiPropertyOptional({ description: 'Allowed locations', example: ['Nairobi'] })
+  @ApiPropertyOptional({
+    description: 'Allowed locations',
+    example: ['Nairobi'],
+  })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

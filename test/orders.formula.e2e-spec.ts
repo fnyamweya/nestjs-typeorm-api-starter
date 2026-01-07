@@ -1,10 +1,5 @@
 import { INestApplication } from '@nestjs/common';
-import { Test } from '@nestjs/testing';
 import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
-import { SettingSeeder } from '../src/setting/seeders/setting.seeder';
-import { CatalogSeeder } from '../src/catalog/seeders/catalog.seeder';
-import { ShippingSeeder } from '../src/shipping/seeders/shipping.seeder';
 import { DataSource } from 'typeorm';
 import { ShippingZone } from '../src/shipping/entities/shipping-zone.entity';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -14,28 +9,10 @@ import { ProductSku } from '../src/catalog/entities/product-sku.entity';
 import { OrderLevelCharge } from '../src/order/entities/order-level-charge.entity';
 import { ShippingMethod } from '../src/shipping/entities/shipping-method.entity';
 import { ShippingRate } from '../src/shipping/entities/shipping-rate.entity';
+import { ShippingZoneMethod } from '../src/shipping/entities/shipping-zone-method.entity';
 import { Location, LocationType } from '../src/location/entities/location.entity';
 import { User } from '../src/user/entities/user.entity';
-
-async function createTestApp() {
-  const moduleFixture = await Test.createTestingModule({
-    imports: [AppModule],
-  }).compile();
-
-  const app = moduleFixture.createNestApplication();
-  await app.init();
-
-  const ds = app.get(DataSource);
-  return { app, ds };
-}
-
-async function truncateDb(dataSource: DataSource) {
-  const entities = dataSource.entityMetadatas;
-  for (const entity of entities) {
-    const repository = dataSource.getRepository(entity.name);
-    await repository.query(`TRUNCATE TABLE "${entity.tableName}" CASCADE`);
-  }
-}
+import { createTestApp, truncateDb } from './e2e/bootstrap';
 
 describe('Orders E2E - Formula shipping integration', () => {
   let app: INestApplication;
@@ -43,6 +20,7 @@ describe('Orders E2E - Formula shipping integration', () => {
   let chargeRepo: Repository<OrderLevelCharge>;
   let methodRepo: Repository<ShippingMethod>;
   let rateRepo: Repository<ShippingRate>;
+  let zoneMethodRepo: Repository<ShippingZoneMethod>;
   let locationRepo: Repository<Location>;
   let userRepo: Repository<User>;
   let ds: DataSource;
@@ -64,11 +42,13 @@ describe('Orders E2E - Formula shipping integration', () => {
       const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
       const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
       const locationSeeder = app.get(require('../src/location/seeders/location.seeder').LocationSeeder);
+      const channelsSeeder = app.get(require('../src/channels/seeders/channels.seeder').ChannelsSeeder);
       const authSeeder = app.get(require('../src/auth/seeders/auth.seeder').AuthSeeder);
 
       try {
         await settingSeeder.seed();
         await locationSeeder.seed();
+        await channelsSeeder.seed();
         await authSeeder.seed();
         await catalogSeeder.seed();
         await shippingSeeder.seed();
@@ -81,6 +61,7 @@ describe('Orders E2E - Formula shipping integration', () => {
       chargeRepo = app.get(getRepositoryToken(OrderLevelCharge));
       methodRepo = app.get(getRepositoryToken(ShippingMethod));
       rateRepo = app.get(getRepositoryToken(ShippingRate));
+      zoneMethodRepo = app.get(getRepositoryToken(ShippingZoneMethod));
       locationRepo = app.get(getRepositoryToken(Location));
       userRepo = app.get(getRepositoryToken(User));
 
@@ -114,10 +95,27 @@ describe('Orders E2E - Formula shipping integration', () => {
 
     // Create a high-priority formula method/rate for Kenya
     if (!kenyaZone) throw new Error('Kenya zone not available');
-    const m = methodRepo.create({ zoneId: kenyaZone.id, code: 'formula-method', displayName: 'Formula Shipping' });
-    const savedMethod = await methodRepo.save(m);
+    const m = methodRepo.create({
+      code: 'formula-method',
+      displayName: 'Formula Shipping',
+    } as any);
+    const savedMethod = (await methodRepo.save(m as any)) as ShippingMethod;
 
-    const r = rateRepo.create({ methodId: savedMethod.id, calculationType: 'formula', price: '0', priority: 100, metaJson: { formula: 'subtotal * 0.05' } });
+    await zoneMethodRepo.save(
+      zoneMethodRepo.create({
+        zoneId: kenyaZone.id,
+        shippingMethodId: savedMethod.id,
+        isActive: true,
+      } as any),
+    );
+
+    const r = rateRepo.create({
+      methodId: savedMethod.id,
+      calculationType: 'formula',
+      price: '0',
+      priority: 100,
+      metaJson: { formula: 'subtotal * 0.05' },
+    });
     await rateRepo.save(r);
 
     // sanity check: ensure ShippingMatrixService returns expected quote for KE
@@ -135,6 +133,8 @@ describe('Orders E2E - Formula shipping integration', () => {
     if (!customer) {
       customer = await userRepo.save(userRepo.create({ email: 'e2e-formula@example.com', phone: '254700000012' } as any) as any);
     }
+
+    if (!customer) throw new Error('Customer not found');
 
     const payload = {
       customerId: customer.id,

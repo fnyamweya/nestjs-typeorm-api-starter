@@ -5,7 +5,11 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios, { type AxiosError, type AxiosInstance, isAxiosError } from 'axios';
+import axios, {
+  type AxiosError,
+  type AxiosInstance,
+  isAxiosError,
+} from 'axios';
 import {
   type ApiClientRequest,
   type ApiClientResponse,
@@ -43,7 +47,9 @@ function clamp(n: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, n));
 }
 
-function redactHeaders(headers?: Record<string, string | undefined>): Record<string, string | undefined> {
+function redactHeaders(
+  headers?: Record<string, string | undefined>,
+): Record<string, string | undefined> {
   if (!headers) return {};
   const out: Record<string, string | undefined> = {};
   for (const [key, value] of Object.entries(headers)) {
@@ -76,7 +82,9 @@ export class ApiClientService {
   ): Promise<ApiClientResponse<TResponse>> {
     const url = input.url ?? this.buildUrl(input.baseUrl, input.path);
     if (!url) {
-      throw new BadGatewayException('ApiClientService: missing url/baseUrl+path');
+      throw new BadGatewayException(
+        'ApiClientService: missing url/baseUrl+path',
+      );
     }
 
     const requestId = this.requestContext.requestId;
@@ -149,7 +157,10 @@ export class ApiClientService {
           headers: redactHeaders(mergedHeaders),
         });
 
-        if (attempt >= Math.max(1, retry.attempts) || !this.shouldRetry(input.method, axiosErr)) {
+        if (
+          attempt >= Math.max(1, retry.attempts) ||
+          !this.shouldRetry(input.method, axiosErr)
+        ) {
           break;
         }
 
@@ -187,7 +198,12 @@ export class ApiClientService {
 
   private shouldRetry(method: string | undefined, error?: AxiosError): boolean {
     const m = (method ?? '').toUpperCase();
-    const idempotent = m === 'GET' || m === 'HEAD' || m === 'PUT' || m === 'DELETE' || m === 'OPTIONS';
+    const idempotent =
+      m === 'GET' ||
+      m === 'HEAD' ||
+      m === 'PUT' ||
+      m === 'DELETE' ||
+      m === 'OPTIONS';
     if (!idempotent) return false;
 
     if (!error) return false;
@@ -199,7 +215,10 @@ export class ApiClientService {
     return status >= 500 || status === 429;
   }
 
-  private computeDelayMs(policy: ApiClientRetryPolicy, attempt: number): number {
+  private computeDelayMs(
+    policy: ApiClientRetryPolicy,
+    attempt: number,
+  ): number {
     const exp = policy.baseDelayMs * Math.pow(2, Math.max(0, attempt - 1));
     const capped = clamp(exp, 0, policy.maxDelayMs);
     return jitter(capped);

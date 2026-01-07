@@ -35,13 +35,21 @@ export class FeatureFlag {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
-  @Column({ type: 'enum', enum: FeatureFlagType, default: FeatureFlagType.BOOLEAN })
+  @Column({
+    type: 'enum',
+    enum: FeatureFlagType,
+    default: FeatureFlagType.BOOLEAN,
+  })
   type: FeatureFlagType;
 
   @Column({ name: 'enabled_default', default: false })
   enabledDefault: boolean;
 
-  @Column({ type: 'enum', enum: FeatureFlagStatus, default: FeatureFlagStatus.ACTIVE })
+  @Column({
+    type: 'enum',
+    enum: FeatureFlagStatus,
+    default: FeatureFlagStatus.ACTIVE,
+  })
   status: FeatureFlagStatus;
 
   @Column({ name: 'group_key', length: 50, nullable: true })

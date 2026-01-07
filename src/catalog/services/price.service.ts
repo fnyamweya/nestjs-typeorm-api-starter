@@ -1,11 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Raw, Repository } from 'typeorm';
 import { Currency } from '../entities/currency.entity';
 import { PriceList } from '../entities/price-list.entity';
 import { PriceRow } from '../entities/price-row.entity';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 
 export interface ResolvedPrice {
   priceId: string;
@@ -60,17 +67,23 @@ export class PriceService {
   }
 
   private async getCurrencyPrecision(currencyCode: string) {
-    const c = await this.currencyRepository.findOne({ where: { code: currencyCode } });
+    const c = await this.currencyRepository.findOne({
+      where: { code: currencyCode },
+    });
     return c?.precision ?? 2;
   }
 
-  private async normalizeAndValidateCurrencyCode(currencyCode?: string): Promise<string | undefined> {
+  private async normalizeAndValidateCurrencyCode(
+    currencyCode?: string,
+  ): Promise<string | undefined> {
     if (!currencyCode) return undefined;
     const normalized = currencyCode.trim().toUpperCase();
     if (!/^[A-Z]{3}$/.test(normalized)) {
       throw new BadRequestException('currencyCode must be a 3-letter ISO code');
     }
-    const exists = await this.currencyRepository.exist({ where: { code: normalized } });
+    const exists = await this.currencyRepository.exist({
+      where: { code: normalized },
+    });
     if (!exists) {
       throw new BadRequestException(`Unknown currency code: ${normalized}`);
     }
@@ -96,37 +109,58 @@ export class PriceService {
     return `price:resolve:${cacheKeyHash(rawKey)}`;
   }
 
-  private getRowConditions(selectorJson?: Record<string, unknown>): PriceConditions | null {
+  private getRowConditions(
+    selectorJson?: Record<string, unknown>,
+  ): PriceConditions | null {
     if (!selectorJson || typeof selectorJson !== 'object') return null;
     // selector_json is expected to be the conditions object (or contain a 'conditions' object).
-    const maybe = (selectorJson as Record<string, unknown>).conditions;
+    const maybe = selectorJson.conditions;
     if (maybe && typeof maybe === 'object') return maybe as PriceConditions;
     return selectorJson as PriceConditions;
   }
 
-  private matchesRowContext(selectorJson: Record<string, unknown> | undefined, context?: PricingContext) {
+  private matchesRowContext(
+    selectorJson: Record<string, unknown> | undefined,
+    context?: PricingContext,
+  ) {
     const conditions = this.getRowConditions(selectorJson);
     if (!conditions) return true;
     if (!context) return false;
 
     if (conditions.countryCodes?.length) {
-      if (!context.countryCode || !conditions.countryCodes.includes(context.countryCode)) return false;
+      if (
+        !context.countryCode ||
+        !conditions.countryCodes.includes(context.countryCode)
+      )
+        return false;
     }
     if (conditions.customerGroupIds?.length) {
-      if (!context.customerGroupId || !conditions.customerGroupIds.includes(context.customerGroupId)) return false;
+      if (
+        !context.customerGroupId ||
+        !conditions.customerGroupIds.includes(context.customerGroupId)
+      )
+        return false;
     }
     if (conditions.salesChannelIds?.length) {
-      if (!context.salesChannelId || !conditions.salesChannelIds.includes(context.salesChannelId)) return false;
+      if (
+        !context.salesChannelId ||
+        !conditions.salesChannelIds.includes(context.salesChannelId)
+      )
+        return false;
     }
     if (conditions.brandIds?.length) {
-      if (!context.brandId || !conditions.brandIds.includes(context.brandId)) return false;
+      if (!context.brandId || !conditions.brandIds.includes(context.brandId))
+        return false;
     }
     if (conditions.tags?.length) {
       const tags = context.tags ?? [];
       const hasAll = conditions.tags.every((tag) => tags.includes(tag));
       if (!hasAll) return false;
     }
-    if (conditions.attributes && Object.keys(conditions.attributes).length > 0) {
+    if (
+      conditions.attributes &&
+      Object.keys(conditions.attributes).length > 0
+    ) {
       if (!context.attributes) return false;
       for (const [key, value] of Object.entries(conditions.attributes)) {
         if (context.attributes[key] !== value) return false;
@@ -136,7 +170,9 @@ export class PriceService {
     return true;
   }
 
-  private specificityScoreRow(selectorJson: Record<string, unknown> | undefined) {
+  private specificityScoreRow(
+    selectorJson: Record<string, unknown> | undefined,
+  ) {
     const conditions = this.getRowConditions(selectorJson);
     if (!conditions) return 0;
     let score = 0;
@@ -145,7 +181,8 @@ export class PriceService {
     if (conditions.salesChannelIds?.length) score += 1;
     if (conditions.brandIds?.length) score += 1;
     if (conditions.tags?.length) score += 1;
-    if (conditions.attributes && Object.keys(conditions.attributes).length > 0) score += 1;
+    if (conditions.attributes && Object.keys(conditions.attributes).length > 0)
+      score += 1;
     return score;
   }
 
@@ -181,7 +218,10 @@ export class PriceService {
     return best;
   }
 
-  private async selectPriceList(options: { priceListId?: string; currencyCode?: string }) {
+  private async selectPriceList(options: {
+    priceListId?: string;
+    currencyCode?: string;
+  }) {
     if (options.priceListId) {
       const p = await this.findPriceListById(options.priceListId);
       if (!p) throw new NotFoundException('Price list not found');
@@ -190,18 +230,28 @@ export class PriceService {
 
     const order = { priority: 'DESC' as const, createdAt: 'DESC' as const };
     if (options.currencyCode) {
-      return this.priceListRepository.findOne({ where: { currency: options.currencyCode, status: 'active' }, order });
+      return this.priceListRepository.findOne({
+        where: { currency: options.currencyCode, status: 'active' },
+        order,
+      });
     }
 
-    const any = await this.priceListRepository.findOne({ where: { status: 'active' }, order });
+    const any = await this.priceListRepository.findOne({
+      where: { status: 'active' },
+      order,
+    });
     if (any) return any;
     return null;
   }
 
   async findActivePriceListByCurrency(currencyCode: string) {
-    const normalized = await this.normalizeAndValidateCurrencyCode(currencyCode);
+    const normalized =
+      await this.normalizeAndValidateCurrencyCode(currencyCode);
     if (!normalized) throw new BadRequestException('currencyCode is required');
-    return this.priceListRepository.findOne({ where: { currency: normalized, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
+    return this.priceListRepository.findOne({
+      where: { currency: normalized, status: 'active' },
+      order: { priority: 'DESC', createdAt: 'DESC' },
+    });
   }
 
   async findPriceListById(id: string) {
@@ -216,7 +266,9 @@ export class PriceService {
     currencyCode?: string;
     context?: PricingContext;
   }): Promise<ResolvedPrice> {
-    const normalizedCurrencyCode = await this.normalizeAndValidateCurrencyCode(options.currencyCode);
+    const normalizedCurrencyCode = await this.normalizeAndValidateCurrencyCode(
+      options.currencyCode,
+    );
     const quantity = options.quantity ?? 1;
     const cacheKey = this.getCacheKey({
       productId: options.productId,
@@ -230,7 +282,10 @@ export class PriceService {
     return this.cache.remember(
       cacheKey,
       async () => {
-        let priceList = await this.selectPriceList({ priceListId: options.priceListId, currencyCode: normalizedCurrencyCode });
+        let priceList = await this.selectPriceList({
+          priceListId: options.priceListId,
+          currencyCode: normalizedCurrencyCode,
+        });
         if (!priceList) {
           throw new NotFoundException('No active price list available');
         }
@@ -238,13 +293,24 @@ export class PriceService {
         const precision = await this.getCurrencyPrecision(priceList.currency);
 
         const now = new Date();
-        const attemptFindRows = async (pl: PriceList, scope: { productId?: string; productSkuId?: string }) => {
+        const attemptFindRows = async (
+          pl: PriceList,
+          scope: { productId?: string; productSkuId?: string },
+        ) => {
           const where: Record<string, unknown> = {
             priceListId: pl.id,
             minQuantity: Raw((alias) => `${alias} <= :q`, { q: quantity }),
-            maxQuantity: Raw((alias) => `(${alias} IS NULL OR ${alias} >= :q)`, { q: quantity }),
-            validFrom: Raw((alias) => `(${alias} IS NULL OR ${alias} <= :now)`, { now }),
-            validTo: Raw((alias) => `(${alias} IS NULL OR ${alias} >= :now)`, { now }),
+            maxQuantity: Raw(
+              (alias) => `(${alias} IS NULL OR ${alias} >= :q)`,
+              { q: quantity },
+            ),
+            validFrom: Raw(
+              (alias) => `(${alias} IS NULL OR ${alias} <= :now)`,
+              { now },
+            ),
+            validTo: Raw((alias) => `(${alias} IS NULL OR ${alias} >= :now)`, {
+              now,
+            }),
           };
 
           if (scope.productSkuId) {
@@ -266,22 +332,33 @@ export class PriceService {
 
         let foundRow: PriceRow | null = null;
         if (options.productSkuId) {
-          foundRow = await attemptFindRows(priceList, { productSkuId: options.productSkuId });
+          foundRow = await attemptFindRows(priceList, {
+            productSkuId: options.productSkuId,
+          });
         }
         if (!foundRow && options.productId) {
-          foundRow = await attemptFindRows(priceList, { productId: options.productId });
+          foundRow = await attemptFindRows(priceList, {
+            productId: options.productId,
+          });
         }
 
         if (!foundRow && !options.priceListId) {
-          const others = await this.priceListRepository.find({ where: { currency: priceList.currency, status: 'active' }, order: { priority: 'DESC', createdAt: 'DESC' } });
+          const others = await this.priceListRepository.find({
+            where: { currency: priceList.currency, status: 'active' },
+            order: { priority: 'DESC', createdAt: 'DESC' },
+          });
 
           for (const pl of others) {
             if (pl.id === priceList.id) continue;
             if (options.productSkuId) {
-              foundRow = await attemptFindRows(pl, { productSkuId: options.productSkuId });
+              foundRow = await attemptFindRows(pl, {
+                productSkuId: options.productSkuId,
+              });
             }
             if (!foundRow && options.productId) {
-              foundRow = await attemptFindRows(pl, { productId: options.productId });
+              foundRow = await attemptFindRows(pl, {
+                productId: options.productId,
+              });
             }
             if (foundRow) {
               priceList = pl;
@@ -299,7 +376,9 @@ export class PriceService {
           priceListId: priceList.id,
           currencyCode: foundRow.currencyCode ?? priceList.currency,
           unitPrice: this.formatMinorUnits(foundRow.unitAmount, precision),
-          compareAtPrice: foundRow.compareAtAmount ? this.formatMinorUnits(foundRow.compareAtAmount, precision) : undefined,
+          compareAtPrice: foundRow.compareAtAmount
+            ? this.formatMinorUnits(foundRow.compareAtAmount, precision)
+            : undefined,
         };
       },
       { ttlSeconds: this.cacheTtlSeconds },

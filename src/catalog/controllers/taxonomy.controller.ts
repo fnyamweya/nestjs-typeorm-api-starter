@@ -27,7 +27,13 @@ import { CreateTaxonomyDto } from '../dto/create-taxonomy.dto';
 import { UpdateTaxonomyDto } from '../dto/update-taxonomy.dto';
 
 @Controller('catalog/taxonomies')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Catalog: Taxonomies')
 export class TaxonomyController {
   constructor(private readonly taxonomyService: TaxonomyService) {}
@@ -35,7 +41,10 @@ export class TaxonomyController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create a taxonomy' })
   @ApiCreatedResponse({ description: 'Taxonomy created successfully' })
   async create(@Body() payload: CreateTaxonomyDto) {
@@ -62,13 +71,13 @@ export class TaxonomyController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update taxonomy' })
   @ApiOkResponse({ description: 'Taxonomy updated successfully' })
-  async update(
-    @Param('id') id: string,
-    @Body() payload: UpdateTaxonomyDto,
-  ) {
+  async update(@Param('id') id: string, @Body() payload: UpdateTaxonomyDto) {
     const taxonomy = await this.taxonomyService.update(id, payload);
     return ResponseUtil.updated(taxonomy, 'Taxonomy updated successfully');
   }
@@ -76,7 +85,10 @@ export class TaxonomyController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete taxonomy' })
   @ApiOkResponse({ description: 'Taxonomy deleted successfully' })
   async remove(@Param('id') id: string) {

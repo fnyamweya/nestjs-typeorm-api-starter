@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCustomerTiers20260102_1767390002000 implements MigrationInterface {
+export class CreateCustomerTiers20260102_1767390002000
+  implements MigrationInterface
+{
   name = 'CreateCustomerTiers20260102_1767390002000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -18,7 +20,9 @@ export class CreateCustomerTiers20260102_1767390002000 implements MigrationInter
       CONSTRAINT "uq_customer_tier_code" UNIQUE ("code")
     )`);
 
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_customer_tier_active" ON "customer_tier" ("is_active")`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_customer_tier_active" ON "customer_tier" ("is_active")`,
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "customer_tier_rule" (
       "id" uuid NOT NULL DEFAULT uuid_generate_v4(),
@@ -39,9 +43,15 @@ export class CreateCustomerTiers20260102_1767390002000 implements MigrationInter
       `CREATE INDEX IF NOT EXISTS "idx_customer_tier_rule_active" ON "customer_tier_rule" ("is_active", "priority")`,
     );
 
-    await queryRunner.query(`ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_override_code" text`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_resolved_code" text`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_resolved_at" timestamptz`);
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_override_code" text`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_resolved_code" text`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_resolved_at" timestamptz`,
+    );
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "idx_customer_profiles_tier_override" ON "customer_profiles" ("tier_override_code")`,
     );
@@ -55,12 +65,22 @@ export class CreateCustomerTiers20260102_1767390002000 implements MigrationInter
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_profiles_tier_override"`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_resolved_at"`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_resolved_code"`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_override_code"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_profiles_tier_override"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_resolved_at"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_resolved_code"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_override_code"`,
+    );
 
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_tier_rule_active"`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_tier_rule_active"`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "customer_tier_rule"`);
 
     await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_tier_active"`);

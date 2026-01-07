@@ -1,22 +1,36 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class RefactorProductsSchema20260109_1768000000000 implements MigrationInterface {
+export class RefactorProductsSchema20260109_1768000000000
+  implements MigrationInterface
+{
   name = 'RefactorProductsSchema20260109_1768000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
     await queryRunner.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
 
-    await queryRunner.query('DROP TABLE IF EXISTS "product_context_override" CASCADE');
-    await queryRunner.query('DROP TABLE IF EXISTS "product_variant_price" CASCADE');
-    await queryRunner.query('DROP TABLE IF EXISTS "variant_option_value" CASCADE');
-    await queryRunner.query('DROP TABLE IF EXISTS "product_option_value" CASCADE');
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_context_override" CASCADE',
+    );
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_variant_price" CASCADE',
+    );
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "variant_option_value" CASCADE',
+    );
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_option_value" CASCADE',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_option" CASCADE');
-    await queryRunner.query('DROP TABLE IF EXISTS "product_attribute_value" CASCADE');
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_attribute_value" CASCADE',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_price" CASCADE');
     await queryRunner.query('DROP TABLE IF EXISTS "product_channel" CASCADE');
     await queryRunner.query('DROP TABLE IF EXISTS "product_category" CASCADE');
     await queryRunner.query('DROP TABLE IF EXISTS "product_variant" CASCADE');
-    await queryRunner.query('DROP TABLE IF EXISTS "product_translation" CASCADE');
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_translation" CASCADE',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product" CASCADE');
 
     await queryRunner.query(`
@@ -36,8 +50,12 @@ export class RefactorProductsSchema20260109_1768000000000 implements MigrationIn
         CONSTRAINT "fk_product_brand" FOREIGN KEY ("brand_id") REFERENCES "brand"("id") ON DELETE SET NULL
       );
     `);
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_slug" ON "product" ("slug")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "idx_product_status" ON "product" ("status", "created_at")');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "uq_product_slug" ON "product" ("slug")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "idx_product_status" ON "product" ("status", "created_at")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "product_translation" (
@@ -80,8 +98,12 @@ export class RefactorProductsSchema20260109_1768000000000 implements MigrationIn
         "updated_at" timestamptz NOT NULL DEFAULT now()
       );
     `);
-    await queryRunner.query('CREATE UNIQUE INDEX IF NOT EXISTS "uq_variant_sku" ON "product_variant" ("sku")');
-    await queryRunner.query('CREATE INDEX IF NOT EXISTS "idx_variant_product" ON "product_variant" ("product_id", "is_default")');
+    await queryRunner.query(
+      'CREATE UNIQUE INDEX IF NOT EXISTS "uq_variant_sku" ON "product_variant" ("sku")',
+    );
+    await queryRunner.query(
+      'CREATE INDEX IF NOT EXISTS "idx_variant_product" ON "product_variant" ("product_id", "is_default")',
+    );
 
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "product_category" (
@@ -137,8 +159,12 @@ export class RefactorProductsSchema20260109_1768000000000 implements MigrationIn
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_price_lookup"');
     await queryRunner.query('DROP TABLE IF EXISTS "product_price" CASCADE');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_channel_channel"');
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_channel_active"');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_channel_channel"',
+    );
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_channel_active"',
+    );
     await queryRunner.query('DROP TABLE IF EXISTS "product_channel" CASCADE');
 
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_category_cat"');
@@ -148,8 +174,12 @@ export class RefactorProductsSchema20260109_1768000000000 implements MigrationIn
     await queryRunner.query('DROP INDEX IF EXISTS "uq_variant_sku"');
     await queryRunner.query('DROP TABLE IF EXISTS "product_variant" CASCADE');
 
-    await queryRunner.query('DROP INDEX IF EXISTS "idx_product_translation_locale"');
-    await queryRunner.query('DROP TABLE IF EXISTS "product_translation" CASCADE');
+    await queryRunner.query(
+      'DROP INDEX IF EXISTS "idx_product_translation_locale"',
+    );
+    await queryRunner.query(
+      'DROP TABLE IF EXISTS "product_translation" CASCADE',
+    );
 
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_status"');
     await queryRunner.query('DROP INDEX IF EXISTS "uq_product_slug"');

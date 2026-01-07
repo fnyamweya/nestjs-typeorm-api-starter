@@ -33,7 +33,13 @@ import { CreateProductContextOverrideDto } from '../dto/product-v2/create-produc
 import { UpdateProductContextOverrideDto } from '../dto/product-v2/update-product-context-override.dto';
 
 @Controller('catalog/products')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Catalog: Products')
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
@@ -41,7 +47,10 @@ export class ProductController {
   @Post()
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create product' })
   @ApiCreatedResponse({ description: 'Product created successfully' })
   async create(@Body() payload: CreateProductDto) {
@@ -51,8 +60,18 @@ export class ProductController {
 
   @Get()
   @ApiOperation({ summary: 'List products with pagination' })
-  @ApiQuery({ name: 'page', required: false, type: Number, description: 'Page number (default 1)' })
-  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Page size (default 10)' })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    type: Number,
+    description: 'Page number (default 1)',
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    type: Number,
+    description: 'Page size (default 10)',
+  })
   @ApiQuery({ name: 'status', required: false, enum: ProductStatus })
   @ApiOkResponse({ description: 'Products retrieved successfully' })
   async findAll(@Query() filters: FilterProductDto) {
@@ -77,7 +96,10 @@ export class ProductController {
   @Patch('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update product' })
   @ApiOkResponse({ description: 'Product updated successfully' })
   async update(@Param('id') id: string, @Body() payload: UpdateProductDto) {
@@ -88,7 +110,10 @@ export class ProductController {
   @Delete('/:id')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete product' })
   @ApiOkResponse({ description: 'Product deleted successfully' })
   async remove(@Param('id') id: string) {
@@ -99,10 +124,16 @@ export class ProductController {
   @Post('/:id/prices')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Add product-level price' })
   @ApiCreatedResponse({ description: 'Product price created successfully' })
-  async addProductPrice(@Param('id') id: string, @Body() payload: CreateProductPriceDto) {
+  async addProductPrice(
+    @Param('id') id: string,
+    @Body() payload: CreateProductPriceDto,
+  ) {
     const price = await this.productService.addProductPrice(id, payload);
     return ResponseUtil.created(price, 'Product price created successfully');
   }
@@ -115,13 +146,19 @@ export class ProductController {
   @ApiOkResponse({ description: 'Product prices retrieved successfully' })
   async listProductPrices(@Param('id') id: string) {
     const prices = await this.productService.listProductPrices(id);
-    return ResponseUtil.success(prices, 'Product prices retrieved successfully');
+    return ResponseUtil.success(
+      prices,
+      'Product prices retrieved successfully',
+    );
   }
 
   @Post('/:id/skus/:skuId/prices')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Add SKU price' })
   @ApiCreatedResponse({ description: 'SKU price created successfully' })
   async addSkuPrice(
@@ -149,46 +186,87 @@ export class ProductController {
   @ApiBearerAuth('access-token')
   @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'read' })
   @ApiOperation({ summary: 'List product context overrides' })
-  @ApiOkResponse({ description: 'Product context overrides retrieved successfully' })
+  @ApiOkResponse({
+    description: 'Product context overrides retrieved successfully',
+  })
   async listContextOverrides(@Param('id') id: string) {
     const overrides = await this.productService.listContextOverrides(id);
-    return ResponseUtil.success(overrides, 'Product context overrides retrieved successfully');
+    return ResponseUtil.success(
+      overrides,
+      'Product context overrides retrieved successfully',
+    );
   }
 
   @Post('/:id/overrides')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Create product context override' })
-  @ApiCreatedResponse({ description: 'Product context override created successfully' })
-  async createContextOverride(@Param('id') id: string, @Body() payload: CreateProductContextOverrideDto) {
-    const override = await this.productService.createContextOverride(id, payload);
-    return ResponseUtil.created(override, 'Product context override created successfully');
+  @ApiCreatedResponse({
+    description: 'Product context override created successfully',
+  })
+  async createContextOverride(
+    @Param('id') id: string,
+    @Body() payload: CreateProductContextOverrideDto,
+  ) {
+    const override = await this.productService.createContextOverride(
+      id,
+      payload,
+    );
+    return ResponseUtil.created(
+      override,
+      'Product context override created successfully',
+    );
   }
 
   @Patch('/:id/overrides/:overrideId')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update product context override' })
-  @ApiOkResponse({ description: 'Product context override updated successfully' })
+  @ApiOkResponse({
+    description: 'Product context override updated successfully',
+  })
   async updateContextOverride(
     @Param('id') id: string,
     @Param('overrideId') overrideId: string,
     @Body() payload: UpdateProductContextOverrideDto,
   ) {
-    const override = await this.productService.updateContextOverride(id, overrideId, payload);
-    return ResponseUtil.updated(override, 'Product context override updated successfully');
+    const override = await this.productService.updateContextOverride(
+      id,
+      overrideId,
+      payload,
+    );
+    return ResponseUtil.updated(
+      override,
+      'Product context override updated successfully',
+    );
   }
 
   @Delete('/:id/overrides/:overrideId')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @ApiBearerAuth('access-token')
-  @RequirePermissions({ module: PermissionModule.PRODUCTS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PRODUCTS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Delete product context override' })
-  @ApiOkResponse({ description: 'Product context override deleted successfully' })
-  async removeContextOverride(@Param('id') id: string, @Param('overrideId') overrideId: string) {
+  @ApiOkResponse({
+    description: 'Product context override deleted successfully',
+  })
+  async removeContextOverride(
+    @Param('id') id: string,
+    @Param('overrideId') overrideId: string,
+  ) {
     await this.productService.removeContextOverride(id, overrideId);
-    return ResponseUtil.deleted('Product context override deleted successfully');
+    return ResponseUtil.deleted(
+      'Product context override deleted successfully',
+    );
   }
 }

@@ -50,7 +50,10 @@ export class TaxonomyService {
     return this.cache.remember(
       'public:catalog:taxonomies:all',
       async () => {
-        const rows = await this.taxonomyRepository.find({ where: { isActive: true }, order: { createdAt: 'DESC' } });
+        const rows = await this.taxonomyRepository.find({
+          where: { isActive: true },
+          order: { createdAt: 'DESC' },
+        });
         return rows.map((t) => ({
           id: t.id,
           code: t.code,

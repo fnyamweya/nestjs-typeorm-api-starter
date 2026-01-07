@@ -1,18 +1,39 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany, JoinColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  OneToMany,
+  JoinColumn,
+} from 'typeorm';
 import { ShippingZone } from './shipping-zone.entity';
 import { ShippingRate } from './shipping-rate.entity';
+import { ShippingProvider } from './shipping-provider.entity';
 
 @Entity('shipping_method')
 export class ShippingMethod {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'zone_id', type: 'uuid' })
-  zoneId: string;
+  // Legacy: prior schema bound methods directly to a zone.
+  // Now methods are global and attached to zones via shipping_zone_method.
+  @Column({ name: 'zone_id', type: 'uuid', nullable: true })
+  zoneId?: string;
 
-  @ManyToOne(() => ShippingZone, (z) => z.methods, { onDelete: 'CASCADE' })
+  @ManyToOne(() => ShippingZone, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'zone_id' })
-  zone: ShippingZone;
+  zone?: ShippingZone;
+
+  @Column({ name: 'provider_id', type: 'uuid', nullable: true })
+  providerId?: string;
+
+  @ManyToOne(() => ShippingProvider, (p) => p.methods, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'provider_id' })
+  providerEntity?: ShippingProvider;
 
   @Column({ type: 'text' })
   code: string;

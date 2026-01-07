@@ -1,5 +1,12 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Min } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+} from 'class-validator';
 import { ProductStatus } from './create-product.dto';
 
 export class FilterProductDto {
@@ -18,7 +25,10 @@ export class FilterProductDto {
   @IsUUID('4')
   categoryId?: string;
 
-  @ApiPropertyOptional({ description: 'Search term applied to title/slug', example: 'iphone' })
+  @ApiPropertyOptional({
+    description: 'Search term applied to title/slug',
+    example: 'iphone',
+  })
   @IsOptional()
   @IsString()
   search?: string;

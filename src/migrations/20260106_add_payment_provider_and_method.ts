@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddPaymentProviderAndMethod20260106010000 implements MigrationInterface {
+export class AddPaymentProviderAndMethod20260106010000
+  implements MigrationInterface
+{
   name = 'AddPaymentProviderAndMethod20260106010000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -37,6 +39,22 @@ export class AddPaymentProviderAndMethod20260106010000 implements MigrationInter
         "created_at" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         "updated_at" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `);
+
+    // If the table existed before this migration, ensure newer columns exist.
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = 'public'
+            AND table_name = 'payment_method'
+            AND column_name = 'channels'
+        ) THEN
+          ALTER TABLE "payment_method"
+          ADD COLUMN "channels" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[];
+        END IF;
+      END $$;
     `);
 
     await queryRunner.query(

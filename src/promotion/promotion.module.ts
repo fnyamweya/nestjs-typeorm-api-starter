@@ -10,7 +10,15 @@ import { PublicPromotionController } from './controllers/public-promotion.contro
 import { CurrencyModule } from 'src/currency/currency.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Promotion, PromotionCondition, PromotionAction, PromotionRedemption]), CurrencyModule],
+  imports: [
+    TypeOrmModule.forFeature([
+      Promotion,
+      PromotionCondition,
+      PromotionAction,
+      PromotionRedemption,
+    ]),
+    CurrencyModule,
+  ],
   controllers: [PromotionController, PublicPromotionController],
   providers: [PromotionService],
   exports: [PromotionService],

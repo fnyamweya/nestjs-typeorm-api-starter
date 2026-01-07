@@ -1,6 +1,14 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import {
+  IsArray,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 
 export class CheckoutItemDto {
   @ApiProperty({ description: 'Product SKU id (UUID)' })
@@ -20,12 +28,17 @@ export class CreateCheckoutSessionDto {
   @IsArray()
   orderItems: CheckoutItemDto[];
 
-  @ApiPropertyOptional({ description: 'Price list id to use for pricing (UUID)' })
+  @ApiPropertyOptional({
+    description: 'Price list id to use for pricing (UUID)',
+  })
   @IsOptional()
   @IsUUID()
   priceListId?: string;
 
-  @ApiPropertyOptional({ description: 'Currency code (e.g., KES)', example: 'KES' })
+  @ApiPropertyOptional({
+    description: 'Currency code (e.g., KES)',
+    example: 'KES',
+  })
   @IsOptional()
   @IsString()
   currencyCode?: string;

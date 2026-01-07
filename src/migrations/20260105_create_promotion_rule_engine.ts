@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreatePromotionRuleEngine20260105_1760000000000 implements MigrationInterface {
+export class CreatePromotionRuleEngine20260105_1760000000000
+  implements MigrationInterface
+{
   name = 'CreatePromotionRuleEngine20260105_1760000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -38,24 +40,44 @@ export class CreatePromotionRuleEngine20260105_1760000000000 implements Migratio
     END $$;`);
 
     // Core table (alter existing if present)
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "name" text;`);
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "description" text;`);
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "name" text;`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "description" text;`,
+    );
 
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "status" "promotion_status_enum" NOT NULL DEFAULT 'draft';`);
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "priority" int NOT NULL DEFAULT 100;`);
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "status" "promotion_status_enum" NOT NULL DEFAULT 'draft';`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "priority" int NOT NULL DEFAULT 100;`,
+    );
     await queryRunner.query(
       `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "stacking_policy" "promotion_stacking_policy_enum" NOT NULL DEFAULT 'stackable';`,
     );
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "stacking_group" text;`);
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "stacking_group" text;`,
+    );
 
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "max_redemptions" int;`);
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "max_redemptions_per_customer" int;`);
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "max_redemptions" int;`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "max_redemptions_per_customer" int;`,
+    );
 
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "channels" jsonb NOT NULL DEFAULT '[]'::jsonb;`);
-    await queryRunner.query(`ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb;`);
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "channels" jsonb NOT NULL DEFAULT '[]'::jsonb;`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "promotion" ADD COLUMN IF NOT EXISTS "metadata" jsonb NOT NULL DEFAULT '{}'::jsonb;`,
+    );
 
     // Ensure unique code (best-effort)
-    await queryRunner.query(`CREATE UNIQUE INDEX IF NOT EXISTS "promotion_code_unique" ON "promotion" ("code");`);
+    await queryRunner.query(
+      `CREATE UNIQUE INDEX IF NOT EXISTS "promotion_code_unique" ON "promotion" ("code");`,
+    );
 
     // Rule engine tables
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "promotion_condition" (
@@ -67,8 +89,12 @@ export class CreatePromotionRuleEngine20260105_1760000000000 implements Migratio
       "created_at" timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT "fk_promotion_condition_promotion" FOREIGN KEY ("promotion_id") REFERENCES "promotion" ("id") ON DELETE CASCADE
     );`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_condition_promotion_id" ON "promotion_condition" ("promotion_id");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_condition_type" ON "promotion_condition" ("type");`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_condition_promotion_id" ON "promotion_condition" ("promotion_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_condition_type" ON "promotion_condition" ("type");`,
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "promotion_action" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -79,8 +105,12 @@ export class CreatePromotionRuleEngine20260105_1760000000000 implements Migratio
       "created_at" timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT "fk_promotion_action_promotion" FOREIGN KEY ("promotion_id") REFERENCES "promotion" ("id") ON DELETE CASCADE
     );`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_action_promotion_id" ON "promotion_action" ("promotion_id");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_action_type" ON "promotion_action" ("type");`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_action_promotion_id" ON "promotion_action" ("promotion_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_action_type" ON "promotion_action" ("type");`,
+    );
 
     await queryRunner.query(`CREATE TABLE IF NOT EXISTS "promotion_redemption" (
       "id" uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -90,9 +120,15 @@ export class CreatePromotionRuleEngine20260105_1760000000000 implements Migratio
       "created_at" timestamptz NOT NULL DEFAULT now(),
       CONSTRAINT "fk_promotion_redemption_promotion" FOREIGN KEY ("promotion_id") REFERENCES "promotion" ("id") ON DELETE CASCADE
     );`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_promotion_id" ON "promotion_redemption" ("promotion_id");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_customer_id" ON "promotion_redemption" ("customer_id");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_order_id" ON "promotion_redemption" ("order_id");`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_promotion_id" ON "promotion_redemption" ("promotion_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_customer_id" ON "promotion_redemption" ("customer_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_promotion_redemption_order_id" ON "promotion_redemption" ("order_id");`,
+    );
 
     // Backfill legacy rows into metadata/status/actions when legacy columns exist.
     // - is_active -> status
@@ -175,16 +211,28 @@ export class CreatePromotionRuleEngine20260105_1760000000000 implements Migratio
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP TABLE IF EXISTS "promotion_redemption" CASCADE;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "promotion_redemption" CASCADE;`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "promotion_action" CASCADE;`);
-    await queryRunner.query(`DROP TABLE IF EXISTS "promotion_condition" CASCADE;`);
+    await queryRunner.query(
+      `DROP TABLE IF EXISTS "promotion_condition" CASCADE;`,
+    );
 
     // We keep added columns on promotion table in down (best-effort rollback would be destructive).
 
-    await queryRunner.query(`DROP TYPE IF EXISTS "promotion_action_type_enum";`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "promotion_condition_operator_enum";`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "promotion_condition_type_enum";`);
-    await queryRunner.query(`DROP TYPE IF EXISTS "promotion_stacking_policy_enum";`);
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "promotion_action_type_enum";`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "promotion_condition_operator_enum";`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "promotion_condition_type_enum";`,
+    );
+    await queryRunner.query(
+      `DROP TYPE IF EXISTS "promotion_stacking_policy_enum";`,
+    );
     await queryRunner.query(`DROP TYPE IF EXISTS "promotion_status_enum";`);
   }
 }

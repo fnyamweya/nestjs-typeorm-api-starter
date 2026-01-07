@@ -75,13 +75,11 @@ export class EventBusService {
     this.queueEvents = await this.queueService.getQueueEvents(this.queueName);
 
     this.queueEvents.on('completed', ({ jobId }) => {
-      this.logger.debug(`Event job '${jobId as string}' completed`);
+      this.logger.debug(`Event job '${jobId}' completed`);
     });
 
     this.queueEvents.on('failed', ({ jobId, failedReason }) => {
-      this.logger.error(
-        `Event job '${jobId as string}' failed: ${failedReason}`,
-      );
+      this.logger.error(`Event job '${jobId}' failed: ${failedReason}`);
     });
   }
 }

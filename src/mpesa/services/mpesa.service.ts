@@ -51,7 +51,8 @@ export class MpesaService {
 
   private get consumerKey(): string {
     const value = this.config.get<string>('MPESA_DARAJA_CONSUMER_KEY');
-    if (!value) throw new BadRequestException('Missing MPESA_DARAJA_CONSUMER_KEY');
+    if (!value)
+      throw new BadRequestException('Missing MPESA_DARAJA_CONSUMER_KEY');
     return value;
   }
 
@@ -95,9 +96,9 @@ export class MpesaService {
   }
 
   private async getAccessToken(): Promise<string> {
-    const basic = Buffer.from(`${this.consumerKey}:${this.consumerSecret}`).toString(
-      'base64',
-    );
+    const basic = Buffer.from(
+      `${this.consumerKey}:${this.consumerSecret}`,
+    ).toString('base64');
 
     const url = `${this.baseUrl}/oauth/v1/generate?grant_type=client_credentials`;
 
@@ -116,14 +117,21 @@ export class MpesaService {
 
       const token = res.data?.access_token;
       if (!token) {
-        throw new InternalServerErrorException('Daraja token missing in response');
+        throw new InternalServerErrorException(
+          'Daraja token missing in response',
+        );
       }
       return token;
     } catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
-      this.logger.error(`Failed to get Daraja token (${status ?? 'n/a'})`, data);
-      throw new InternalServerErrorException('Failed to get Daraja access token');
+      this.logger.error(
+        `Failed to get Daraja token (${status ?? 'n/a'})`,
+        data,
+      );
+      throw new InternalServerErrorException(
+        'Failed to get Daraja access token',
+      );
     }
   }
 
@@ -149,7 +157,10 @@ export class MpesaService {
     } catch (error: any) {
       const status = error?.response?.status;
       const data = error?.response?.data;
-      this.logger.error(`Daraja POST ${path} failed (${status ?? 'n/a'})`, data);
+      this.logger.error(
+        `Daraja POST ${path} failed (${status ?? 'n/a'})`,
+        data,
+      );
       throw new InternalServerErrorException('Daraja request failed');
     }
   }
@@ -159,19 +170,30 @@ export class MpesaService {
     return input as Record<string, unknown>;
   }
 
-  private async linkOrderByBillRef(billRefNumber?: string): Promise<string | undefined> {
+  private async linkOrderByBillRef(
+    billRefNumber?: string,
+  ): Promise<string | undefined> {
     if (!billRefNumber) return undefined;
-    const order = await this.orderRepo.findOne({ where: { orderNumber: billRefNumber } });
+    const order = await this.orderRepo.findOne({
+      where: { orderNumber: billRefNumber },
+    });
     return order?.id;
   }
 
-  private async findByConversation(conversationId?: string, originatorConversationId?: string) {
+  private async findByConversation(
+    conversationId?: string,
+    originatorConversationId?: string,
+  ) {
     if (conversationId) {
-      const found = await this.mpesaTxRepo.findOne({ where: { conversationId } });
+      const found = await this.mpesaTxRepo.findOne({
+        where: { conversationId },
+      });
       if (found) return found;
     }
     if (originatorConversationId) {
-      const found = await this.mpesaTxRepo.findOne({ where: { originatorConversationId } });
+      const found = await this.mpesaTxRepo.findOne({
+        where: { originatorConversationId },
+      });
       if (found) return found;
     }
     return null;
@@ -181,7 +203,8 @@ export class MpesaService {
     const shortCode = dto.shortCode || this.shortcode;
 
     const validationUrl =
-      dto.validationUrl ?? this.buildCallbackUrl('/api/v1/mpesa/c2b/validation');
+      dto.validationUrl ??
+      this.buildCallbackUrl('/api/v1/mpesa/c2b/validation');
     const confirmationUrl =
       dto.confirmationUrl ??
       this.buildCallbackUrl('/api/v1/mpesa/c2b/confirmation');
@@ -235,7 +258,8 @@ export class MpesaService {
 
   async b2cPayment(dto: B2CPaymentRequestDto) {
     const initiatorName = dto.initiatorName ?? this.initiatorName;
-    const securityCredential = dto.securityCredential ?? this.securityCredential;
+    const securityCredential =
+      dto.securityCredential ?? this.securityCredential;
 
     const payload = {
       InitiatorName: initiatorName,
@@ -246,7 +270,8 @@ export class MpesaService {
       PartyB: dto.partyB,
       Remarks: dto.remarks,
       QueueTimeOutURL:
-        dto.queueTimeoutUrl ?? this.buildCallbackUrl('/api/v1/mpesa/b2c/timeout'),
+        dto.queueTimeoutUrl ??
+        this.buildCallbackUrl('/api/v1/mpesa/b2c/timeout'),
       ResultURL:
         dto.resultUrl ?? this.buildCallbackUrl('/api/v1/mpesa/b2c/result'),
       Occasion: dto.occasion ?? '',
@@ -269,10 +294,17 @@ export class MpesaService {
 
     const data = await this.darajaPost('/mpesa/b2c/v3/paymentrequest', payload);
     const r = this.asStringRecord(data);
-    tx.originatorConversationId = (r.OriginatorConversationID as string) ?? tx.originatorConversationId;
+    tx.originatorConversationId =
+      (r.OriginatorConversationID as string) ?? tx.originatorConversationId;
     tx.conversationId = (r.ConversationID as string) ?? tx.conversationId;
-    tx.resultCode = typeof r.ResponseCode === 'string' ? parseInt(r.ResponseCode, 10) : (r.ResponseCode as any);
-    tx.resultDesc = (r.ResponseDescription as string) ?? (r.ResponseDesc as string) ?? tx.resultDesc;
+    tx.resultCode =
+      typeof r.ResponseCode === 'string'
+        ? parseInt(r.ResponseCode, 10)
+        : (r.ResponseCode as any);
+    tx.resultDesc =
+      (r.ResponseDescription as string) ??
+      (r.ResponseDesc as string) ??
+      tx.resultDesc;
     tx.rawResponseJson = r;
     await this.mpesaTxRepo.save(tx);
     return data;
@@ -280,7 +312,8 @@ export class MpesaService {
 
   async b2bPayment(dto: B2BPaymentRequestDto) {
     const initiatorName = dto.initiatorName ?? this.initiatorName;
-    const securityCredential = dto.securityCredential ?? this.securityCredential;
+    const securityCredential =
+      dto.securityCredential ?? this.securityCredential;
 
     const payload = {
       Initiator: initiatorName,
@@ -292,7 +325,8 @@ export class MpesaService {
       AccountReference: dto.accountReference,
       Remarks: dto.remarks,
       QueueTimeOutURL:
-        dto.queueTimeoutUrl ?? this.buildCallbackUrl('/api/v1/mpesa/b2b/timeout'),
+        dto.queueTimeoutUrl ??
+        this.buildCallbackUrl('/api/v1/mpesa/b2b/timeout'),
       ResultURL:
         dto.resultUrl ?? this.buildCallbackUrl('/api/v1/mpesa/b2b/result'),
     };
@@ -315,10 +349,17 @@ export class MpesaService {
 
     const data = await this.darajaPost('/mpesa/b2b/v1/paymentrequest', payload);
     const r = this.asStringRecord(data);
-    tx.originatorConversationId = (r.OriginatorConversationID as string) ?? tx.originatorConversationId;
+    tx.originatorConversationId =
+      (r.OriginatorConversationID as string) ?? tx.originatorConversationId;
     tx.conversationId = (r.ConversationID as string) ?? tx.conversationId;
-    tx.resultCode = typeof r.ResponseCode === 'string' ? parseInt(r.ResponseCode, 10) : (r.ResponseCode as any);
-    tx.resultDesc = (r.ResponseDescription as string) ?? (r.ResponseDesc as string) ?? tx.resultDesc;
+    tx.resultCode =
+      typeof r.ResponseCode === 'string'
+        ? parseInt(r.ResponseCode, 10)
+        : (r.ResponseCode as any);
+    tx.resultDesc =
+      (r.ResponseDescription as string) ??
+      (r.ResponseDesc as string) ??
+      tx.resultDesc;
     tx.rawResponseJson = r;
     await this.mpesaTxRepo.save(tx);
     return data;
@@ -351,7 +392,8 @@ export class MpesaService {
 
   async handleC2BConfirmation(body: unknown) {
     const b = this.asStringRecord(body);
-    const billRef = (b.BillRefNumber as string | undefined) ?? (b.BillRefNumber as any);
+    const billRef =
+      (b.BillRefNumber as string | undefined) ?? (b.BillRefNumber as any);
     const orderId = await this.linkOrderByBillRef(billRef);
 
     // Upsert-ish: if a pending tx exists by transactionId, update it; else create new
@@ -365,7 +407,8 @@ export class MpesaService {
       existing.orderId = existing.orderId ?? orderId;
       existing.billRefNumber = existing.billRefNumber ?? billRef;
       existing.msisdn = existing.msisdn ?? (b.MSISDN as string);
-      existing.amount = existing.amount ?? (b.TransAmount ? String(b.TransAmount) : undefined);
+      existing.amount =
+        existing.amount ?? (b.TransAmount ? String(b.TransAmount) : undefined);
       existing.rawCallbackJson = b;
       await this.mpesaTxRepo.save(existing);
     } else {
@@ -406,7 +449,9 @@ export class MpesaService {
         }
       } catch (e) {
         // Non-fatal: transaction persistence succeeded; order update can be retried.
-        this.logger.warn('Failed to update order status after C2B confirmation');
+        this.logger.warn(
+          'Failed to update order status after C2B confirmation',
+        );
       }
 
       const payload: OrderPaymentSucceededEventPayload = {
@@ -437,19 +482,21 @@ export class MpesaService {
     const result = this.asStringRecord(raw.Result);
 
     const conversationId = result.ConversationID as string | undefined;
-    const originatorConversationId = result.OriginatorConversationID as string | undefined;
+    const originatorConversationId = result.OriginatorConversationID as
+      | string
+      | undefined;
     const resultCode =
       typeof result.ResultCode === 'number'
-        ? (result.ResultCode as number)
+        ? result.ResultCode
         : typeof result.ResultCode === 'string'
-          ? parseInt(result.ResultCode as string, 10)
+          ? parseInt(result.ResultCode, 10)
           : undefined;
     const resultDesc = result.ResultDesc as string | undefined;
 
     // Transaction ID sometimes appears in ResultParameters
     let transactionId: string | undefined;
     const params = this.asStringRecord(result.ResultParameters);
-    const arr = (params.ResultParameter as unknown) as unknown[];
+    const arr = params.ResultParameter as unknown[];
     if (Array.isArray(arr)) {
       for (const p of arr) {
         const pr = this.asStringRecord(p);
@@ -459,25 +506,41 @@ export class MpesaService {
       }
     }
 
-    return { conversationId, originatorConversationId, resultCode, resultDesc, transactionId, raw };
+    return {
+      conversationId,
+      originatorConversationId,
+      resultCode,
+      resultDesc,
+      transactionId,
+      raw,
+    };
   }
 
   async handleB2CResult(body: unknown) {
     const parsed = this.parseResultEnvelope(body);
-    const existing = await this.findByConversation(parsed.conversationId, parsed.originatorConversationId);
+    const existing = await this.findByConversation(
+      parsed.conversationId,
+      parsed.originatorConversationId,
+    );
 
     if (existing) {
       existing.resultCode = parsed.resultCode;
       existing.resultDesc = parsed.resultDesc;
       existing.transactionId = parsed.transactionId ?? existing.transactionId;
-      existing.status = parsed.resultCode === 0 ? MpesaTransactionStatus.SUCCESS : MpesaTransactionStatus.FAILED;
+      existing.status =
+        parsed.resultCode === 0
+          ? MpesaTransactionStatus.SUCCESS
+          : MpesaTransactionStatus.FAILED;
       existing.rawCallbackJson = parsed.raw;
       await this.mpesaTxRepo.save(existing);
     } else {
       await this.mpesaTxRepo.save(
         this.mpesaTxRepo.create({
           type: MpesaTransactionType.B2C,
-          status: parsed.resultCode === 0 ? MpesaTransactionStatus.SUCCESS : MpesaTransactionStatus.FAILED,
+          status:
+            parsed.resultCode === 0
+              ? MpesaTransactionStatus.SUCCESS
+              : MpesaTransactionStatus.FAILED,
           conversationId: parsed.conversationId,
           originatorConversationId: parsed.originatorConversationId,
           transactionId: parsed.transactionId,
@@ -495,7 +558,10 @@ export class MpesaService {
 
   async handleB2CTimeout(body: unknown) {
     const parsed = this.parseResultEnvelope(body);
-    const existing = await this.findByConversation(parsed.conversationId, parsed.originatorConversationId);
+    const existing = await this.findByConversation(
+      parsed.conversationId,
+      parsed.originatorConversationId,
+    );
     if (existing) {
       existing.status = MpesaTransactionStatus.TIMEOUT;
       existing.rawCallbackJson = parsed.raw;
@@ -518,20 +584,29 @@ export class MpesaService {
 
   async handleB2BResult(body: unknown) {
     const parsed = this.parseResultEnvelope(body);
-    const existing = await this.findByConversation(parsed.conversationId, parsed.originatorConversationId);
+    const existing = await this.findByConversation(
+      parsed.conversationId,
+      parsed.originatorConversationId,
+    );
 
     if (existing) {
       existing.resultCode = parsed.resultCode;
       existing.resultDesc = parsed.resultDesc;
       existing.transactionId = parsed.transactionId ?? existing.transactionId;
-      existing.status = parsed.resultCode === 0 ? MpesaTransactionStatus.SUCCESS : MpesaTransactionStatus.FAILED;
+      existing.status =
+        parsed.resultCode === 0
+          ? MpesaTransactionStatus.SUCCESS
+          : MpesaTransactionStatus.FAILED;
       existing.rawCallbackJson = parsed.raw;
       await this.mpesaTxRepo.save(existing);
     } else {
       await this.mpesaTxRepo.save(
         this.mpesaTxRepo.create({
           type: MpesaTransactionType.B2B,
-          status: parsed.resultCode === 0 ? MpesaTransactionStatus.SUCCESS : MpesaTransactionStatus.FAILED,
+          status:
+            parsed.resultCode === 0
+              ? MpesaTransactionStatus.SUCCESS
+              : MpesaTransactionStatus.FAILED,
           conversationId: parsed.conversationId,
           originatorConversationId: parsed.originatorConversationId,
           transactionId: parsed.transactionId,
@@ -549,7 +624,10 @@ export class MpesaService {
 
   async handleB2BTimeout(body: unknown) {
     const parsed = this.parseResultEnvelope(body);
-    const existing = await this.findByConversation(parsed.conversationId, parsed.originatorConversationId);
+    const existing = await this.findByConversation(
+      parsed.conversationId,
+      parsed.originatorConversationId,
+    );
     if (existing) {
       existing.status = MpesaTransactionStatus.TIMEOUT;
       existing.rawCallbackJson = parsed.raw;

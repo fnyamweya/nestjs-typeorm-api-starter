@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerAddress } from '../entities/customer-address.entity';
@@ -39,7 +43,11 @@ export class CustomerAddressService {
     return row;
   }
 
-  async upsertForUser(userId: string, type: CustomerAddressType, address: UpsertAddressDto) {
+  async upsertForUser(
+    userId: string,
+    type: CustomerAddressType,
+    address: UpsertAddressDto,
+  ) {
     if (!CUSTOMER_ADDRESS_TYPES.includes(type)) {
       throw new BadRequestException('Invalid address type');
     }
@@ -76,7 +84,9 @@ export class CustomerAddressService {
   }
 
   async deleteForUserByType(userId: string, type: CustomerAddressType) {
-    const existing = await this.customerAddressRepo.findOne({ where: { userId, type } });
+    const existing = await this.customerAddressRepo.findOne({
+      where: { userId, type },
+    });
     if (!existing) return { deleted: false };
 
     // Cascades will delete address row too.

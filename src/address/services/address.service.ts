@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DeepPartial, ILike, Repository } from 'typeorm';
 import { Address } from '../entities/address.entity';
@@ -40,22 +44,22 @@ export class AddressService {
 
   private async resolveBestEffortLocationId(params: {
     countryCode?: string;
-    googleDetails: Parameters<GooglePlacesService['mapPlaceDetailsToAddress']>[0];
-  }): Promise<
-    | {
-        locationId: string;
-        matchedType: string;
-        matchedName: string;
-      }
-    | null
-  > {
+    googleDetails: Parameters<
+      GooglePlacesService['mapPlaceDetailsToAddress']
+    >[0];
+  }): Promise<{
+    locationId: string;
+    matchedType: string;
+    matchedName: string;
+  } | null> {
     const countryCode = params.countryCode?.toUpperCase();
     if (!countryCode) return null;
 
-    const candidates = await this.countryConfig.extractLocationCandidatesFromGoogle(
-      params.googleDetails,
-      countryCode,
-    );
+    const candidates =
+      await this.countryConfig.extractLocationCandidatesFromGoogle(
+        params.googleDetails,
+        countryCode,
+      );
 
     for (const c of candidates) {
       // Strict match: name ILIKE 'Exact Name' (case-insensitive equals)
@@ -67,7 +71,11 @@ export class AddressService {
         } as any,
       });
       if (found) {
-        return { locationId: found.id, matchedType: String(c.type), matchedName: c.name };
+        return {
+          locationId: found.id,
+          matchedType: String(c.type),
+          matchedName: c.name,
+        };
       }
     }
 
@@ -77,11 +85,19 @@ export class AddressService {
   async create(payload: UpsertAddressDto): Promise<Address> {
     const google = await this.enrichFromGoogle(payload);
     const normalizedCountry = payload.countryCode?.toUpperCase();
-    if (google?.countryCode && normalizedCountry && google.countryCode.toUpperCase() !== normalizedCountry) {
-      throw new BadRequestException('countryCode does not match Google Place country');
+    if (
+      google?.countryCode &&
+      normalizedCountry &&
+      google.countryCode.toUpperCase() !== normalizedCountry
+    ) {
+      throw new BadRequestException(
+        'countryCode does not match Google Place country',
+      );
     }
 
-    const bestCountryCode = (normalizedCountry || google?.countryCode)?.toUpperCase();
+    const bestCountryCode = (
+      normalizedCountry || google?.countryCode
+    )?.toUpperCase();
     const bestEffortLocation =
       !payload.locationId && google?.details
         ? await this.resolveBestEffortLocationId({
@@ -117,12 +133,22 @@ export class AddressService {
     if (!existing) throw new NotFoundException('Address not found');
 
     const google = await this.enrichFromGoogle(payload);
-    const normalizedCountry = (payload.countryCode || existing.countryCode)?.toUpperCase();
-    if (google?.countryCode && normalizedCountry && google.countryCode.toUpperCase() !== normalizedCountry) {
-      throw new BadRequestException('countryCode does not match Google Place country');
+    const normalizedCountry = (
+      payload.countryCode || existing.countryCode
+    )?.toUpperCase();
+    if (
+      google?.countryCode &&
+      normalizedCountry &&
+      google.countryCode.toUpperCase() !== normalizedCountry
+    ) {
+      throw new BadRequestException(
+        'countryCode does not match Google Place country',
+      );
     }
 
-    const bestCountryCode = (normalizedCountry || google?.countryCode)?.toUpperCase();
+    const bestCountryCode = (
+      normalizedCountry || google?.countryCode
+    )?.toUpperCase();
     const bestEffortLocation =
       !payload.locationId && !existing.locationId && google?.details
         ? await this.resolveBestEffortLocationId({

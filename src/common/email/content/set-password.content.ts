@@ -11,7 +11,9 @@ export function resolveSetPasswordAudience(
   audience?: SetPasswordAudience,
 ): SetPasswordAudience {
   if (!audience) return 'user';
-  return (setPasswordAudiences as readonly string[]).includes(audience) ? audience : 'user';
+  return (setPasswordAudiences as readonly string[]).includes(audience)
+    ? audience
+    : 'user';
 }
 
 export function getSetPasswordEmailContent({
@@ -31,7 +33,8 @@ export function getSetPasswordEmailContent({
           link,
           expiresInMinutes,
           lead: `Welcome to ${appName}. Use the button below to set your password and complete your account setup. This link expires in ${expiresInMinutes} minutes.`,
-          footerNote: "If you didn't expect this email, you can safely ignore it.",
+          footerNote:
+            "If you didn't expect this email, you can safely ignore it.",
         }),
       };
 
@@ -61,7 +64,8 @@ export function getSetPasswordEmailContent({
           link,
           expiresInMinutes,
           lead: `Use the button below to create or update your password. This link expires in ${expiresInMinutes} minutes.`,
-          footerNote: 'If you did not request this, you can safely ignore this email.',
+          footerNote:
+            'If you did not request this, you can safely ignore this email.',
         }),
       };
   }

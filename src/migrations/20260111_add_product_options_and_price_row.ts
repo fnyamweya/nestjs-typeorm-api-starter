@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddProductOptionsAndPriceRow20260111_1768700000000 implements MigrationInterface {
+export class AddProductOptionsAndPriceRow20260111_1768700000000
+  implements MigrationInterface
+{
   name = 'AddProductOptionsAndPriceRow20260111_1768700000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -14,7 +16,9 @@ export class AddProductOptionsAndPriceRow20260111_1768700000000 implements Migra
       'ALTER TABLE "product_variant" ADD COLUMN IF NOT EXISTS "inventory_json" jsonb NOT NULL DEFAULT \'{}\'::jsonb',
     );
 
-    await queryRunner.query('ALTER TABLE "price_list" ADD COLUMN IF NOT EXISTS "priority" int NOT NULL DEFAULT 0');
+    await queryRunner.query(
+      'ALTER TABLE "price_list" ADD COLUMN IF NOT EXISTS "priority" int NOT NULL DEFAULT 0',
+    );
     await queryRunner.query(
       'ALTER TABLE "price_list" ADD COLUMN IF NOT EXISTS "scope" text NOT NULL DEFAULT \'global\'',
     );
@@ -125,14 +129,30 @@ export class AddProductOptionsAndPriceRow20260111_1768700000000 implements Migra
     await queryRunner.query('DROP INDEX IF EXISTS "idx_price_row_lookup"');
     await queryRunner.query('DROP TABLE IF EXISTS "price_row" CASCADE');
 
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "stop_after_match"');
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "match_policy"');
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "stacking_policy"');
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "status"');
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "scope"');
-    await queryRunner.query('ALTER TABLE "price_list" DROP COLUMN IF EXISTS "priority"');
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "stop_after_match"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "match_policy"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "stacking_policy"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "status"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "scope"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "price_list" DROP COLUMN IF EXISTS "priority"',
+    );
 
-    await queryRunner.query('ALTER TABLE "product_variant" DROP COLUMN IF EXISTS "inventory_json"');
-    await queryRunner.query('ALTER TABLE "product" DROP COLUMN IF EXISTS "option_definitions_json"');
+    await queryRunner.query(
+      'ALTER TABLE "product_variant" DROP COLUMN IF EXISTS "inventory_json"',
+    );
+    await queryRunner.query(
+      'ALTER TABLE "product" DROP COLUMN IF EXISTS "option_definitions_json"',
+    );
   }
 }

@@ -27,12 +27,14 @@ describe('Orders E2E - Shipping integration', () => {
       // ensure a clean DB and run seeders via existing seed entrypoint
       await truncateDb(t.ds);
       const settingSeeder = app.get(require('../src/setting/seeders/setting.seeder').SettingSeeder);
+      const channelsSeeder = app.get(require('../src/channels/seeders/channels.seeder').ChannelsSeeder);
       const authSeeder = app.get(require('../src/auth/seeders/auth.seeder').AuthSeeder);
       const catalogSeeder = app.get(require('../src/catalog/seeders/catalog.seeder').CatalogSeeder);
       const shippingSeeder = app.get(require('../src/shipping/seeders/shipping.seeder').ShippingSeeder);
       const locationSeeder = app.get(require('../src/location/seeders/location.seeder').LocationSeeder);
       await settingSeeder.seed();
       await locationSeeder.seed();
+      await channelsSeeder.seed();
       await authSeeder.seed();
       await catalogSeeder.seed();
       await shippingSeeder.seed();

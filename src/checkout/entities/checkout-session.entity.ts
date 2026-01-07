@@ -7,7 +7,11 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type CheckoutSessionStatus = 'active' | 'completed' | 'expired' | 'cancelled';
+export type CheckoutSessionStatus =
+  | 'active'
+  | 'completed'
+  | 'expired'
+  | 'cancelled';
 
 @Entity('checkout_session')
 @Index('idx_checkout_session_user_id', ['userId'])

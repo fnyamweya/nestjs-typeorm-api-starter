@@ -8,7 +8,10 @@ import {
 
 export type PriceListStatus = 'active' | 'inactive' | 'archived';
 export type PriceListStackingPolicy = 'EXCLUSIVE' | 'STACKABLE';
-export type PriceListMatchPolicy = 'HIGHEST_PRIORITY' | 'LOWEST_PRICE' | 'FIRST_MATCH';
+export type PriceListMatchPolicy =
+  | 'HIGHEST_PRIORITY'
+  | 'LOWEST_PRICE'
+  | 'FIRST_MATCH';
 
 @Entity('price_list')
 export class PriceList {

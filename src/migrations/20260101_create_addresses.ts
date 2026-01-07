@@ -39,13 +39,21 @@ export class CreateAddresses20260101_1767225599000
       );
     `);
 
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_customer_address_user_id" ON "customer_address" ("user_id");`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_customer_address_type" ON "customer_address" ("type");`);
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_customer_address_user_id" ON "customer_address" ("user_id");`,
+    );
+    await queryRunner.query(
+      `CREATE INDEX IF NOT EXISTS "idx_customer_address_type" ON "customer_address" ("type");`,
+    );
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_address_type";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_address_user_id";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_address_type";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_address_user_id";`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "customer_address";`);
     await queryRunner.query(`DROP TABLE IF EXISTS "address";`);
   }

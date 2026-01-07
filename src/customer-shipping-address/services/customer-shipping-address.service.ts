@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CustomerShippingAddress } from '../entities/customer-shipping-address.entity';
@@ -18,7 +22,8 @@ export class CustomerShippingAddressService {
       where: { userId },
       relations: ['address'],
     });
-    if (!row) throw new NotFoundException('Customer shipping address not found');
+    if (!row)
+      throw new NotFoundException('Customer shipping address not found');
     return row;
   }
 

@@ -1,5 +1,11 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsIn, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateSMSSettingDto {
   @ApiProperty({
@@ -9,7 +15,9 @@ export class CreateSMSSettingDto {
     default: 'africastalking',
   })
   @IsString({ message: 'Provider must be a string' })
-  @IsIn(['africastalking'], { message: 'Only africastalking is supported currently' })
+  @IsIn(['africastalking'], {
+    message: 'Only africastalking is supported currently',
+  })
   provider: string = 'africastalking';
 
   @ApiProperty({

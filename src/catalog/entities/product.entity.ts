@@ -39,17 +39,29 @@ export class Product {
   @Column({ name: 'brand_id', type: 'uuid', nullable: true })
   brandId?: string;
 
-  @Column({ name: 'availability_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'availability_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   availabilityJson: Record<string, unknown>;
 
   @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
   imagesJson: string[];
 
-  @Column({ name: 'option_definitions_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Column({
+    name: 'option_definitions_json',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
   optionDefinitionsJson: Array<Record<string, unknown>>;
 
   // Migration 20260112 introduces metadata_json and backfills from legacy meta_json.
-  @Column({ name: 'metadata_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'metadata_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   metaJson: Record<string, unknown>;
 
   @ManyToOne(() => Brand, (brand) => brand.products, { onDelete: 'SET NULL' })
@@ -74,6 +86,9 @@ export class Product {
   @OneToMany(() => ProductChannel, (pc) => pc.product)
   productChannels: ProductChannel[];
 
-  @OneToMany(() => ProductCategory, (productCategory) => productCategory.product)
+  @OneToMany(
+    () => ProductCategory,
+    (productCategory) => productCategory.product,
+  )
   productCategories: ProductCategory[];
 }

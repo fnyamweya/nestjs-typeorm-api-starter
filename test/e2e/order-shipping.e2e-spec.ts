@@ -27,16 +27,18 @@ describe('Order Shipping E2E', () => {
       await truncateDb(t.ds);
 
       // run seeders necessary for the test
-      const catalogSeeder = app.get(require('../../src/catalog/seeders/catalog.seeder').CatalogSeeder);
-      const shippingSeeder = app.get(require('../../src/shipping/seeders/shipping.seeder').ShippingSeeder);
       const settingSeeder = app.get(require('../../src/setting/seeders/setting.seeder').SettingSeeder);
       const locationSeeder = app.get(require('../../src/location/seeders/location.seeder').LocationSeeder);
+      const channelsSeeder = app.get(require('../../src/channels/seeders/channels.seeder').ChannelsSeeder);
       const authSeeder = app.get(require('../../src/auth/seeders/auth.seeder').AuthSeeder);
+      const catalogSeeder = app.get(require('../../src/catalog/seeders/catalog.seeder').CatalogSeeder);
+      const shippingSeeder = app.get(require('../../src/shipping/seeders/shipping.seeder').ShippingSeeder);
 
-      await catalogSeeder.seed();
       await settingSeeder.seed();
       await locationSeeder.seed();
+      await channelsSeeder.seed();
       await authSeeder.seed();
+      await catalogSeeder.seed();
       await shippingSeeder.seed();
 
       skuRepo = app.get(getRepositoryToken(ProductSku));
@@ -78,6 +80,8 @@ describe('Order Shipping E2E', () => {
     if (!customer) {
       customer = await userRepo.save(userRepo.create({ email: 'buyer@example.com', phone: '254700000011' } as any) as any);
     }
+
+    if (!customer) throw new Error('Customer not found');
 
     const payload = {
       customerId: customer.id,

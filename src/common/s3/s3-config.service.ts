@@ -63,7 +63,9 @@ export class S3ConfigService {
           this.configService.get<string>(key) ?? process.env[key] ?? '';
 
         const rawEnabled =
-          getValue('s3_enabled') || envValue('S3_ENABLED') || envValue('AWS_S3_ENABLED');
+          getValue('s3_enabled') ||
+          envValue('S3_ENABLED') ||
+          envValue('AWS_S3_ENABLED');
 
         const enabled = (rawEnabled || 'true').toLowerCase() === 'true';
 
@@ -114,8 +116,12 @@ export class S3ConfigService {
           secretAccessKey: secretAccessKey.trim(),
           forcePathStyle,
           enabled,
-          publicBaseUrl: publicBaseUrl?.trim() ? publicBaseUrl.trim() : undefined,
-          publicDevBaseUrl: publicDevBaseUrl?.trim() ? publicDevBaseUrl.trim() : undefined,
+          publicBaseUrl: publicBaseUrl?.trim()
+            ? publicBaseUrl.trim()
+            : undefined,
+          publicDevBaseUrl: publicDevBaseUrl?.trim()
+            ? publicDevBaseUrl.trim()
+            : undefined,
         };
       },
       { ttlSeconds: 300 },

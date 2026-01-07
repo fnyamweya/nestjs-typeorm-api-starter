@@ -16,6 +16,7 @@ import { User } from '../user/entities/user.entity';
 import { Location } from '../location/entities/location.entity';
 import { CurrencyModule } from '../currency/currency.module';
 import { CustomerShippingAddressModule } from '../customer-shipping-address/customer-shipping-address.module';
+import { OrderPaymentModule } from '../order-payment/order-payment.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CustomerShippingAddressModule } from '../customer-shipping-address/cust
     ShippingModule,
     CurrencyModule,
     CustomerShippingAddressModule,
+    OrderPaymentModule,
   ],
   controllers: [OrderController],
   providers: [OrderService, TaxService],

@@ -9,7 +9,9 @@ type CatalogContextIndexable = {
 
 @Injectable()
 export class ShippingCatalogContextCacheIndexService {
-  private readonly logger = new Logger(ShippingCatalogContextCacheIndexService.name);
+  private readonly logger = new Logger(
+    ShippingCatalogContextCacheIndexService.name,
+  );
   private readonly idxPrefix = 'shipping:catalog-context:idx:';
 
   constructor(private readonly redisService: RedisService) {}
@@ -26,12 +28,20 @@ export class ShippingCatalogContextCacheIndexService {
     return `${this.idxPrefix}taxonomy:${String(taxonomyId)}`;
   }
 
-  async indexCacheKey(cacheKey: string, ctx: CatalogContextIndexable, ttlSeconds: number): Promise<void> {
+  async indexCacheKey(
+    cacheKey: string,
+    ctx: CatalogContextIndexable,
+    ttlSeconds: number,
+  ): Promise<void> {
     const redis = this.redisService.getClient();
 
     const productIds = Array.from(new Set((ctx.productIds ?? []).map(String)));
-    const categoryIds = Array.from(new Set((ctx.categoryIds ?? []).map(String)));
-    const taxonomyIds = Array.from(new Set((ctx.taxonomyIds ?? []).map(String)));
+    const categoryIds = Array.from(
+      new Set((ctx.categoryIds ?? []).map(String)),
+    );
+    const taxonomyIds = Array.from(
+      new Set((ctx.taxonomyIds ?? []).map(String)),
+    );
 
     const indexKeys = [
       ...productIds.map((id) => this.productIndexKey(id)),
@@ -59,17 +69,23 @@ export class ShippingCatalogContextCacheIndexService {
   }
 
   async invalidateByProductIds(productIds: string[]): Promise<void> {
-    const keys = Array.from(new Set(productIds.map(String))).map((id) => this.productIndexKey(id));
+    const keys = Array.from(new Set(productIds.map(String))).map((id) =>
+      this.productIndexKey(id),
+    );
     await this.invalidateByIndexKeys(keys);
   }
 
   async invalidateByCategoryIds(categoryIds: string[]): Promise<void> {
-    const keys = Array.from(new Set(categoryIds.map(String))).map((id) => this.categoryIndexKey(id));
+    const keys = Array.from(new Set(categoryIds.map(String))).map((id) =>
+      this.categoryIndexKey(id),
+    );
     await this.invalidateByIndexKeys(keys);
   }
 
   async invalidateByTaxonomyIds(taxonomyIds: string[]): Promise<void> {
-    const keys = Array.from(new Set(taxonomyIds.map(String))).map((id) => this.taxonomyIndexKey(id));
+    const keys = Array.from(new Set(taxonomyIds.map(String))).map((id) =>
+      this.taxonomyIndexKey(id),
+    );
     await this.invalidateByIndexKeys(keys);
   }
 

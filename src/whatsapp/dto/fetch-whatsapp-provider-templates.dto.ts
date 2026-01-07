@@ -17,12 +17,18 @@ export class FetchWhatsappProviderTemplatesDto {
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by language code', example: 'en_US' })
+  @ApiPropertyOptional({
+    description: 'Filter by language code',
+    example: 'en_US',
+  })
   @IsOptional()
   @IsString()
   language?: string;
 
-  @ApiPropertyOptional({ description: 'Max number of templates to return', example: 25 })
+  @ApiPropertyOptional({
+    description: 'Max number of templates to return',
+    example: 25,
+  })
   @IsOptional()
   @IsInt()
   @Min(1)

@@ -1,6 +1,8 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class CreateCheckoutSession20260106_130000 implements MigrationInterface {
+export class CreateCheckoutSession20260106_130000
+  implements MigrationInterface
+{
   name = 'CreateCheckoutSession20260106_130000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
@@ -32,9 +34,15 @@ export class CreateCheckoutSession20260106_130000 implements MigrationInterface 
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_checkout_session_expires_at";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_checkout_session_status";`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_checkout_session_user_id";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_checkout_session_expires_at";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_checkout_session_status";`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_checkout_session_user_id";`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "checkout_session";`);
   }
 }

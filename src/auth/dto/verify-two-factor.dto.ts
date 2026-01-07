@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, Length, ValidateIf } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  Length,
+  ValidateIf,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class VerifyTwoFactorDto {
@@ -8,7 +14,9 @@ export class VerifyTwoFactorDto {
   })
   @ValidateIf((dto) => !dto.twoFactorToken)
   @IsString({ message: 'User ID must be a string' })
-  @IsNotEmpty({ message: 'User ID is required when twoFactorToken is not provided' })
+  @IsNotEmpty({
+    message: 'User ID is required when twoFactorToken is not provided',
+  })
   userId?: string;
 
   @ApiPropertyOptional({

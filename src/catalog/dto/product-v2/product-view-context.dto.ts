@@ -2,12 +2,16 @@ import { ApiPropertyOptional } from '@nestjs/swagger';
 import { IsOptional, IsString } from 'class-validator';
 
 export class ProductViewContextDto {
-  @ApiPropertyOptional({ description: 'Channel code (e.g. WEB, MOBILE, WHATSAPP)' })
+  @ApiPropertyOptional({
+    description: 'Channel code (e.g. WEB, MOBILE, WHATSAPP)',
+  })
   @IsOptional()
   @IsString()
   channel?: string;
 
-  @ApiPropertyOptional({ description: 'Customer tier/segment (e.g. VIP, REGULAR)' })
+  @ApiPropertyOptional({
+    description: 'Customer tier/segment (e.g. VIP, REGULAR)',
+  })
   @IsOptional()
   @IsString()
   customerTier?: string;
@@ -17,7 +21,9 @@ export class ProductViewContextDto {
   @IsString()
   location?: string;
 
-  @ApiPropertyOptional({ description: 'Role identifier (e.g. agent, admin, customer)' })
+  @ApiPropertyOptional({
+    description: 'Role identifier (e.g. agent, admin, customer)',
+  })
   @IsOptional()
   @IsString()
   role?: string;

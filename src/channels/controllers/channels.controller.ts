@@ -30,13 +30,22 @@ import { ChannelsService } from '../services/channels.service';
 @Controller('channels')
 @ApiTags('Channels')
 @ApiBearerAuth('access-token')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ChannelsController {
   constructor(private readonly channelsService: ChannelsService) {}
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.CHANNELS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.CHANNELS,
+    permission: 'create',
+  })
   @ApiCreatedResponse({ description: 'Channel created' })
   async create(@Body() payload: CreateChannelDto) {
     const row = await this.channelsService.create(payload);
@@ -60,7 +69,10 @@ export class ChannelsController {
   }
 
   @Patch(':id')
-  @RequirePermissions({ module: PermissionModule.CHANNELS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.CHANNELS,
+    permission: 'update',
+  })
   @ApiOkResponse({ description: 'Channel updated' })
   async update(@Param('id') id: string, @Body() payload: UpdateChannelDto) {
     const row = await this.channelsService.update(id, payload);
@@ -68,7 +80,10 @@ export class ChannelsController {
   }
 
   @Delete(':id')
-  @RequirePermissions({ module: PermissionModule.CHANNELS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.CHANNELS,
+    permission: 'delete',
+  })
   @ApiOkResponse({ description: 'Channel deleted' })
   async delete(@Param('id') id: string) {
     const res = await this.channelsService.delete(id);

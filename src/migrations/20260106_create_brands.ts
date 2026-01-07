@@ -45,7 +45,9 @@ export class CreateBrands20260106_1760180000000 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query('ALTER TABLE "product" DROP CONSTRAINT IF EXISTS "fk_product_brand"');
+    await queryRunner.query(
+      'ALTER TABLE "product" DROP CONSTRAINT IF EXISTS "fk_product_brand"',
+    );
     await queryRunner.query('DROP INDEX IF EXISTS "idx_product_brand_id"');
     await queryRunner.query('DROP INDEX IF EXISTS "idx_brand_is_active"');
     await queryRunner.query('DROP TABLE IF EXISTS "brand"');

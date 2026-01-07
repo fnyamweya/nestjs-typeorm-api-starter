@@ -45,11 +45,18 @@ export class EmailServiceUtils {
   }
 
   private async getTransporter() {
-    if (process.env.NODE_ENV === 'test' || process.env.EMAIL_DISABLED === 'true') {
+    if (
+      process.env.NODE_ENV === 'test' ||
+      process.env.EMAIL_DISABLED === 'true'
+    ) {
       // Avoid external SMTP calls during tests.
       return {
         // nodemailer expects sendMail to resolve with an info object; we don't need it in tests.
-        sendMail: async () => ({ accepted: [], rejected: [], response: 'skipped' }),
+        sendMail: async () => ({
+          accepted: [],
+          rejected: [],
+          response: 'skipped',
+        }),
       } as any;
     }
 
@@ -219,10 +226,7 @@ export class EmailServiceUtils {
       await this.sendEmail({ to: email, subject, html });
       this.logger.log(`Password set link sent to ${email}`);
     } catch (error) {
-      this.logger.error(
-        `Failed to send set-password link to ${email}:`,
-        error,
-      );
+      this.logger.error(`Failed to send set-password link to ${email}:`, error);
       throw new Error('Failed to send set-password email');
     }
   }

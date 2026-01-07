@@ -1,9 +1,19 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
 import { PaymentMethod } from './payment-method.entity';
 import { CountryConfig } from '../../country/entities/country-config.entity';
 
 @Entity('payment_method_country_config')
-@Index('idx_payment_method_country_config_active', ['paymentMethodId', 'isActive'])
+@Index('idx_payment_method_country_config_active', [
+  'paymentMethodId',
+  'isActive',
+])
 export class PaymentMethodCountryConfig {
   @PrimaryColumn({ name: 'payment_method_id', type: 'uuid' })
   paymentMethodId: string;

@@ -2,7 +2,10 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class C2BSimulateDto {
-  @ApiProperty({ description: 'ShortCode to simulate payment to', example: '600000' })
+  @ApiProperty({
+    description: 'ShortCode to simulate payment to',
+    example: '600000',
+  })
   @IsString()
   shortCode: string;
 

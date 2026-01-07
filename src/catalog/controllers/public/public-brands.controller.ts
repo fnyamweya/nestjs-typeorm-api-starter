@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { ResponseUtil } from 'src/common/utils/response.util';
 import { BrandService } from '../../services/brand.service';
@@ -6,7 +13,13 @@ import { PublicListBrandsDto } from '../../dto/public/public-list-brands.dto';
 
 @Controller('public/catalog/brands')
 @ApiTags('Public Catalog: Brands')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 export class PublicBrandsController {
   constructor(private readonly brandService: BrandService) {}
 

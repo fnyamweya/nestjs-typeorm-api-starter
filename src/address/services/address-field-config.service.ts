@@ -41,7 +41,8 @@ export class AddressFieldConfigService {
       id: null,
       countryCode: code,
       isActive: true,
-      schemaJson: code === 'KE' ? DEFAULT_KE_SCHEMA : { version: 1, fields: [] },
+      schemaJson:
+        code === 'KE' ? DEFAULT_KE_SCHEMA : { version: 1, fields: [] },
     };
   }
 
@@ -63,13 +64,22 @@ export class AddressFieldConfigService {
 
   async getLocationChain(countryCode: string): Promise<string[]> {
     const active = await this.getActive(countryCode);
-    const schemaJson = (active as any)?.schemaJson as Record<string, unknown> | undefined;
-    const raw = (schemaJson?.locationChain as unknown) ?? [];
+    const schemaJson = (active as any)?.schemaJson as
+      | Record<string, unknown>
+      | undefined;
+    const raw = schemaJson?.locationChain ?? [];
 
     // If not configured, fall back to a sensible default for KE (and generic otherwise)
-    const fallback: string[] = (countryCode || 'KE').toUpperCase() === 'KE'
-      ? [LocationType.COUNTRY, LocationType.COUNTY, LocationType.SUB_COUNTY, LocationType.WARD, LocationType.TOWN]
-      : [LocationType.COUNTRY];
+    const fallback: string[] =
+      (countryCode || 'KE').toUpperCase() === 'KE'
+        ? [
+            LocationType.COUNTRY,
+            LocationType.COUNTY,
+            LocationType.SUB_COUNTY,
+            LocationType.WARD,
+            LocationType.TOWN,
+          ]
+        : [LocationType.COUNTRY];
 
     const chain = Array.isArray(raw) ? raw : [];
     const normalized = chain

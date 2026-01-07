@@ -13,7 +13,10 @@ export function parseMetaSignatureHeader(signatureHeader: string): {
   return { algorithm: 'sha256', hexDigest: match[1].toLowerCase() };
 }
 
-export function computeMetaSha256HexDigest(appSecret: string, rawBody: Buffer): string {
+export function computeMetaSha256HexDigest(
+  appSecret: string,
+  rawBody: Buffer,
+): string {
   return crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex');
 }
 
@@ -25,7 +28,10 @@ export function verifyMetaWebhookSignature(params: {
   const parsed = parseMetaSignatureHeader(params.signatureHeader);
   if (!parsed) return false;
 
-  const expectedHex = computeMetaSha256HexDigest(params.appSecret, params.rawBody);
+  const expectedHex = computeMetaSha256HexDigest(
+    params.appSecret,
+    params.rawBody,
+  );
 
   // Constant-time compare
   const expectedBuf = Buffer.from(expectedHex, 'hex');

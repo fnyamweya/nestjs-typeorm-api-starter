@@ -71,8 +71,10 @@ export class PaymentProviderSeeder {
     existing.name = provider.name;
     existing.description = provider.description;
     existing.isActive = provider.isActive ?? existing.isActive;
-    if (typeof provider.configJson !== 'undefined') existing.configJson = provider.configJson ?? {};
-    if (typeof provider.metadata !== 'undefined') existing.metadata = provider.metadata ?? {};
+    if (typeof provider.configJson !== 'undefined')
+      existing.configJson = provider.configJson ?? {};
+    if (typeof provider.metadata !== 'undefined')
+      existing.metadata = provider.metadata ?? {};
 
     await this.providerRepo.save(existing);
   }

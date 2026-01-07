@@ -17,11 +17,19 @@ import { CustomerShippingAddressService } from '../services/customer-shipping-ad
 
 @Controller('customer/shipping-address')
 @UseGuards(JwtAuthGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Customer Shipping Address')
 @ApiBearerAuth('access-token')
 export class CustomerShippingAddressController {
-  constructor(private readonly customerShippingAddressService: CustomerShippingAddressService) {}
+  constructor(
+    private readonly customerShippingAddressService: CustomerShippingAddressService,
+  ) {}
 
   @Get()
   @ApiOkResponse({ description: 'Customer shipping address retrieved' })
@@ -32,8 +40,14 @@ export class CustomerShippingAddressController {
 
   @Put()
   @ApiOkResponse({ description: 'Customer shipping address saved' })
-  async upsert(@CurrentUser() user: AuthenticatedUser, @Body() payload: UpsertAddressDto) {
-    const row = await this.customerShippingAddressService.upsertForUser(user.id, payload);
+  async upsert(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() payload: UpsertAddressDto,
+  ) {
+    const row = await this.customerShippingAddressService.upsertForUser(
+      user.id,
+      payload,
+    );
     return ResponseUtil.success(row, 'Customer shipping address saved');
   }
 }

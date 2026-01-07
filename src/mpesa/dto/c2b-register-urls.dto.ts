@@ -26,7 +26,8 @@ export class C2BRegisterUrlsDto {
   confirmationUrl?: string;
 
   @ApiPropertyOptional({
-    description: 'Response type for validation. Usually Completed or Cancelled.',
+    description:
+      'Response type for validation. Usually Completed or Cancelled.',
     example: 'Completed',
   })
   @IsOptional()

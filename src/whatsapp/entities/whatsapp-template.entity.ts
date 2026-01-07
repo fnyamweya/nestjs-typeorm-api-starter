@@ -31,10 +31,18 @@ export class WhatsappTemplate {
   @Column({ name: 'is_active', type: 'boolean', default: true })
   isActive: boolean;
 
-  @Column({ name: 'components_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Column({
+    name: 'components_json',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
   componentsJson: Array<Record<string, unknown>>;
 
-  @Column({ name: 'default_components_json', type: 'jsonb', default: () => "'[]'::jsonb" })
+  @Column({
+    name: 'default_components_json',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
   defaultComponentsJson: Array<Record<string, unknown>>;
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })

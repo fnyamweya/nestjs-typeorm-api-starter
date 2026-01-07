@@ -10,17 +10,26 @@ import {
 } from 'class-validator';
 
 export class UpdatePaymentMethodDto {
-  @ApiPropertyOptional({ description: 'Unique payment method code', example: 'MPESA' })
+  @ApiPropertyOptional({
+    description: 'Unique payment method code',
+    example: 'MPESA',
+  })
   @IsOptional()
   @IsString()
   code?: string;
 
-  @ApiPropertyOptional({ description: 'Payment provider id (FK)', format: 'uuid' })
+  @ApiPropertyOptional({
+    description: 'Payment provider id (FK)',
+    format: 'uuid',
+  })
   @IsOptional()
   @IsUUID()
   providerId?: string;
 
-  @ApiPropertyOptional({ description: 'Payment method name', example: 'M-Pesa' })
+  @ApiPropertyOptional({
+    description: 'Payment method name',
+    example: 'M-Pesa',
+  })
   @IsOptional()
   @IsString()
   name?: string;
@@ -36,7 +45,8 @@ export class UpdatePaymentMethodDto {
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Channel codes that may use this payment method (preferred field)',
+    description:
+      'Channel codes that may use this payment method (preferred field)',
     example: ['WEB', 'MOBILE', 'WHATSAPP'],
     type: [String],
   })
@@ -47,7 +57,8 @@ export class UpdatePaymentMethodDto {
   channelCodes?: string[];
 
   @ApiPropertyOptional({
-    description: 'Channel codes that may use this payment method (deprecated alias of channelCodes)',
+    description:
+      'Channel codes that may use this payment method (deprecated alias of channelCodes)',
     example: ['WEB', 'MOBILE', 'WHATSAPP'],
     type: [String],
     deprecated: true,
@@ -59,7 +70,8 @@ export class UpdatePaymentMethodDto {
   channels?: string[];
 
   @ApiPropertyOptional({
-    description: 'Optional country scoping (ISO-3166 alpha-2). Empty means not restricted.',
+    description:
+      'Optional country scoping (ISO-3166 alpha-2). Empty means not restricted.',
     example: ['KE'],
     type: [String],
   })
@@ -70,7 +82,8 @@ export class UpdatePaymentMethodDto {
   countryCodes?: string[];
 
   @ApiPropertyOptional({
-    description: 'Optional currency scoping (ISO-4217). Empty means not restricted.',
+    description:
+      'Optional currency scoping (ISO-4217). Empty means not restricted.',
     example: ['KES'],
     type: [String],
   })

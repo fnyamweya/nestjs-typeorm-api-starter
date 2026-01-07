@@ -31,13 +31,17 @@ export class CreatePaymentMethodDto {
   @IsString()
   description?: string;
 
-  @ApiPropertyOptional({ description: 'Whether method is active', default: true })
+  @ApiPropertyOptional({
+    description: 'Whether method is active',
+    default: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
   @ApiPropertyOptional({
-    description: 'Channel codes that may use this payment method (preferred field)',
+    description:
+      'Channel codes that may use this payment method (preferred field)',
     example: ['WEB', 'MOBILE', 'WHATSAPP'],
     type: [String],
   })
@@ -48,7 +52,8 @@ export class CreatePaymentMethodDto {
   channelCodes?: string[];
 
   @ApiPropertyOptional({
-    description: 'Channel codes that may use this payment method (deprecated alias of channelCodes)',
+    description:
+      'Channel codes that may use this payment method (deprecated alias of channelCodes)',
     example: ['WEB', 'MOBILE', 'WHATSAPP'],
     type: [String],
     deprecated: true,
@@ -60,7 +65,8 @@ export class CreatePaymentMethodDto {
   channels?: string[];
 
   @ApiPropertyOptional({
-    description: 'Optional country scoping (ISO-3166 alpha-2). Empty means not restricted.',
+    description:
+      'Optional country scoping (ISO-3166 alpha-2). Empty means not restricted.',
     example: ['KE'],
     type: [String],
   })
@@ -71,7 +77,8 @@ export class CreatePaymentMethodDto {
   countryCodes?: string[];
 
   @ApiPropertyOptional({
-    description: 'Optional currency scoping (ISO-4217). Empty means not restricted.',
+    description:
+      'Optional currency scoping (ISO-4217). Empty means not restricted.',
     example: ['KES'],
     type: [String],
   })

@@ -1,4 +1,7 @@
-import { computeMetaSha256HexDigest, verifyMetaWebhookSignature } from './meta-webhook-signature';
+import {
+  computeMetaSha256HexDigest,
+  verifyMetaWebhookSignature,
+} from './meta-webhook-signature';
 
 describe('meta-webhook-signature', () => {
   it('verifies a valid sha256 signature', () => {

@@ -10,7 +10,11 @@ import { CountryModule } from 'src/country/country.module';
 import { Location } from 'src/location/entities/location.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Address, AddressFieldConfig, Location]), GooglePlacesModule, CountryModule],
+  imports: [
+    TypeOrmModule.forFeature([Address, AddressFieldConfig, Location]),
+    GooglePlacesModule,
+    CountryModule,
+  ],
   controllers: [AddressFieldConfigController],
   providers: [AddressService, AddressFieldConfigService],
   exports: [AddressService, AddressFieldConfigService, TypeOrmModule],

@@ -31,9 +31,7 @@ class InMemorySettingRepo {
 
   async find({ where }: any) {
     const keys: string[] = (where ?? []).map((w: any) => w.key).filter(Boolean);
-    return keys
-      .map((k) => this.items.get(k))
-      .filter((v) => v !== undefined);
+    return keys.map((k) => this.items.get(k)).filter((v) => v !== undefined);
   }
 }
 
@@ -56,8 +54,12 @@ describe('SettingService.updateWhatsappSecrets', () => {
     expect(crypto.encrypt).toHaveBeenCalledWith('app_secret_value');
     expect(crypto.encrypt).toHaveBeenCalledWith('verify_token_value');
 
-    const storedAppSecret = await repo.findOne({ where: { key: 'whatsapp_app_secret' } });
-    const storedVerifyToken = await repo.findOne({ where: { key: 'whatsapp_webhook_verify_token' } });
+    const storedAppSecret = await repo.findOne({
+      where: { key: 'whatsapp_app_secret' },
+    });
+    const storedVerifyToken = await repo.findOne({
+      where: { key: 'whatsapp_webhook_verify_token' },
+    });
 
     expect(storedAppSecret.value).toBe('enc:v1:app_secret_value');
     expect(storedVerifyToken.value).toBe('enc:v1:verify_token_value');

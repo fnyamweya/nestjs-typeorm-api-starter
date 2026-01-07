@@ -56,13 +56,20 @@ export class PaymentMethodSeeder {
     return Array.from(
       new Set(
         (values ?? [])
-          .map((c) => String(c ?? '').trim().toUpperCase())
+          .map((c) =>
+            String(c ?? '')
+              .trim()
+              .toUpperCase(),
+          )
           .filter(Boolean),
       ),
     );
   }
 
-  private async setChannels(methodId: string, channelCodes: string[]): Promise<void> {
+  private async setChannels(
+    methodId: string,
+    channelCodes: string[],
+  ): Promise<void> {
     await this.methodChannelRepo.delete({ paymentMethodId: methodId } as any);
     if (!channelCodes.length) return;
 
@@ -72,7 +79,9 @@ export class PaymentMethodSeeder {
     const foundSet = new Set(channels.map((c) => c.code.toUpperCase()));
     const missing = channelCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new Error(`Unknown channelCodes for payment method seed: ${missing.join(', ')}`);
+      throw new Error(
+        `Unknown channelCodes for payment method seed: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodChannelRepo.save(
@@ -86,15 +95,24 @@ export class PaymentMethodSeeder {
     );
   }
 
-  private async setCurrencies(methodId: string, currencyCodes: string[]): Promise<void> {
+  private async setCurrencies(
+    methodId: string,
+    currencyCodes: string[],
+  ): Promise<void> {
     await this.methodCurrencyRepo.delete({ paymentMethodId: methodId } as any);
     if (!currencyCodes.length) return;
 
-    const currencies = await this.currencyRepo.find({ where: { code: In(currencyCodes) } });
-    const foundSet = new Set(currencies.map((c) => String(c.code).toUpperCase()));
+    const currencies = await this.currencyRepo.find({
+      where: { code: In(currencyCodes) },
+    });
+    const foundSet = new Set(
+      currencies.map((c) => String(c.code).toUpperCase()),
+    );
     const missing = currencyCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new Error(`Unknown currencyCodes for payment method seed: ${missing.join(', ')}`);
+      throw new Error(
+        `Unknown currencyCodes for payment method seed: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodCurrencyRepo.save(
@@ -108,7 +126,10 @@ export class PaymentMethodSeeder {
     );
   }
 
-  private async setCountries(methodId: string, countryCodes: string[]): Promise<void> {
+  private async setCountries(
+    methodId: string,
+    countryCodes: string[],
+  ): Promise<void> {
     await this.methodCountryRepo.delete({ paymentMethodId: methodId } as any);
     if (!countryCodes.length) return;
 
@@ -118,10 +139,14 @@ export class PaymentMethodSeeder {
     const configs = await this.countryConfigRepo.find({
       where: { countryCode: In(countryCodes), isActive: true },
     });
-    const foundSet = new Set(configs.map((c) => String(c.countryCode).toUpperCase()));
+    const foundSet = new Set(
+      configs.map((c) => String(c.countryCode).toUpperCase()),
+    );
     const missing = countryCodes.filter((c) => !foundSet.has(c));
     if (missing.length) {
-      throw new Error(`Unknown countryCodes for payment method seed: ${missing.join(', ')}`);
+      throw new Error(
+        `Unknown countryCodes for payment method seed: ${missing.join(', ')}`,
+      );
     }
 
     await this.methodCountryRepo.save(
@@ -155,7 +180,10 @@ export class PaymentMethodSeeder {
             currencies: ['KES'],
           },
         },
-        metadata: { seededBy: 'PaymentMethodSeeder', seedKey: 'safaricom-mpesa' },
+        metadata: {
+          seededBy: 'PaymentMethodSeeder',
+          seedKey: 'safaricom-mpesa',
+        },
       },
       {
         code: 'CASH',
@@ -181,7 +209,10 @@ export class PaymentMethodSeeder {
           kind: 'BANK_TRANSFER',
           settlement: 'manual',
         },
-        metadata: { seededBy: 'PaymentMethodSeeder', seedKey: 'offline-bank-transfer' },
+        metadata: {
+          seededBy: 'PaymentMethodSeeder',
+          seedKey: 'offline-bank-transfer',
+        },
       },
       {
         code: 'CARD',
@@ -203,7 +234,9 @@ export class PaymentMethodSeeder {
     const providerCode = this.normalizeCode(method.providerCode);
     if (!code || !providerCode) return;
 
-    const provider = await this.providerRepo.findOne({ where: { code: providerCode } });
+    const provider = await this.providerRepo.findOne({
+      where: { code: providerCode },
+    });
     if (!provider) {
       // Provider seeder should run first; fail loud so missing ordering is obvious.
       throw new Error(`Payment provider not found for code ${providerCode}`);
@@ -223,10 +256,18 @@ export class PaymentMethodSeeder {
         }),
       );
 
-      await this.setChannels(created.id, this.normalizeCodes(method.channelCodes));
-      await this.setCountries(created.id, this.normalizeCodes(method.countryCodes));
+      await this.setChannels(
+        created.id,
+        this.normalizeCodes(method.channelCodes),
+      );
+      await this.setCountries(
+        created.id,
+        this.normalizeCodes(method.countryCodes),
+      );
       const currencyCodes = this.normalizeCodes(
-        method.currencyCodes ?? ((method.configJson as any)?.availability?.currencies ?? []),
+        method.currencyCodes ??
+          (method.configJson as any)?.availability?.currencies ??
+          [],
       );
       await this.setCurrencies(created.id, currencyCodes);
       return;
@@ -236,19 +277,28 @@ export class PaymentMethodSeeder {
     existing.name = method.name;
     existing.description = method.description;
     existing.isActive = method.isActive ?? existing.isActive;
-    if (typeof method.configJson !== 'undefined') existing.configJson = method.configJson ?? {};
-    if (typeof method.metadata !== 'undefined') existing.metadata = method.metadata ?? {};
+    if (typeof method.configJson !== 'undefined')
+      existing.configJson = method.configJson ?? {};
+    if (typeof method.metadata !== 'undefined')
+      existing.metadata = method.metadata ?? {};
 
     const saved = await this.methodRepo.save(existing);
     if (typeof method.channelCodes !== 'undefined') {
-      await this.setChannels(saved.id, this.normalizeCodes(method.channelCodes));
+      await this.setChannels(
+        saved.id,
+        this.normalizeCodes(method.channelCodes),
+      );
     }
     if (typeof method.countryCodes !== 'undefined') {
-      await this.setCountries(saved.id, this.normalizeCodes(method.countryCodes));
+      await this.setCountries(
+        saved.id,
+        this.normalizeCodes(method.countryCodes),
+      );
     }
     if (typeof method.configJson !== 'undefined') {
       const currencyCodes = this.normalizeCodes(
-        method.currencyCodes ?? (method.configJson as any)?.availability?.currencies,
+        method.currencyCodes ??
+          (method.configJson as any)?.availability?.currencies,
       );
       await this.setCurrencies(saved.id, currencyCodes);
     }

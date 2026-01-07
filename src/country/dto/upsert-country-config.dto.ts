@@ -16,7 +16,11 @@ export class UpsertCountryConfigDto {
           },
           {
             locationType: 'ward',
-            googleComponentTypes: ['administrative_area_level_3', 'sublocality_level_1', 'sublocality'],
+            googleComponentTypes: [
+              'administrative_area_level_3',
+              'sublocality_level_1',
+              'sublocality',
+            ],
           },
         ],
       },

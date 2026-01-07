@@ -12,4 +12,3 @@ import { CurrencySeeder } from './seeders/currency.seeder';
   exports: [CurrencyService, CurrencySeeder],
 })
 export class CurrencyModule {}
-

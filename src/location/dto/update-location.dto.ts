@@ -1,6 +1,13 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsNotEmpty, IsObject, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Length,
+} from 'class-validator';
 
 function normalizeType(value: unknown): unknown {
   if (typeof value !== 'string') return value;
@@ -32,7 +39,9 @@ export class UpdateLocationDto {
   @IsNotEmpty()
   type?: string;
 
-  @ApiPropertyOptional({ description: 'Parent location id (UUID). Set null to make root.' })
+  @ApiPropertyOptional({
+    description: 'Parent location id (UUID). Set null to make root.',
+  })
   @IsOptional()
   @IsUUID()
   parentId?: string;

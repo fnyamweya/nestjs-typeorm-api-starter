@@ -11,13 +11,18 @@ describe('CreateWhatsappTemplateDto', () => {
       language: 'en_US',
       category: 'UTILITY',
       components: [{ type: 'BODY', text: 'Hi {{1}}' }],
-      defaultComponents: [{ type: 'body', parameters: [{ type: 'text', text: 'Customer' }] }],
+      defaultComponents: [
+        { type: 'body', parameters: [{ type: 'text', text: 'Customer' }] },
+      ],
       isActive: true,
       metaJson: { scenario: 'order-confirmed' },
       submitToProvider: false,
     });
 
-    const errors = validateSync(dto, { whitelist: true, forbidNonWhitelisted: true });
+    const errors = validateSync(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
     expect(errors).toEqual([]);
   });
 
@@ -28,7 +33,10 @@ describe('CreateWhatsappTemplateDto', () => {
       components: [{ type: 'BODY' }],
     });
 
-    const errors = validateSync(dto, { whitelist: true, forbidNonWhitelisted: true });
+    const errors = validateSync(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
     expect(errors.length).toBeGreaterThan(0);
   });
 
@@ -39,7 +47,10 @@ describe('CreateWhatsappTemplateDto', () => {
       components: [{ type: 'BODY', text: 'Hi {{1}}' }],
     });
 
-    const errors = validateSync(dto, { whitelist: true, forbidNonWhitelisted: true });
+    const errors = validateSync(dto, {
+      whitelist: true,
+      forbidNonWhitelisted: true,
+    });
     expect(errors).toEqual([]);
     expect(dto.name).toBe('order_confirmation_v2');
     expect(dto.category).toBe('UTILITY');

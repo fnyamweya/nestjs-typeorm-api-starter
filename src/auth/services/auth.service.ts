@@ -215,7 +215,9 @@ export class AuthService {
         );
 
         if (!isValidCode) {
-          throw new UnauthorizedException('Invalid or expired verification code');
+          throw new UnauthorizedException(
+            'Invalid or expired verification code',
+          );
         }
       } else {
         await this.twoFactorService.sendVerificationCode(user.id);
@@ -224,8 +226,7 @@ export class AuthService {
           requiresTwoFactor: true,
           userId: user.id,
           twoFactorToken: this.signTwoFactorLoginToken(user.id),
-          message:
-            'Two-factor authentication code queued for delivery',
+          message: 'Two-factor authentication code queued for delivery',
         };
       }
     }
@@ -366,19 +367,25 @@ export class AuthService {
       pendingInvite.status = UserInviteStatus.EXPIRED;
       await this.userInviteRepository.save(pendingInvite);
       if (pendingInvite.userId) {
-        const pendingUser = await this.userRepository.findOne({ where: { id: pendingInvite.userId } });
+        const pendingUser = await this.userRepository.findOne({
+          where: { id: pendingInvite.userId },
+        });
         if (pendingUser && !pendingUser.isActive) {
           await this.userRepository.remove(pendingUser);
         }
       }
     }
 
-    const existingUser = await this.userRepository.findOne({ where: { email } });
+    const existingUser = await this.userRepository.findOne({
+      where: { email },
+    });
     if (existingUser) {
       throw new BadRequestException('A user with this email already exists');
     }
 
-    const existingPhoneUser = await this.userRepository.findOne({ where: { phone } });
+    const existingPhoneUser = await this.userRepository.findOne({
+      where: { phone },
+    });
     if (existingPhoneUser) {
       throw new BadRequestException('A user with this phone already exists');
     }
@@ -393,19 +400,27 @@ export class AuthService {
       throw new BadRequestException('Target role is required');
     }
 
-    const targetRole = await this.roleRepository.findOne({ where: { id: requestedRoleId } });
+    const targetRole = await this.roleRepository.findOne({
+      where: { id: requestedRoleId },
+    });
     if (!targetRole) {
       throw new BadRequestException('Target role not found');
     }
 
-    await this.assertInviterCanAssignRole(inviter.roleId, requestedRoleId, inviterRole);
+    await this.assertInviterCanAssignRole(
+      inviter.roleId,
+      requestedRoleId,
+      inviterRole,
+    );
 
     const roleId = requestedRoleId;
     const expiresInDays = parseInt(
       this.configService.get<string>('USER_INVITE_EXPIRY_DAYS', '7'),
       10,
     );
-    const expiresAt = new Date(Date.now() + expiresInDays * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(
+      Date.now() + expiresInDays * 24 * 60 * 60 * 1000,
+    );
 
     // Create placeholder user that will activate upon password set
     const pendingUser = await this.userRepository.save(
@@ -495,7 +510,10 @@ export class AuthService {
     try {
       const to = this.normalizeWhatsappTo(phone);
       if (to) {
-        const appName = this.configService.get<string>('APP_NAME', 'Application');
+        const appName = this.configService.get<string>(
+          'APP_NAME',
+          'Application',
+        );
         await this.whatsappMessageService.send({
           to,
           type: 'text',
@@ -520,7 +538,10 @@ export class AuthService {
     request: Request,
   ) {
     const updatedUser = await this.completePasswordSetup(
-      { token: acceptUserInviteDto.token, newPassword: acceptUserInviteDto.password },
+      {
+        token: acceptUserInviteDto.token,
+        newPassword: acceptUserInviteDto.password,
+      },
       request,
     );
 
@@ -559,7 +580,9 @@ export class AuthService {
     }
 
     if (invite.userId) {
-      const placeholderUser = await this.userRepository.findOne({ where: { id: invite.userId } });
+      const placeholderUser = await this.userRepository.findOne({
+        where: { id: invite.userId },
+      });
       if (placeholderUser && !placeholderUser.isActive) {
         await this.userRepository.remove(placeholderUser);
       }
@@ -606,10 +629,7 @@ export class AuthService {
     }
   }
 
-  async loginCustomer(
-    customerLoginDto: CustomerLoginDto,
-    request: Request,
-  ) {
+  async loginCustomer(customerLoginDto: CustomerLoginDto, request: Request) {
     const user = await this.userRepository.findOne({
       where: [
         { email: customerLoginDto.identifier },
@@ -632,9 +652,7 @@ export class AuthService {
       throw new UnauthorizedException('Account is disabled');
     }
 
-    if (
-      !(await this.verifyUserPassword(user, customerLoginDto.password))
-    ) {
+    if (!(await this.verifyUserPassword(user, customerLoginDto.password))) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
@@ -650,7 +668,9 @@ export class AuthService {
         );
 
         if (!isValidCode) {
-          throw new UnauthorizedException('Invalid or expired verification code');
+          throw new UnauthorizedException(
+            'Invalid or expired verification code',
+          );
         }
       } else {
         await this.twoFactorService.sendVerificationCode(user.id);
@@ -659,8 +679,7 @@ export class AuthService {
           requiresTwoFactor: true,
           userId: user.id,
           twoFactorToken: this.signTwoFactorLoginToken(user.id),
-          message:
-            'Two-factor authentication code queued for delivery',
+          message: 'Two-factor authentication code queued for delivery',
         };
       }
     }
@@ -722,8 +741,7 @@ export class AuthService {
         requiresTwoFactor: true,
         userId: user.id,
         twoFactorToken: this.signTwoFactorLoginToken(user.id),
-        message:
-          'Two-factor authentication code queued for delivery',
+        message: 'Two-factor authentication code queued for delivery',
       };
     }
 
@@ -743,10 +761,7 @@ export class AuthService {
     return this.completeLogin(user, request);
   }
 
-  async loginAdminWithOAuth(
-    oauthProfile: OAuthAdminProfile,
-    request: Request,
-  ) {
+  async loginAdminWithOAuth(oauthProfile: OAuthAdminProfile, request: Request) {
     if (!oauthProfile?.email) {
       throw new UnauthorizedException(
         'OAuth provider did not supply an email address',
@@ -766,7 +781,12 @@ export class AuthService {
         provider: oauthProfile.provider,
         providerId: oauthProfile.providerId,
       },
-      relations: ['user', 'user.role', 'user.role.rolePermissions', 'user.role.rolePermissions.permission'],
+      relations: [
+        'user',
+        'user.role',
+        'user.role.rolePermissions',
+        'user.role.rolePermissions.permission',
+      ],
     });
 
     let user: User | undefined;
@@ -830,7 +850,8 @@ export class AuthService {
       await ensureAdminProfile(user.id);
     } else {
       const isAdmin =
-        user.role?.name?.toLowerCase() === 'admin' || user.roleId === adminRole.id;
+        user.role?.name?.toLowerCase() === 'admin' ||
+        user.roleId === adminRole.id;
 
       if (!isAdmin) {
         throw new UnauthorizedException('Account is not authorized as admin');
@@ -1198,7 +1219,9 @@ export class AuthService {
     }
 
     const isEmailIdentifier = rawIdentifier.includes('@');
-    const normalizedEmail = isEmailIdentifier ? rawIdentifier.toLowerCase() : '';
+    const normalizedEmail = isEmailIdentifier
+      ? rawIdentifier.toLowerCase()
+      : '';
     const normalizedPhoneDigits = isEmailIdentifier
       ? ''
       : rawIdentifier.replace(/\D/g, '');
@@ -1210,8 +1233,7 @@ export class AuthService {
             { phone: rawIdentifier },
             {
               phone: Raw(
-                (alias) =>
-                  `regexp_replace(${alias}, '\\D', '', 'g') = :digits`,
+                (alias) => `regexp_replace(${alias}, '\\D', '', 'g') = :digits`,
                 { digits: normalizedPhoneDigits },
               ),
             },
@@ -1340,7 +1362,9 @@ export class AuthService {
     otpVerification.status = CacheKeyStatus.VERIFIED;
     await this.cacheKeyRepository.save(otpVerification);
 
-    const resetToken = this.signResetPasswordToken(verifyPasswordResetOTPCode.userId);
+    const resetToken = this.signResetPasswordToken(
+      verifyPasswordResetOTPCode.userId,
+    );
 
     return {
       userId: verifyPasswordResetOTPCode.userId,
@@ -1361,9 +1385,7 @@ export class AuthService {
       throw new UnauthorizedException('Access token verification failed');
     }
 
-    const { userId, type } = this.jwtService.decode(
-      token,
-    );
+    const { userId, type } = this.jwtService.decode(token);
 
     const user = await this.userRepository.findOne({
       where: { id: userId },
@@ -1491,7 +1513,9 @@ export class AuthService {
     }
 
     if (user.roleId) {
-      const role = await this.roleRepository.findOne({ where: { id: user.roleId } });
+      const role = await this.roleRepository.findOne({
+        where: { id: user.roleId },
+      });
       if (role?.name?.toLowerCase().includes('admin')) {
         await this.ensureAdminProfile(user.id);
       }
@@ -1522,7 +1546,8 @@ export class AuthService {
     adminRegisterDto: AdminRegisterDto,
     adminRole?: Role | null,
   ): User {
-    const phone = adminRegisterDto.phone?.trim() || `admin-${crypto.randomUUID()}`;
+    const phone =
+      adminRegisterDto.phone?.trim() || `admin-${crypto.randomUUID()}`;
     const normalizedEmail = adminRegisterDto.email.trim().toLowerCase();
 
     const user = this.userRepository.create({

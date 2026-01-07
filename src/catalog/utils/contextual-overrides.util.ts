@@ -17,10 +17,14 @@ export interface ProductViewContext {
   now?: Date;
 }
 
-function matchesContext(match: ContextMatch | undefined, ctx: ProductViewContext): boolean {
+function matchesContext(
+  match: ContextMatch | undefined,
+  ctx: ProductViewContext,
+): boolean {
   if (!match) return true;
   if (match.channel && match.channel !== ctx.channel) return false;
-  if (match.customerTier && match.customerTier !== ctx.customerTier) return false;
+  if (match.customerTier && match.customerTier !== ctx.customerTier)
+    return false;
   if (match.location && match.location !== ctx.location) return false;
   if (match.role && match.role !== ctx.role) return false;
   return true;
@@ -38,7 +42,11 @@ function isWithinValidity(o: ContextualOverrideDTO, now: Date): boolean {
   return true;
 }
 
-function evalRule(rule: RuleExpression | undefined, base: ProductDTO, ctx: ProductViewContext): boolean {
+function evalRule(
+  rule: RuleExpression | undefined,
+  base: ProductDTO,
+  ctx: ProductViewContext,
+): boolean {
   if (!rule) return true;
   if (rule.type === 'SCRIPT') {
     // Intentionally not supported: arbitrary scripts are unsafe in a backend.
@@ -64,7 +72,12 @@ function specificity(match?: ContextMatch): number {
 
 function isForbiddenPath(path: string): boolean {
   // Protect stable identity. You can still override pricing/availability/labels/etc.
-  return path === '/id' || path.startsWith('/id/') || path === '/code' || path.startsWith('/code/');
+  return (
+    path === '/id' ||
+    path.startsWith('/id/') ||
+    path === '/code' ||
+    path.startsWith('/code/')
+  );
 }
 
 function sanitizePatch(patch: JsonPatchOperation[]): JsonPatchOperation[] {

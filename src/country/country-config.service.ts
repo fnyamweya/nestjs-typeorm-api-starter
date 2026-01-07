@@ -97,28 +97,41 @@ export class CountryConfigService {
 
     const version = configJson.version;
     if (version !== undefined) {
-      if (typeof version !== 'number' || !Number.isFinite(version) || version < 1) {
+      if (
+        typeof version !== 'number' ||
+        !Number.isFinite(version) ||
+        version < 1
+      ) {
         throw new BadRequestException('config.version must be a number >= 1');
       }
     }
 
     const currencies = configJson.currencies;
     if (currencies !== undefined) {
-      if (!Array.isArray(currencies) || currencies.some((c) => typeof c !== 'string' || c.trim().length !== 3)) {
-        throw new BadRequestException('config.currencies must be an array of 3-letter currency codes');
+      if (
+        !Array.isArray(currencies) ||
+        currencies.some((c) => typeof c !== 'string' || c.trim().length !== 3)
+      ) {
+        throw new BadRequestException(
+          'config.currencies must be an array of 3-letter currency codes',
+        );
       }
     }
 
     const glm = configJson.googleLocationMapping;
     if (glm !== undefined) {
       if (!this.isRecord(glm)) {
-        throw new BadRequestException('config.googleLocationMapping must be an object');
+        throw new BadRequestException(
+          'config.googleLocationMapping must be an object',
+        );
       }
 
       const candidates = (glm as any).candidates;
       if (candidates !== undefined) {
         if (!Array.isArray(candidates)) {
-          throw new BadRequestException('config.googleLocationMapping.candidates must be an array');
+          throw new BadRequestException(
+            'config.googleLocationMapping.candidates must be an array',
+          );
         }
 
         const allowed = new Set(Object.values(LocationType));
@@ -142,7 +155,9 @@ export class CountryConfigService {
           if (
             !Array.isArray(googleComponentTypes) ||
             !googleComponentTypes.length ||
-            googleComponentTypes.some((t: any) => typeof t !== 'string' || !t.trim())
+            googleComponentTypes.some(
+              (t: any) => typeof t !== 'string' || !t.trim(),
+            )
           ) {
             throw new BadRequestException(
               `config.googleLocationMapping.candidates[${i}].googleComponentTypes must be a non-empty string array`,
@@ -153,7 +168,9 @@ export class CountryConfigService {
     }
   }
 
-  private async normalizeAndValidateCurrencies(configJson: Record<string, unknown>) {
+  private async normalizeAndValidateCurrencies(
+    configJson: Record<string, unknown>,
+  ) {
     const currencies = (configJson as any).currencies;
     if (!Array.isArray(currencies)) return configJson;
 
@@ -189,14 +206,19 @@ export class CountryConfigService {
 
     this.validateConfigJson(configJson);
 
-    const normalizedConfig = await this.normalizeAndValidateCurrencies(configJson);
+    const normalizedConfig =
+      await this.normalizeAndValidateCurrencies(configJson);
 
     let row = await this.repo.findOne({
       where: { countryCode: code, isActive: true },
     });
 
     if (!row) {
-      row = this.repo.create({ countryCode: code, isActive: true, configJson: normalizedConfig });
+      row = this.repo.create({
+        countryCode: code,
+        isActive: true,
+        configJson: normalizedConfig,
+      });
     } else {
       row.configJson = normalizedConfig;
     }
@@ -204,7 +226,10 @@ export class CountryConfigService {
     return this.repo.save(row);
   }
 
-  private normalizeMappingFromConfig(countryCode: string, configJson: Record<string, unknown>): CountryGoogleLocationMapping | null {
+  private normalizeMappingFromConfig(
+    countryCode: string,
+    configJson: Record<string, unknown>,
+  ): CountryGoogleLocationMapping | null {
     const raw = (configJson?.googleLocationMapping as any)?.candidates;
     if (!Array.isArray(raw)) return null;
 
@@ -212,11 +237,12 @@ export class CountryConfigService {
     const candidates: CountryGoogleLocationMapping['candidates'] = [];
 
     for (const item of raw) {
-      const locationType = (item as any)?.locationType;
-      const googleComponentTypes = (item as any)?.googleComponentTypes;
+      const locationType = item?.locationType;
+      const googleComponentTypes = item?.googleComponentTypes;
 
       if (!allowed.has(locationType)) continue;
-      if (!Array.isArray(googleComponentTypes) || !googleComponentTypes.length) continue;
+      if (!Array.isArray(googleComponentTypes) || !googleComponentTypes.length)
+        continue;
 
       candidates.push({
         locationType,
@@ -229,12 +255,17 @@ export class CountryConfigService {
     return { countryCode: countryCode.toUpperCase(), candidates };
   }
 
-  async getCountryGoogleLocationMapping(countryCode?: string): Promise<CountryGoogleLocationMapping | null> {
+  async getCountryGoogleLocationMapping(
+    countryCode?: string,
+  ): Promise<CountryGoogleLocationMapping | null> {
     if (!countryCode) return null;
     const code = String(countryCode).toUpperCase();
 
     const active = await this.getActive(code);
-    const cfg = this.normalizeMappingFromConfig(code, (active as any)?.configJson ?? {});
+    const cfg = this.normalizeMappingFromConfig(
+      code,
+      (active as any)?.configJson ?? {},
+    );
     if (cfg) return cfg;
 
     // Fallback to defaults if config exists but doesn't define a valid mapping.

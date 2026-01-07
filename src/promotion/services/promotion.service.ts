@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Promotion } from '../entities/promotion.entity';
@@ -15,7 +19,10 @@ import { PromotionAction } from '../entities/promotion-action.entity';
 import { CreatePromotionDto } from '../dto/create-promotion.dto';
 import { UpdatePromotionDto } from '../dto/update-promotion.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { CurrencyService } from 'src/currency/currency.service';
 
 export interface AppliedPromotion {
@@ -53,7 +60,11 @@ export type PromotionEvaluationContext = {
   items?: PromotionLineItemContext[];
 };
 
-type ConditionEvaluator = (ctx: PromotionEvaluationContext, operator: ConditionOperator, params: Record<string, unknown>) => boolean;
+type ConditionEvaluator = (
+  ctx: PromotionEvaluationContext,
+  operator: ConditionOperator,
+  params: Record<string, unknown>,
+) => boolean;
 type ActionApplier = (
   ctx: PromotionEvaluationContext,
   params: Record<string, unknown>,
@@ -75,8 +86,10 @@ export class PromotionService {
     private readonly currencyService: CurrencyService,
   ) {}
 
-  private async normalizeAndValidateEmbeddedCurrency(params: Record<string, unknown> | undefined): Promise<Record<string, unknown>> {
-    const p = (params ?? {}) as Record<string, unknown>;
+  private async normalizeAndValidateEmbeddedCurrency(
+    params: Record<string, unknown> | undefined,
+  ): Promise<Record<string, unknown>> {
+    const p = params ?? {};
     const raw = (p as any).currency;
     if (typeof raw === 'undefined' || raw === null || raw === '') return p;
 
@@ -96,7 +109,10 @@ export class PromotionService {
     );
   }
 
-  async listPublicPromotions(opts?: { channel?: string; now?: Date }): Promise<PublicPromotion[]> {
+  async listPublicPromotions(opts?: {
+    channel?: string;
+    now?: Date;
+  }): Promise<PublicPromotion[]> {
     const channel = opts?.channel?.trim() || undefined;
     const key = `promotions:public:${channel ?? 'all'}`;
 
@@ -146,7 +162,11 @@ export class PromotionService {
     const key = `promotions:byId:${id}`;
     const p = await this.cache.remember(
       key,
-      () => this.promotionRepo.findOne({ where: { id }, relations: ['conditions', 'actions'] }),
+      () =>
+        this.promotionRepo.findOne({
+          where: { id },
+          relations: ['conditions', 'actions'],
+        }),
       { ttlSeconds: 300 },
     );
     if (!p) throw new NotFoundException('Promotion not found');
@@ -158,110 +178,33 @@ export class PromotionService {
       throw new BadRequestException('At least one action is required');
     }
 
-    const created = await this.promotionRepo.manager.transaction(async (manager) => {
-      const promoRepo = manager.getRepository(Promotion);
-      const actionRepo = manager.getRepository(PromotionAction);
-      const conditionRepo = manager.getRepository(PromotionCondition);
+    const created = await this.promotionRepo.manager.transaction(
+      async (manager) => {
+        const promoRepo = manager.getRepository(Promotion);
+        const actionRepo = manager.getRepository(PromotionAction);
+        const conditionRepo = manager.getRepository(PromotionCondition);
 
-      const promotion = promoRepo.create({
-        code: dto.code,
-        name: dto.name,
-        description: dto.description,
-        status: dto.status,
-        priority: dto.priority,
-        stackingPolicy: dto.stackingPolicy,
-        stackingGroup: dto.stackingGroup,
-        maxRedemptions: dto.maxRedemptions,
-        maxRedemptionsPerCustomer: dto.maxRedemptionsPerCustomer,
-        validFrom: dto.validFrom ? new Date(dto.validFrom) : undefined,
-        validTo: dto.validTo ? new Date(dto.validTo) : undefined,
-        channels: dto.channels ?? [],
-        metadata: dto.metadata ?? {},
-      });
+        const promotion = promoRepo.create({
+          code: dto.code,
+          name: dto.name,
+          description: dto.description,
+          status: dto.status,
+          priority: dto.priority,
+          stackingPolicy: dto.stackingPolicy,
+          stackingGroup: dto.stackingGroup,
+          maxRedemptions: dto.maxRedemptions,
+          maxRedemptionsPerCustomer: dto.maxRedemptionsPerCustomer,
+          validFrom: dto.validFrom ? new Date(dto.validFrom) : undefined,
+          validTo: dto.validTo ? new Date(dto.validTo) : undefined,
+          channels: dto.channels ?? [],
+          metadata: dto.metadata ?? {},
+        });
 
-      promotion.actions = [];
-      for (const a of dto.actions) {
-        const params = await this.normalizeAndValidateEmbeddedCurrency((a as any).params as any);
-        promotion.actions.push(
-          actionRepo.create({
-            type: a.type,
-            params,
-            target: a.target ?? {},
-            promotion,
-          }),
-        );
-      }
-
-      promotion.conditions = [];
-      for (const c of dto.conditions ?? []) {
-        const params = await this.normalizeAndValidateEmbeddedCurrency((c as any).params as any);
-        promotion.conditions.push(
-          conditionRepo.create({
-            type: c.type,
-            operator: c.operator,
-            params,
-            promotion,
-          }),
-        );
-      }
-
-      const saved = await promoRepo.save(promotion);
-      return promoRepo.findOneOrFail({ where: { id: saved.id }, relations: ['conditions', 'actions'] });
-    });
-
-    await this.cache.delByPrefix('promotions:');
-    return created;
-  }
-
-  async updatePromotion(id: string, dto: UpdatePromotionDto): Promise<Promotion> {
-    const updated = await this.promotionRepo.manager.transaction(async (manager) => {
-      const promoRepo = manager.getRepository(Promotion);
-      const actionRepo = manager.getRepository(PromotionAction);
-      const conditionRepo = manager.getRepository(PromotionCondition);
-
-      const promotion = await promoRepo.findOne({ where: { id }, relations: ['conditions', 'actions'] });
-      if (!promotion) throw new NotFoundException('Promotion not found');
-
-      if (typeof dto.code !== 'undefined') promotion.code = dto.code;
-      if (typeof dto.name !== 'undefined') promotion.name = dto.name;
-      if (typeof dto.description !== 'undefined') promotion.description = dto.description;
-      if (typeof dto.status !== 'undefined') promotion.status = dto.status;
-      if (typeof dto.priority !== 'undefined') promotion.priority = dto.priority;
-      if (typeof dto.stackingPolicy !== 'undefined') promotion.stackingPolicy = dto.stackingPolicy;
-      if (typeof dto.stackingGroup !== 'undefined') promotion.stackingGroup = dto.stackingGroup;
-      if (typeof dto.maxRedemptions !== 'undefined') promotion.maxRedemptions = dto.maxRedemptions;
-      if (typeof dto.maxRedemptionsPerCustomer !== 'undefined')
-        promotion.maxRedemptionsPerCustomer = dto.maxRedemptionsPerCustomer;
-      if (typeof dto.validFrom !== 'undefined') promotion.validFrom = dto.validFrom ? new Date(dto.validFrom) : undefined;
-      if (typeof dto.validTo !== 'undefined') promotion.validTo = dto.validTo ? new Date(dto.validTo) : undefined;
-      if (typeof dto.channels !== 'undefined') promotion.channels = dto.channels ?? [];
-      if (typeof dto.metadata !== 'undefined') promotion.metadata = dto.metadata ?? {};
-
-      // Replace nested relations when provided
-      if (typeof dto.conditions !== 'undefined') {
-        await conditionRepo.delete({ promotionId: id });
-        promotion.conditions = [];
-        for (const c of dto.conditions ?? []) {
-          const params = await this.normalizeAndValidateEmbeddedCurrency((c as any).params as any);
-          promotion.conditions.push(
-            conditionRepo.create({
-              type: c.type,
-              operator: c.operator,
-              params,
-              promotion,
-            }),
-          );
-        }
-      }
-
-      if (typeof dto.actions !== 'undefined') {
-        if (!(dto.actions ?? []).length) {
-          throw new BadRequestException('At least one action is required');
-        }
-        await actionRepo.delete({ promotionId: id });
         promotion.actions = [];
-        for (const a of dto.actions ?? []) {
-          const params = await this.normalizeAndValidateEmbeddedCurrency((a as any).params as any);
+        for (const a of dto.actions) {
+          const params = await this.normalizeAndValidateEmbeddedCurrency(
+            (a as any).params,
+          );
           promotion.actions.push(
             actionRepo.create({
               type: a.type,
@@ -271,11 +214,123 @@ export class PromotionService {
             }),
           );
         }
-      }
 
-      await promoRepo.save(promotion);
-      return promoRepo.findOneOrFail({ where: { id }, relations: ['conditions', 'actions'] });
-    });
+        promotion.conditions = [];
+        for (const c of dto.conditions ?? []) {
+          const params = await this.normalizeAndValidateEmbeddedCurrency(
+            (c as any).params,
+          );
+          promotion.conditions.push(
+            conditionRepo.create({
+              type: c.type,
+              operator: c.operator,
+              params,
+              promotion,
+            }),
+          );
+        }
+
+        const saved = await promoRepo.save(promotion);
+        return promoRepo.findOneOrFail({
+          where: { id: saved.id },
+          relations: ['conditions', 'actions'],
+        });
+      },
+    );
+
+    await this.cache.delByPrefix('promotions:');
+    return created;
+  }
+
+  async updatePromotion(
+    id: string,
+    dto: UpdatePromotionDto,
+  ): Promise<Promotion> {
+    const updated = await this.promotionRepo.manager.transaction(
+      async (manager) => {
+        const promoRepo = manager.getRepository(Promotion);
+        const actionRepo = manager.getRepository(PromotionAction);
+        const conditionRepo = manager.getRepository(PromotionCondition);
+
+        const promotion = await promoRepo.findOne({
+          where: { id },
+          relations: ['conditions', 'actions'],
+        });
+        if (!promotion) throw new NotFoundException('Promotion not found');
+
+        if (typeof dto.code !== 'undefined') promotion.code = dto.code;
+        if (typeof dto.name !== 'undefined') promotion.name = dto.name;
+        if (typeof dto.description !== 'undefined')
+          promotion.description = dto.description;
+        if (typeof dto.status !== 'undefined') promotion.status = dto.status;
+        if (typeof dto.priority !== 'undefined')
+          promotion.priority = dto.priority;
+        if (typeof dto.stackingPolicy !== 'undefined')
+          promotion.stackingPolicy = dto.stackingPolicy;
+        if (typeof dto.stackingGroup !== 'undefined')
+          promotion.stackingGroup = dto.stackingGroup;
+        if (typeof dto.maxRedemptions !== 'undefined')
+          promotion.maxRedemptions = dto.maxRedemptions;
+        if (typeof dto.maxRedemptionsPerCustomer !== 'undefined')
+          promotion.maxRedemptionsPerCustomer = dto.maxRedemptionsPerCustomer;
+        if (typeof dto.validFrom !== 'undefined')
+          promotion.validFrom = dto.validFrom
+            ? new Date(dto.validFrom)
+            : undefined;
+        if (typeof dto.validTo !== 'undefined')
+          promotion.validTo = dto.validTo ? new Date(dto.validTo) : undefined;
+        if (typeof dto.channels !== 'undefined')
+          promotion.channels = dto.channels ?? [];
+        if (typeof dto.metadata !== 'undefined')
+          promotion.metadata = dto.metadata ?? {};
+
+        // Replace nested relations when provided
+        if (typeof dto.conditions !== 'undefined') {
+          await conditionRepo.delete({ promotionId: id });
+          promotion.conditions = [];
+          for (const c of dto.conditions ?? []) {
+            const params = await this.normalizeAndValidateEmbeddedCurrency(
+              (c as any).params,
+            );
+            promotion.conditions.push(
+              conditionRepo.create({
+                type: c.type,
+                operator: c.operator,
+                params,
+                promotion,
+              }),
+            );
+          }
+        }
+
+        if (typeof dto.actions !== 'undefined') {
+          if (!(dto.actions ?? []).length) {
+            throw new BadRequestException('At least one action is required');
+          }
+          await actionRepo.delete({ promotionId: id });
+          promotion.actions = [];
+          for (const a of dto.actions ?? []) {
+            const params = await this.normalizeAndValidateEmbeddedCurrency(
+              (a as any).params,
+            );
+            promotion.actions.push(
+              actionRepo.create({
+                type: a.type,
+                params,
+                target: a.target ?? {},
+                promotion,
+              }),
+            );
+          }
+        }
+
+        await promoRepo.save(promotion);
+        return promoRepo.findOneOrFail({
+          where: { id },
+          relations: ['conditions', 'actions'],
+        });
+      },
+    );
 
     await this.cache.delByPrefix('promotions:');
     return updated;
@@ -292,10 +347,16 @@ export class PromotionService {
 
   private normalizeStringArray(value: unknown): string[] {
     if (!Array.isArray(value)) return [];
-    return value.map((v) => String(v)).map((v) => v.trim()).filter(Boolean);
+    return value
+      .map((v) => String(v))
+      .map((v) => v.trim())
+      .filter(Boolean);
   }
 
-  private extractIds(params: Record<string, unknown>, keys: string[]): string[] {
+  private extractIds(
+    params: Record<string, unknown>,
+    keys: string[],
+  ): string[] {
     for (const k of keys) {
       const v = (params as any)?.[k];
       if (Array.isArray(v)) {
@@ -307,20 +368,29 @@ export class PromotionService {
     return [];
   }
 
-  private unionItemIds(ctx: PromotionEvaluationContext, kind: 'product' | 'category' | 'taxonomy' | 'tag'): Set<string> {
+  private unionItemIds(
+    ctx: PromotionEvaluationContext,
+    kind: 'product' | 'category' | 'taxonomy' | 'tag',
+  ): Set<string> {
     const out = new Set<string>();
     const items = ctx.items ?? [];
     for (const it of items) {
       if (!it) continue;
       if (kind === 'product' && it.productId) out.add(String(it.productId));
-      if (kind === 'category') (it.categoryIds ?? []).forEach((x) => out.add(String(x)));
-      if (kind === 'taxonomy') (it.taxonomyIds ?? []).forEach((x) => out.add(String(x)));
+      if (kind === 'category')
+        (it.categoryIds ?? []).forEach((x) => out.add(String(x)));
+      if (kind === 'taxonomy')
+        (it.taxonomyIds ?? []).forEach((x) => out.add(String(x)));
       if (kind === 'tag') (it.tags ?? []).forEach((x) => out.add(String(x)));
     }
     return out;
   }
 
-  private matchSetByOperator(operator: ConditionOperator, itemValues: Set<string>, expected: string[]): boolean {
+  private matchSetByOperator(
+    operator: ConditionOperator,
+    itemValues: Set<string>,
+    expected: string[],
+  ): boolean {
     if (!expected.length) return false;
     if (!itemValues.size) return false;
 
@@ -339,7 +409,10 @@ export class PromotionService {
     }
   }
 
-  private readonly conditionEvaluators: Record<PromotionConditionType, ConditionEvaluator> = {
+  private readonly conditionEvaluators: Record<
+    PromotionConditionType,
+    ConditionEvaluator
+  > = {
     [PromotionConditionType.CART_TOTAL]: (ctx, operator, params) => {
       const amount = Number((params as any)?.amount ?? 0);
       const currency = (params as any)?.currency as string | undefined;
@@ -373,19 +446,34 @@ export class PromotionService {
     [PromotionConditionType.CUSTOMER_SEGMENT]: () => true,
     [PromotionConditionType.ITEM_IN_PRODUCT]: (ctx, operator, params) => {
       if (!ctx.items?.length) return false;
-      const ids = this.extractIds(params, ['productIds', 'productId', 'ids', 'id']);
+      const ids = this.extractIds(params, [
+        'productIds',
+        'productId',
+        'ids',
+        'id',
+      ]);
       const itemValues = this.unionItemIds(ctx, 'product');
       return this.matchSetByOperator(operator, itemValues, ids);
     },
     [PromotionConditionType.ITEM_IN_CATEGORY]: (ctx, operator, params) => {
       if (!ctx.items?.length) return false;
-      const ids = this.extractIds(params, ['categoryIds', 'categoryId', 'ids', 'id']);
+      const ids = this.extractIds(params, [
+        'categoryIds',
+        'categoryId',
+        'ids',
+        'id',
+      ]);
       const itemValues = this.unionItemIds(ctx, 'category');
       return this.matchSetByOperator(operator, itemValues, ids);
     },
     [PromotionConditionType.ITEM_IN_TAXONOMY]: (ctx, operator, params) => {
       if (!ctx.items?.length) return false;
-      const ids = this.extractIds(params, ['taxonomyIds', 'taxonomyId', 'ids', 'id']);
+      const ids = this.extractIds(params, [
+        'taxonomyIds',
+        'taxonomyId',
+        'ids',
+        'id',
+      ]);
       const itemValues = this.unionItemIds(ctx, 'taxonomy');
       return this.matchSetByOperator(operator, itemValues, ids);
     },
@@ -398,46 +486,61 @@ export class PromotionService {
     [PromotionConditionType.PAYMENT_METHOD]: () => true,
   };
 
-  private readonly actionAppliers: Record<PromotionActionType, ActionApplier> = {
-    [PromotionActionType.PERCENT_OFF]: (ctx, params, target) => {
-      const percent = Number((params as any)?.percent ?? 0);
-      if (!Number.isFinite(percent) || percent <= 0) return { orderDiscount: 0, shippingDiscount: 0 };
+  private readonly actionAppliers: Record<PromotionActionType, ActionApplier> =
+    {
+      [PromotionActionType.PERCENT_OFF]: (ctx, params, target) => {
+        const percent = Number((params as any)?.percent ?? 0);
+        if (!Number.isFinite(percent) || percent <= 0)
+          return { orderDiscount: 0, shippingDiscount: 0 };
 
-      const scope = (target as any)?.scope ?? 'order';
-      if (scope === 'shipping') {
+        const scope = (target as any)?.scope ?? 'order';
+        if (scope === 'shipping') {
+          const shippingFee = Number(ctx.shippingFee || '0');
+          const discount = (shippingFee * percent) / 100;
+          return { orderDiscount: 0, shippingDiscount: Math.max(0, discount) };
+        }
+
+        const subtotal = Number(ctx.subtotal || '0');
+        const discount = (subtotal * percent) / 100;
+        return { orderDiscount: Math.max(0, discount), shippingDiscount: 0 };
+      },
+      [PromotionActionType.FIXED_OFF]: (ctx, params, target) => {
+        const amount = Number((params as any)?.amount ?? 0);
+        const currency = (params as any)?.currency as string | undefined;
+        if (!Number.isFinite(amount) || amount <= 0)
+          return { orderDiscount: 0, shippingDiscount: 0 };
+        if (currency && currency !== ctx.currencyCode)
+          return { orderDiscount: 0, shippingDiscount: 0 };
+
+        const scope = (target as any)?.scope ?? 'order';
+        if (scope === 'shipping') {
+          return { orderDiscount: 0, shippingDiscount: amount };
+        }
+
+        return { orderDiscount: amount, shippingDiscount: 0 };
+      },
+      [PromotionActionType.FREE_SHIPPING]: (ctx) => {
         const shippingFee = Number(ctx.shippingFee || '0');
-        const discount = (shippingFee * percent) / 100;
-        return { orderDiscount: 0, shippingDiscount: Math.max(0, discount) };
-      }
-
-      const subtotal = Number(ctx.subtotal || '0');
-      const discount = (subtotal * percent) / 100;
-      return { orderDiscount: Math.max(0, discount), shippingDiscount: 0 };
-    },
-    [PromotionActionType.FIXED_OFF]: (ctx, params, target) => {
-      const amount = Number((params as any)?.amount ?? 0);
-      const currency = (params as any)?.currency as string | undefined;
-      if (!Number.isFinite(amount) || amount <= 0) return { orderDiscount: 0, shippingDiscount: 0 };
-      if (currency && currency !== ctx.currencyCode) return { orderDiscount: 0, shippingDiscount: 0 };
-
-      const scope = (target as any)?.scope ?? 'order';
-      if (scope === 'shipping') {
-        return { orderDiscount: 0, shippingDiscount: amount };
-      }
-
-      return { orderDiscount: amount, shippingDiscount: 0 };
-    },
-    [PromotionActionType.FREE_SHIPPING]: (ctx) => {
-      const shippingFee = Number(ctx.shippingFee || '0');
-      return { orderDiscount: 0, shippingDiscount: Math.max(0, shippingFee) };
-    },
-    [PromotionActionType.BOGO]: () => ({ orderDiscount: 0, shippingDiscount: 0 }),
-    [PromotionActionType.TIERED_DISCOUNT]: () => ({ orderDiscount: 0, shippingDiscount: 0 }),
-    [PromotionActionType.GIFT_ITEM]: () => ({ orderDiscount: 0, shippingDiscount: 0 }),
-  };
+        return { orderDiscount: 0, shippingDiscount: Math.max(0, shippingFee) };
+      },
+      [PromotionActionType.BOGO]: () => ({
+        orderDiscount: 0,
+        shippingDiscount: 0,
+      }),
+      [PromotionActionType.TIERED_DISCOUNT]: () => ({
+        orderDiscount: 0,
+        shippingDiscount: 0,
+      }),
+      [PromotionActionType.GIFT_ITEM]: () => ({
+        orderDiscount: 0,
+        shippingDiscount: 0,
+      }),
+    };
 
   async findActivePromotions(currencyCode?: string) {
-    const rawKey = cacheKeyFromParts('promotions', 'active', { currencyCode: currencyCode ?? null });
+    const rawKey = cacheKeyFromParts('promotions', 'active', {
+      currencyCode: currencyCode ?? null,
+    });
     const key = `promotions:active:${cacheKeyHash(rawKey)}`;
 
     return this.cache.remember(
@@ -471,7 +574,9 @@ export class PromotionService {
     const shippingFee = Number(orderContext.shippingFee || '0');
 
     const promos = await this.findActivePromotions(orderContext.currencyCode);
-    const sorted = [...promos].sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
+    const sorted = [...promos].sort(
+      (a, b) => (b.priority ?? 0) - (a.priority ?? 0),
+    );
 
     const applied: AppliedPromotion[] = [];
     const appliedStackingGroups = new Set<string>();
@@ -484,15 +589,22 @@ export class PromotionService {
 
       // Redemption caps (best-effort; only enforced if relevant context is provided)
       if (p.maxRedemptions) {
-        const total = await this.redemptionRepo.count({ where: { promotionId: p.id } });
+        const total = await this.redemptionRepo.count({
+          where: { promotionId: p.id },
+        });
         if (total >= p.maxRedemptions) continue;
       }
       if (p.maxRedemptionsPerCustomer && orderContext.customerId) {
-        const perCustomer = await this.redemptionRepo.count({ where: { promotionId: p.id, customerId: orderContext.customerId } });
+        const perCustomer = await this.redemptionRepo.count({
+          where: { promotionId: p.id, customerId: orderContext.customerId },
+        });
         if (perCustomer >= p.maxRedemptionsPerCustomer) continue;
       }
 
-      if (p.stackingPolicy === StackingPolicy.STACKABLE_SAME_GROUP && p.stackingGroup) {
+      if (
+        p.stackingPolicy === StackingPolicy.STACKABLE_SAME_GROUP &&
+        p.stackingGroup
+      ) {
         if (appliedStackingGroups.has(p.stackingGroup)) continue;
       }
 
@@ -511,7 +623,11 @@ export class PromotionService {
       for (const a of p.actions ?? []) {
         const applier = this.actionAppliers[a.type];
         if (!applier) continue;
-        const r = applier(orderContext, (a.params || {}) as any, (a.target || {}) as any);
+        const r = applier(
+          orderContext,
+          (a.params || {}) as any,
+          (a.target || {}) as any,
+        );
         promoOrderDiscount += r.orderDiscount;
         promoShippingDiscount += r.shippingDiscount;
       }
@@ -519,8 +635,14 @@ export class PromotionService {
       // Cap to remaining amounts
       const orderRemaining = Math.max(0, subtotal - totalDiscount);
       const shipRemaining = Math.max(0, shippingFee - shippingDiscount);
-      promoOrderDiscount = Math.min(Math.max(0, promoOrderDiscount), orderRemaining);
-      promoShippingDiscount = Math.min(Math.max(0, promoShippingDiscount), shipRemaining);
+      promoOrderDiscount = Math.min(
+        Math.max(0, promoOrderDiscount),
+        orderRemaining,
+      );
+      promoShippingDiscount = Math.min(
+        Math.max(0, promoShippingDiscount),
+        shipRemaining,
+      );
 
       if (promoOrderDiscount <= 0 && promoShippingDiscount <= 0) continue;
 
@@ -528,13 +650,20 @@ export class PromotionService {
         code: p.code,
         promotionId: p.id,
         discount: promoOrderDiscount.toFixed(2),
-        shippingDiscount: promoShippingDiscount > 0 ? promoShippingDiscount.toFixed(2) : undefined,
+        shippingDiscount:
+          promoShippingDiscount > 0
+            ? promoShippingDiscount.toFixed(2)
+            : undefined,
       });
       totalDiscount += promoOrderDiscount;
       shippingDiscount += promoShippingDiscount;
 
-      if (p.stackingPolicy === StackingPolicy.EXCLUSIVE) anyExclusiveApplied = true;
-      if (p.stackingPolicy === StackingPolicy.STACKABLE_SAME_GROUP && p.stackingGroup) {
+      if (p.stackingPolicy === StackingPolicy.EXCLUSIVE)
+        anyExclusiveApplied = true;
+      if (
+        p.stackingPolicy === StackingPolicy.STACKABLE_SAME_GROUP &&
+        p.stackingGroup
+      ) {
         appliedStackingGroups.add(p.stackingGroup);
       }
     }

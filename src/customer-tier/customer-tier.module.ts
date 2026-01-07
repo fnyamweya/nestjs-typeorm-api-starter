@@ -10,7 +10,15 @@ import { Order } from 'src/order/entities/order.entity';
 import { CustomerTierSeeder } from './seeders/customer-tier.seeder';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([CustomerTier, CustomerTierRule, CustomerProfile, User, Order])],
+  imports: [
+    TypeOrmModule.forFeature([
+      CustomerTier,
+      CustomerTierRule,
+      CustomerProfile,
+      User,
+      Order,
+    ]),
+  ],
   controllers: [CustomerTierController],
   providers: [CustomerTierService, CustomerTierSeeder],
   exports: [CustomerTierService, CustomerTierSeeder, TypeOrmModule],

@@ -35,7 +35,10 @@ export class S3ResponseDto {
   })
   forcePathStyle: boolean;
 
-  @ApiProperty({ description: 'Flag indicating if S3 is enabled', example: true })
+  @ApiProperty({
+    description: 'Flag indicating if S3 is enabled',
+    example: true,
+  })
   s3Enabled: boolean;
 
   @ApiProperty({
@@ -50,9 +53,15 @@ export class S3ResponseDto {
   })
   hasSecretAccessKey: boolean;
 
-  @ApiProperty({ description: 'Creation timestamp', example: new Date().toISOString() })
+  @ApiProperty({
+    description: 'Creation timestamp',
+    example: new Date().toISOString(),
+  })
   createdAt?: Date;
 
-  @ApiProperty({ description: 'Update timestamp', example: new Date().toISOString() })
+  @ApiProperty({
+    description: 'Update timestamp',
+    example: new Date().toISOString(),
+  })
   updatedAt?: Date;
 }

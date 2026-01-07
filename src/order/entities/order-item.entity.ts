@@ -41,10 +41,18 @@ export class OrderItem {
   @Column({ name: 'sku_title', type: 'text', nullable: true })
   skuTitle?: string;
 
-  @Column({ name: 'sku_options_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'sku_options_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   skuOptionsJson: Record<string, unknown>;
 
-  @Column({ name: 'attributes_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'attributes_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   attributesJson: Record<string, unknown>;
 
   @Column({ type: 'int' })
@@ -56,19 +64,43 @@ export class OrderItem {
   @Column({ name: 'unit_price', type: 'numeric', precision: 18, scale: 4 })
   unitPrice: string;
 
-  @Column({ name: 'compare_at_price', type: 'numeric', precision: 18, scale: 4, nullable: true })
+  @Column({
+    name: 'compare_at_price',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    nullable: true,
+  })
   compareAtPrice?: string;
 
   @Column({ name: 'base_subtotal', type: 'numeric', precision: 18, scale: 4 })
   baseSubtotal: string;
 
-  @Column({ name: 'discount_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'discount_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   discountTotal: string;
 
-  @Column({ name: 'fee_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'fee_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   feeTotal: string;
 
-  @Column({ name: 'tax_total', type: 'numeric', precision: 18, scale: 4, default: 0 })
+  @Column({
+    name: 'tax_total',
+    type: 'numeric',
+    precision: 18,
+    scale: 4,
+    default: 0,
+  })
   taxTotal: string;
 
   @Column({ type: 'numeric', precision: 18, scale: 4 })
@@ -83,7 +115,11 @@ export class OrderItem {
   @Column({ name: 'fulfillment_group', type: 'text', nullable: true })
   fulfillmentGroup?: string;
 
-  @Column({ name: 'pricing_snapshot_json', type: 'jsonb', default: () => "'{}'::jsonb" })
+  @Column({
+    name: 'pricing_snapshot_json',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
   pricingSnapshotJson: Record<string, unknown>;
 
   @Column({ name: 'meta_json', type: 'jsonb', default: () => "'{}'::jsonb" })

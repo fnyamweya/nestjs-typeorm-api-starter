@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { Channel } from '../entities/channel.entity';
@@ -21,7 +25,9 @@ export class ChannelsService {
     return (code || '').trim().toUpperCase();
   }
 
-  private async normalizeAndValidateConfigCurrency(configJson: Record<string, unknown> | undefined): Promise<Record<string, unknown> | undefined> {
+  private async normalizeAndValidateConfigCurrency(
+    configJson: Record<string, unknown> | undefined,
+  ): Promise<Record<string, unknown> | undefined> {
     if (!configJson) return configJson;
     const raw = (configJson as any).currencyCode;
     if (typeof raw === 'undefined') return configJson;
@@ -32,7 +38,9 @@ export class ChannelsService {
 
   async list(params: ListChannelsDto): Promise<Channel[]> {
     const where: any = {
-      ...(typeof params.isActive === 'boolean' ? { isActive: params.isActive } : {}),
+      ...(typeof params.isActive === 'boolean'
+        ? { isActive: params.isActive }
+        : {}),
     };
 
     if (params.q) {
@@ -62,7 +70,10 @@ export class ChannelsService {
         order: { name: 'ASC' },
       });
     } else {
-      rows = await this.channelRepo.find({ where: baseWhere, order: { name: 'ASC' } });
+      rows = await this.channelRepo.find({
+        where: baseWhere,
+        order: { name: 'ASC' },
+      });
     }
 
     return rows.map((row) => ({
@@ -77,7 +88,9 @@ export class ChannelsService {
     const normalized = this.normalizeCode(code);
     if (!normalized) throw new NotFoundException('Channel not found');
 
-    const row = await this.channelRepo.findOne({ where: { code: normalized, isActive: true } });
+    const row = await this.channelRepo.findOne({
+      where: { code: normalized, isActive: true },
+    });
     if (!row) throw new NotFoundException('Channel not found');
 
     return {
@@ -112,7 +125,9 @@ export class ChannelsService {
       name: payload.name,
       description: payload.description,
       isActive: payload.isActive ?? true,
-      configJson: (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ?? {},
+      configJson:
+        (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ??
+        {},
       metadata: payload.metadata ?? {},
     });
 
@@ -134,12 +149,17 @@ export class ChannelsService {
     }
 
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
-    if (typeof payload.description !== 'undefined') existing.description = payload.description;
-    if (typeof payload.isActive !== 'undefined') existing.isActive = payload.isActive;
+    if (typeof payload.description !== 'undefined')
+      existing.description = payload.description;
+    if (typeof payload.isActive !== 'undefined')
+      existing.isActive = payload.isActive;
     if (typeof payload.configJson !== 'undefined') {
-      existing.configJson = (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ?? {};
+      existing.configJson =
+        (await this.normalizeAndValidateConfigCurrency(payload.configJson)) ??
+        {};
     }
-    if (typeof payload.metadata !== 'undefined') existing.metadata = payload.metadata ?? {};
+    if (typeof payload.metadata !== 'undefined')
+      existing.metadata = payload.metadata ?? {};
 
     return this.channelRepo.save(existing);
   }

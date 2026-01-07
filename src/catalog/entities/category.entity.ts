@@ -20,7 +20,9 @@ import { ProductCategory } from './product-category.entity';
 @Index('idx_category_taxonomy_sort', ['taxonomyId', 'sortOrder'])
 @Index('idx_category_taxonomy_active', ['taxonomyId', 'isActive'])
 @Index('uq_category_key_per_taxonomy', ['taxonomyId', 'key'], { unique: true })
-@Index('uq_category_slug_per_taxonomy', ['taxonomyId', 'slug'], { unique: true })
+@Index('uq_category_slug_per_taxonomy', ['taxonomyId', 'slug'], {
+  unique: true,
+})
 export class Category {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -97,6 +99,9 @@ export class Category {
   )
   categoryAttributes: CategoryAttribute[];
 
-  @OneToMany(() => ProductCategory, (productCategory) => productCategory.category)
+  @OneToMany(
+    () => ProductCategory,
+    (productCategory) => productCategory.category,
+  )
   productCategories: ProductCategory[];
 }

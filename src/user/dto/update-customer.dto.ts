@@ -8,7 +8,10 @@ import {
 } from 'class-validator';
 
 export class UpdateCustomerDto {
-  @ApiPropertyOptional({ description: 'Email address', example: 'customer@example.com' })
+  @ApiPropertyOptional({
+    description: 'Email address',
+    example: 'customer@example.com',
+  })
   @IsOptional()
   @IsEmail({}, { message: 'Please provide a valid email address' })
   email?: string;
@@ -32,7 +35,11 @@ export class UpdateCustomerDto {
   @IsString({ message: 'Phone must be a string' })
   phone?: string;
 
-  @ApiPropertyOptional({ description: 'New password', example: 'Str0ngP@ssw0rd', minLength: 8 })
+  @ApiPropertyOptional({
+    description: 'New password',
+    example: 'Str0ngP@ssw0rd',
+    minLength: 8,
+  })
   @IsOptional()
   @IsString({ message: 'Password must be a string' })
   @MinLength(8, { message: 'Password must be at least 8 characters long' })

@@ -6,7 +6,10 @@ import { PriceService } from '../../catalog/services/price.service';
 import { ShippingMatrixService } from './shipping-matrix.service';
 import { CatalogShippingContextService } from './catalog-shipping-context.service';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { Location } from '../../location/entities/location.entity';
 import { CurrencyService } from 'src/currency/currency.service';
 
@@ -29,6 +32,7 @@ export class ShippingQuotesService {
     orderItems: Array<{ productSkuId: string; quantity: number }>;
     priceListId?: string;
     currencyCode?: string;
+    salesChannelCode?: string;
   }) {
     const currencyCode = payload.currencyCode
       ? await this.currencyService.assertExists(payload.currencyCode)
@@ -46,6 +50,7 @@ export class ShippingQuotesService {
       shippingLocationId: payload.shippingLocationId,
       priceListId: payload.priceListId,
       currencyCode,
+      salesChannelCode: payload.salesChannelCode,
       items: normalizedItems,
     });
     const key = `shipping:quotes:${cacheKeyHash(rawKey)}`;
@@ -58,6 +63,7 @@ export class ShippingQuotesService {
           orderItems: normalizedItems,
           priceListId: payload.priceListId,
           currencyCode,
+          salesChannelCode: payload.salesChannelCode,
         }),
       { ttlSeconds: 30 },
     );
@@ -68,6 +74,7 @@ export class ShippingQuotesService {
     orderItems: Array<{ productSkuId: string; quantity: number }>;
     priceListId?: string;
     currencyCode?: string;
+    salesChannelCode?: string;
   }) {
     const countryCode = (
       await this.locationRepository.findOne({
@@ -83,13 +90,16 @@ export class ShippingQuotesService {
     let anyRequiresShipping = false;
 
     for (const item of payload.orderItems) {
-      const sku = await this.productSkuRepository.findOne({ where: { id: item.productSkuId } });
+      const sku = await this.productSkuRepository.findOne({
+        where: { id: item.productSkuId },
+      });
       if (!sku) throw new NotFoundException('Product SKU not found');
 
       productIds.add(sku.productId);
       totalItemCount += item.quantity;
 
-      anyRequiresShipping = anyRequiresShipping || Boolean(sku.requiresShipping);
+      anyRequiresShipping =
+        anyRequiresShipping || Boolean(sku.requiresShipping);
 
       // subtotal via PriceService
       const resolved = await this.priceService.resolveSkuPrice({
@@ -105,17 +115,22 @@ export class ShippingQuotesService {
       itemsSubtotal += unitPrice * item.quantity;
 
       // weight (best effort)
-      const weight = Number((sku as any).attributes?.weight ?? (sku as any).weight ?? 0);
+      const weight = Number(
+        (sku as any).attributes?.weight ?? (sku as any).weight ?? 0,
+      );
       totalWeight += (weight || 0) * item.quantity;
     }
 
     if (!anyRequiresShipping) return [];
 
-    const currencyCode = payload.currencyCode ?? (await this.currencyService.getDefaultCurrencyCode());
+    const currencyCode =
+      payload.currencyCode ??
+      (await this.currencyService.getDefaultCurrencyCode());
 
-    const catalogShipping = await this.catalogShippingContextService.resolveCatalogShippingContext(
-      Array.from(productIds),
-    );
+    const catalogShipping =
+      await this.catalogShippingContextService.resolveCatalogShippingContext(
+        Array.from(productIds),
+      );
 
     const quotes = await this.shippingMatrixService.getQuotes({
       locationId: payload.shippingLocationId,
@@ -123,6 +138,7 @@ export class ShippingQuotesService {
       totalWeight,
       itemCount: totalItemCount,
       currencyCode,
+      channelCode: payload.salesChannelCode,
       allowedMethodCodes: catalogShipping.allowedMethodCodes,
       excludedMethodCodes: catalogShipping.excludedMethodCodes,
       ratePriorityBoost: catalogShipping.ratePriorityBoost,
@@ -134,8 +150,24 @@ export class ShippingQuotesService {
     return quotes.map((q) => ({
       amount: q.amount,
       currencyCode,
-      method: { id: q.method.id, code: q.method.code, displayName: q.method.displayName },
-      rate: { id: q.rate.id, calculationType: q.rate.calculationType, priority: q.rate.priority },
+      method: {
+        id: q.method.id,
+        code: q.method.code,
+        displayName: q.method.displayName,
+      },
+      rate: {
+        id: q.rate.id,
+        calculationType: q.rate.calculationType,
+        priority: q.rate.priority,
+        price: q.rate.price,
+        pricePerUnit: q.rate.pricePerUnit,
+        minWeight: q.rate.minWeight,
+        maxWeight: q.rate.maxWeight,
+        minSubtotal: q.rate.minSubtotal,
+        maxSubtotal: q.rate.maxSubtotal,
+        currencyCode: q.rate.currencyCode ?? currencyCode,
+        metaJson: q.rate.metaJson,
+      },
       effectivePriority: q.effectivePriority,
     }));
   }

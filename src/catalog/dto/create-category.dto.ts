@@ -65,7 +65,8 @@ export class CreateCategoryDto {
   key?: string;
 
   @ApiPropertyOptional({
-    description: 'Category display name (used to auto-generate slug if omitted)',
+    description:
+      'Category display name (used to auto-generate slug if omitted)',
     example: 'Smartphones',
   })
   @IsOptional()
@@ -82,22 +83,34 @@ export class CreateCategoryDto {
   @IsNotEmpty()
   slug?: string;
 
-  @ApiPropertyOptional({ description: 'Whether category is active', example: true })
+  @ApiPropertyOptional({
+    description: 'Whether category is active',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
 
-  @ApiPropertyOptional({ description: "Status ('active'|'inactive') (admin UI)", example: 'active' })
+  @ApiPropertyOptional({
+    description: "Status ('active'|'inactive') (admin UI)",
+    example: 'active',
+  })
   @IsOptional()
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ description: 'Mark as leaf node (no children)', example: false })
+  @ApiPropertyOptional({
+    description: 'Mark as leaf node (no children)',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   isLeaf?: boolean;
 
-  @ApiPropertyOptional({ description: 'Ordering weight for siblings', example: 5 })
+  @ApiPropertyOptional({
+    description: 'Ordering weight for siblings',
+    example: 5,
+  })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
@@ -112,7 +125,10 @@ export class CreateCategoryDto {
   @IsInt()
   order?: number;
 
-  @ApiPropertyOptional({ description: 'Optional icon class or URL', example: 'ph:device-mobile' })
+  @ApiPropertyOptional({
+    description: 'Optional icon class or URL',
+    example: 'ph:device-mobile',
+  })
   @IsOptional()
   @IsString()
   icon?: string;
@@ -166,27 +182,42 @@ export class CreateCategoryDto {
   @IsString()
   audience?: string;
 
-  @ApiPropertyOptional({ description: 'Return policy code (admin UI)', example: 'standard' })
+  @ApiPropertyOptional({
+    description: 'Return policy code (admin UI)',
+    example: 'standard',
+  })
   @IsOptional()
   @IsString()
   returnPolicy?: string;
 
-  @ApiPropertyOptional({ description: 'Tax code (admin UI)', example: 'GEN-001' })
+  @ApiPropertyOptional({
+    description: 'Tax code (admin UI)',
+    example: 'GEN-001',
+  })
   @IsOptional()
   @IsString()
   taxCode?: string;
 
-  @ApiPropertyOptional({ description: 'Highlight category (admin UI)', example: true })
+  @ApiPropertyOptional({
+    description: 'Highlight category (admin UI)',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   highlight?: boolean;
 
-  @ApiPropertyOptional({ description: 'Show in navigation (admin UI)', example: true })
+  @ApiPropertyOptional({
+    description: 'Show in navigation (admin UI)',
+    example: true,
+  })
   @IsOptional()
   @IsBoolean()
   navPlacement?: boolean;
 
-  @ApiPropertyOptional({ description: 'Featured category (admin UI)', example: false })
+  @ApiPropertyOptional({
+    description: 'Featured category (admin UI)',
+    example: false,
+  })
   @IsOptional()
   @IsBoolean()
   featured?: boolean;
@@ -202,7 +233,10 @@ export class CreateCategoryDto {
   @IsInt()
   marginTarget?: number;
 
-  @ApiPropertyOptional({ description: 'Availability (admin UI)', example: 'global' })
+  @ApiPropertyOptional({
+    description: 'Availability (admin UI)',
+    example: 'global',
+  })
   @IsOptional()
   @IsString()
   availability?: string;
@@ -212,7 +246,10 @@ export class CreateCategoryDto {
   @IsString()
   compliance?: string;
 
-  @ApiPropertyOptional({ description: 'Shipping profile code (admin UI)', example: 'standard' })
+  @ApiPropertyOptional({
+    description: 'Shipping profile code (admin UI)',
+    example: 'standard',
+  })
   @IsOptional()
   @IsString()
   shippingProfile?: string;
@@ -247,7 +284,10 @@ export class CreateCategoryDto {
   @IsString()
   story?: string;
 
-  @ApiPropertyOptional({ description: 'Theme color (admin UI)', example: '#f97316' })
+  @ApiPropertyOptional({
+    description: 'Theme color (admin UI)',
+    example: '#f97316',
+  })
   @IsOptional()
   @IsString()
   themeColor?: string;

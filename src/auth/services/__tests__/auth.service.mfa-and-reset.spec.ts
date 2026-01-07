@@ -4,7 +4,11 @@ import { AuthService } from '../auth.service';
 import { User } from 'src/user/entities/user.entity';
 import { RefreshToken } from '../../entities/refresh-token.entity';
 import { UserActivityLog } from 'src/activity-log/entities/user-activity-log.entity';
-import { CacheKey, CacheKeyService, CacheKeyStatus } from '../../entities/cache-key.entity';
+import {
+  CacheKey,
+  CacheKeyService,
+  CacheKeyStatus,
+} from '../../entities/cache-key.entity';
 import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 import { Role } from '../../entities/role.entity';
@@ -20,7 +24,10 @@ import { FeatureFlagService } from 'src/feature-flag/feature-flag.service';
 import { WhatsappMessageService } from 'src/whatsapp/services/whatsapp-message.service';
 import { RateLimitService } from 'src/common/security/rate-limit.service';
 import { QueueService } from 'src/queue/queue.service';
-import { AUTH_OTP_JOB_SEND_RESET_PASSWORD, AUTH_OTP_QUEUE } from '../../workers/auth-otp.worker';
+import {
+  AUTH_OTP_JOB_SEND_RESET_PASSWORD,
+  AUTH_OTP_QUEUE,
+} from '../../workers/auth-otp.worker';
 
 describe('AuthService (2FA + password reset)', () => {
   let service: AuthService;
@@ -41,12 +48,36 @@ describe('AuthService (2FA + password reset)', () => {
   };
   const refreshTokenRepository = { findOne: jest.fn(), delete: jest.fn() };
   const userActivityLogRepository = { create: jest.fn(), save: jest.fn() };
-  const cacheKeyRepository = { findOne: jest.fn(), create: jest.fn(), save: jest.fn(), update: jest.fn() };
-  const customerProfileRepository = { findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
-  const adminProfileRepository = { findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
-  const roleRepository = { findOne: jest.fn(), manager: { getTreeRepository: jest.fn() } };
-  const userAuthProviderRepository = { findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
-  const userInviteRepository = { findOne: jest.fn(), save: jest.fn(), create: jest.fn() };
+  const cacheKeyRepository = {
+    findOne: jest.fn(),
+    create: jest.fn(),
+    save: jest.fn(),
+    update: jest.fn(),
+  };
+  const customerProfileRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
+  const adminProfileRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
+  const roleRepository = {
+    findOne: jest.fn(),
+    manager: { getTreeRepository: jest.fn() },
+  };
+  const userAuthProviderRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
+  const userInviteRepository = {
+    findOne: jest.fn(),
+    save: jest.fn(),
+    create: jest.fn(),
+  };
 
   const jwtService = {
     sign: jest.fn().mockReturnValue('jwt'),
@@ -74,14 +105,32 @@ describe('AuthService (2FA + password reset)', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: userRepository },
-        { provide: getRepositoryToken(RefreshToken), useValue: refreshTokenRepository },
-        { provide: getRepositoryToken(UserActivityLog), useValue: userActivityLogRepository },
+        {
+          provide: getRepositoryToken(RefreshToken),
+          useValue: refreshTokenRepository,
+        },
+        {
+          provide: getRepositoryToken(UserActivityLog),
+          useValue: userActivityLogRepository,
+        },
         { provide: getRepositoryToken(CacheKey), useValue: cacheKeyRepository },
-        { provide: getRepositoryToken(CustomerProfile), useValue: customerProfileRepository },
-        { provide: getRepositoryToken(AdminProfile), useValue: adminProfileRepository },
+        {
+          provide: getRepositoryToken(CustomerProfile),
+          useValue: customerProfileRepository,
+        },
+        {
+          provide: getRepositoryToken(AdminProfile),
+          useValue: adminProfileRepository,
+        },
         { provide: getRepositoryToken(Role), useValue: roleRepository },
-        { provide: getRepositoryToken(UserAuthProvider), useValue: userAuthProviderRepository },
-        { provide: getRepositoryToken(UserInvite), useValue: userInviteRepository },
+        {
+          provide: getRepositoryToken(UserAuthProvider),
+          useValue: userAuthProviderRepository,
+        },
+        {
+          provide: getRepositoryToken(UserInvite),
+          useValue: userInviteRepository,
+        },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
         { provide: TwoFactorService, useValue: twoFactorService },
@@ -102,44 +151,68 @@ describe('AuthService (2FA + password reset)', () => {
 
   it('returns requiresTwoFactor when enabled and no code provided', async () => {
     jest.spyOn(service as any, 'validateUser').mockResolvedValue({ id: 'u1' });
-    jest.spyOn(service as any, 'completeLogin').mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+    jest
+      .spyOn(service as any, 'completeLogin')
+      .mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
 
     twoFactorService.isTwoFactorEnabled.mockResolvedValue(true);
 
-    const result = await service.login({ email: 'e', password: 'p' } as any, {} as any);
+    const result = await service.login(
+      { email: 'e', password: 'p' } as any,
+      {} as any,
+    );
 
     expect(twoFactorService.sendVerificationCode).toHaveBeenCalledWith('u1');
     expect((service as any).completeLogin).not.toHaveBeenCalled();
     expect(result).toEqual(
-      expect.objectContaining({ requiresTwoFactor: true, userId: 'u1', twoFactorToken: 'jwt' }),
+      expect.objectContaining({
+        requiresTwoFactor: true,
+        userId: 'u1',
+        twoFactorToken: 'jwt',
+      }),
     );
   });
 
   it('completes login when 2FA code provided and valid', async () => {
     jest.spyOn(service as any, 'validateUser').mockResolvedValue({ id: 'u1' });
-    jest.spyOn(service as any, 'completeLogin').mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+    jest
+      .spyOn(service as any, 'completeLogin')
+      .mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
 
     twoFactorService.isTwoFactorEnabled.mockResolvedValue(true);
     twoFactorService.validateLoginCode.mockResolvedValue(true);
 
-    userRepository.findOne.mockResolvedValue({ id: 'u1', isBanned: false, isActive: true } as any);
+    userRepository.findOne.mockResolvedValue({
+      id: 'u1',
+      isBanned: false,
+      isActive: true,
+    } as any);
 
     const result = await service.login(
       { email: 'e', password: 'p', twoFactorCode: '123456' } as any,
       requestMock,
     );
 
-    expect(twoFactorService.validateLoginCode).toHaveBeenCalledWith('u1', '123456');
+    expect(twoFactorService.validateLoginCode).toHaveBeenCalledWith(
+      'u1',
+      '123456',
+    );
     expect((service as any).completeLogin).toHaveBeenCalled();
     expect(result).toEqual({ accessToken: 'a', refreshToken: 'r' });
   });
 
   it('verifies using twoFactorToken path', async () => {
-    jest.spyOn(service as any, 'completeLogin').mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
+    jest
+      .spyOn(service as any, 'completeLogin')
+      .mockResolvedValue({ accessToken: 'a', refreshToken: 'r' });
 
     jwtService.decode.mockReturnValue({ userId: 'u1', type: 'LOGIN_2FA' });
     twoFactorService.validateLoginCode.mockResolvedValue(true);
-    userRepository.findOne.mockResolvedValue({ id: 'u1', isBanned: false, isActive: true } as any);
+    userRepository.findOne.mockResolvedValue({
+      id: 'u1',
+      isBanned: false,
+      isActive: true,
+    } as any);
 
     const result = await service.verifyTwoFactorAndLogin(
       { twoFactorToken: 'token', code: '123456' },
@@ -147,12 +220,18 @@ describe('AuthService (2FA + password reset)', () => {
     );
 
     expect(jwtService.verifyAsync).toHaveBeenCalledWith('token');
-    expect(twoFactorService.validateLoginCode).toHaveBeenCalledWith('u1', '123456');
+    expect(twoFactorService.validateLoginCode).toHaveBeenCalledWith(
+      'u1',
+      '123456',
+    );
     expect(result).toEqual({ accessToken: 'a', refreshToken: 'r' });
   });
 
   it('queues password-reset OTP and expires existing pending', async () => {
-    userRepository.findOne.mockResolvedValue({ id: 'u1', email: 'user@example.com' } as any);
+    userRepository.findOne.mockResolvedValue({
+      id: 'u1',
+      email: 'user@example.com',
+    } as any);
 
     userActivityLogRepository.create.mockReturnValue({} as any);
     userActivityLogRepository.save.mockResolvedValue(undefined);
@@ -166,7 +245,10 @@ describe('AuthService (2FA + password reset)', () => {
 
     cacheKeyRepository.save.mockResolvedValueOnce(undefined); // expire old
 
-    cacheKeyRepository.create.mockImplementation((x: any) => ({ id: 'ck1', ...x }));
+    cacheKeyRepository.create.mockImplementation((x: any) => ({
+      id: 'ck1',
+      ...x,
+    }));
     cacheKeyRepository.save.mockResolvedValueOnce({ id: 'ck1' }); // save new
 
     await service.passwordResetOTPSend(
@@ -180,18 +262,26 @@ describe('AuthService (2FA + password reset)', () => {
       AUTH_OTP_QUEUE,
       AUTH_OTP_JOB_SEND_RESET_PASSWORD,
       { cacheKeyId: 'ck1' },
-      expect.objectContaining({ jobId: expect.stringContaining('reset:u1:ck1') }),
+      expect.objectContaining({
+        jobId: expect.stringContaining('reset:u1:ck1'),
+      }),
     );
   });
 
   it('rate-limits password-reset OTP by phone identifier', async () => {
-    userRepository.findOne.mockResolvedValue({ id: 'u1', phone: '+254712345678' } as any);
+    userRepository.findOne.mockResolvedValue({
+      id: 'u1',
+      phone: '+254712345678',
+    } as any);
 
     userActivityLogRepository.create.mockReturnValue({} as any);
     userActivityLogRepository.save.mockResolvedValue(undefined);
 
     cacheKeyRepository.findOne.mockResolvedValueOnce(null);
-    cacheKeyRepository.create.mockImplementation((x: any) => ({ id: 'ck1', ...x }));
+    cacheKeyRepository.create.mockImplementation((x: any) => ({
+      id: 'ck1',
+      ...x,
+    }));
     cacheKeyRepository.save.mockResolvedValueOnce({ id: 'ck1' });
 
     await service.passwordResetOTPSend(
@@ -222,7 +312,10 @@ describe('AuthService (2FA + password reset)', () => {
     cacheKeyRepository.save.mockResolvedValue(undefined);
     jwtService.sign.mockReturnValue('resetJwt');
 
-    const res = await service.verifyPasswordResetOTPCode({ userId: 'u1', code: '123456' } as any);
+    const res = await service.verifyPasswordResetOTPCode({
+      userId: 'u1',
+      code: '123456',
+    } as any);
 
     expect(res).toEqual({ userId: 'u1', resetToken: 'resetJwt' });
   });

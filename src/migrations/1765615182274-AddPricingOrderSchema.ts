@@ -1,12 +1,12 @@
-import { MigrationInterface, QueryRunner } from "typeorm";
+import { MigrationInterface, QueryRunner } from 'typeorm';
 
 export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
-    name = 'AddPricingOrderSchema1765615182274'
+  name = 'AddPricingOrderSchema1765615182274';
 
-    public async up(queryRunner: QueryRunner): Promise<void> {
-        // Many installations may not have all of these json/jsonb columns yet.
-        // Guard every ALTER so migrations remain forwards-compatible across schemas.
-        await queryRunner.query(`
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    // Many installations may not have all of these json/jsonb columns yet.
+    // Guard every ALTER so migrations remain forwards-compatible across schemas.
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -18,7 +18,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -30,7 +30,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -42,7 +42,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -54,7 +54,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -66,7 +66,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -78,7 +78,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -90,7 +90,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -102,7 +102,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -114,7 +114,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -126,7 +126,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -138,7 +138,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -150,7 +150,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -162,7 +162,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -174,7 +174,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -186,7 +186,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -198,7 +198,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -212,10 +212,10 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
                 END IF;
             END $$;
         `);
-    }
+  }
 
-    public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.query(`
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -227,7 +227,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -239,7 +239,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -251,7 +251,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -263,7 +263,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -275,7 +275,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -287,7 +287,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -299,7 +299,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -311,7 +311,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -323,7 +323,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -335,7 +335,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -347,7 +347,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -359,7 +359,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -371,7 +371,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -383,7 +383,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -395,7 +395,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -407,7 +407,7 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
             END $$;
         `);
 
-        await queryRunner.query(`
+    await queryRunner.query(`
             DO $$
             BEGIN
                 IF EXISTS (
@@ -418,7 +418,5 @@ export class AddPricingOrderSchema1765615182274 implements MigrationInterface {
                 END IF;
             END $$;
         `);
-    }
-
+  }
 }
-

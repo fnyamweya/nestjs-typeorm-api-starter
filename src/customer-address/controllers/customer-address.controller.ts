@@ -24,11 +24,19 @@ import { UpsertAddressDto } from 'src/address/dto/upsert-address.dto';
 
 @Controller('customer/addresses')
 @UseGuards(JwtAuthGuard)
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @ApiTags('Customer Addresses')
 @ApiBearerAuth('access-token')
 export class CustomerAddressController {
-  constructor(private readonly customerAddressService: CustomerAddressService) {}
+  constructor(
+    private readonly customerAddressService: CustomerAddressService,
+  ) {}
 
   @Get()
   @ApiOkResponse({ description: 'Customer addresses retrieved' })
@@ -43,7 +51,10 @@ export class CustomerAddressController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('type') type: CustomerAddressType,
   ) {
-    const row = await this.customerAddressService.getForUserByType(user.id, type);
+    const row = await this.customerAddressService.getForUserByType(
+      user.id,
+      type,
+    );
     return ResponseUtil.success(row, 'Customer address retrieved');
   }
 
@@ -59,7 +70,11 @@ export class CustomerAddressController {
       throw new BadRequestException('Invalid address type');
     }
 
-    const row = await this.customerAddressService.upsertForUser(user.id, type, payload);
+    const row = await this.customerAddressService.upsertForUser(
+      user.id,
+      type,
+      payload,
+    );
     return ResponseUtil.success(row, 'Customer address saved');
   }
 
@@ -69,7 +84,10 @@ export class CustomerAddressController {
     @CurrentUser() user: AuthenticatedUser,
     @Param('type') type: CustomerAddressType,
   ) {
-    const result = await this.customerAddressService.deleteForUserByType(user.id, type);
+    const result = await this.customerAddressService.deleteForUserByType(
+      user.id,
+      type,
+    );
     return ResponseUtil.success(result, 'Customer address deleted');
   }
 }

@@ -8,6 +8,7 @@ import { LocationSeeder } from '../src/location/seeders/location.seeder';
 import { CatalogSeeder } from '../src/catalog/seeders/catalog.seeder';
 import { ShippingSeeder } from '../src/shipping/seeders/shipping.seeder';
 import { AuthSeeder } from '../src/auth/seeders/auth.seeder';
+import { ChannelsSeeder } from '../src/channels/seeders/channels.seeder';
 import { ProductSku } from '../src/catalog/entities/product-sku.entity';
 import { Location, LocationType } from '../src/location/entities/location.entity';
 import { CheckoutSession } from '../src/checkout/entities/checkout-session.entity';
@@ -26,12 +27,14 @@ describe('Checkout E2E', () => {
 
     const settingSeeder = app.get(SettingSeeder);
     const locationSeeder = app.get(LocationSeeder);
+    const channelsSeeder = app.get(ChannelsSeeder);
     const authSeeder = app.get(AuthSeeder);
     const catalogSeeder = app.get(CatalogSeeder);
     const shippingSeeder = app.get(ShippingSeeder);
 
     await settingSeeder.seed();
     await locationSeeder.seed();
+    await channelsSeeder.seed();
     await authSeeder.seed();
     await catalogSeeder.seed();
     await shippingSeeder.seed();

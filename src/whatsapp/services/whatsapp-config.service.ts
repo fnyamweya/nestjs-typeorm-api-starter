@@ -50,30 +50,50 @@ export class WhatsappConfigService {
           where: keys.map((key) => ({ key })),
         });
 
-        const getValue = (key: string) => settings.find((s) => s.key === key)?.value || '';
+        const getValue = (key: string) =>
+          settings.find((s) => s.key === key)?.value || '';
 
         const envValue = (key: string) =>
           this.configService.get<string>(key) ?? process.env[key] ?? '';
 
         return {
-          provider: getValue('whatsapp_provider') || envValue('WHATSAPP_PROVIDER') || 'meta',
+          provider:
+            getValue('whatsapp_provider') ||
+            envValue('WHATSAPP_PROVIDER') ||
+            'meta',
           accessToken:
-            this.crypto.decrypt(getValue('whatsapp_access_token')) || envValue('WHATSAPP_ACCESS_TOKEN'),
+            this.crypto.decrypt(getValue('whatsapp_access_token')) ||
+            envValue('WHATSAPP_ACCESS_TOKEN'),
           businessAccountId:
-            getValue('whatsapp_business_account_id') || envValue('WHATSAPP_BUSINESS_ACCOUNT_ID'),
+            getValue('whatsapp_business_account_id') ||
+            envValue('WHATSAPP_BUSINESS_ACCOUNT_ID'),
           phoneNumberId:
-            getValue('whatsapp_phone_number_id') || envValue('WHATSAPP_PHONE_NUMBER_ID'),
-          appId: getValue('whatsapp_app_id') || envValue('WHATSAPP_APP_ID') || undefined,
+            getValue('whatsapp_phone_number_id') ||
+            envValue('WHATSAPP_PHONE_NUMBER_ID'),
+          appId:
+            getValue('whatsapp_app_id') ||
+            envValue('WHATSAPP_APP_ID') ||
+            undefined,
           webhookVerifyToken:
             this.crypto.decrypt(getValue('whatsapp_webhook_verify_token')) ||
             envValue('WHATSAPP_WEBHOOK_VERIFY_TOKEN') ||
             undefined,
           appSecret:
-            this.crypto.decrypt(getValue('whatsapp_app_secret')) || envValue('WHATSAPP_APP_SECRET') || undefined,
-          apiVersion: getValue('whatsapp_api_version') || envValue('WHATSAPP_API_VERSION') || 'v19.0',
-          baseUrl: getValue('whatsapp_base_url') || envValue('WHATSAPP_BASE_URL') || 'https://graph.facebook.com',
+            this.crypto.decrypt(getValue('whatsapp_app_secret')) ||
+            envValue('WHATSAPP_APP_SECRET') ||
+            undefined,
+          apiVersion:
+            getValue('whatsapp_api_version') ||
+            envValue('WHATSAPP_API_VERSION') ||
+            'v19.0',
+          baseUrl:
+            getValue('whatsapp_base_url') ||
+            envValue('WHATSAPP_BASE_URL') ||
+            'https://graph.facebook.com',
           enabled:
-            (getValue('whatsapp_enabled') || envValue('WHATSAPP_ENABLED')).toLowerCase() === 'true',
+            (
+              getValue('whatsapp_enabled') || envValue('WHATSAPP_ENABLED')
+            ).toLowerCase() === 'true',
         };
       },
       { ttlSeconds: 300 },

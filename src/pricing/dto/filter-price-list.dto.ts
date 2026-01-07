@@ -11,13 +11,22 @@ export class FilterPriceListDto extends PaginationFilterDto {
   @IsString()
   search?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by currency (ISO3)', example: 'KES' })
+  @ApiPropertyOptional({
+    description: 'Filter by currency (ISO3)',
+    example: 'KES',
+  })
   @IsOptional()
   @IsString()
-  @Transform(({ value }) => (typeof value === 'string' ? value.toUpperCase() : value))
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.toUpperCase() : value,
+  )
   currency?: string;
 
-  @ApiPropertyOptional({ description: 'Filter by status', enum: PRICE_LIST_STATUS, example: 'active' })
+  @ApiPropertyOptional({
+    description: 'Filter by status',
+    enum: PRICE_LIST_STATUS,
+    example: 'active',
+  })
   @IsOptional()
   @IsIn(PRICE_LIST_STATUS as unknown as string[])
   status?: string;

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ILike, Repository } from 'typeorm';
 import { PaymentProvider } from '../entities/payment-provider.entity';
@@ -19,7 +23,9 @@ export class PaymentProviderService {
 
   async list(params: ListPaymentProvidersDto): Promise<PaymentProvider[]> {
     const where: any = {
-      ...(typeof params.isActive === 'boolean' ? { isActive: params.isActive } : {}),
+      ...(typeof params.isActive === 'boolean'
+        ? { isActive: params.isActive }
+        : {}),
     };
 
     if (params.q) {
@@ -52,7 +58,8 @@ export class PaymentProviderService {
     if (!code) throw new BadRequestException('code is required');
 
     const existing = await this.providerRepo.findOne({ where: { code } });
-    if (existing) throw new BadRequestException('Payment provider code already exists');
+    if (existing)
+      throw new BadRequestException('Payment provider code already exists');
 
     const entity = this.providerRepo.create({
       code,
@@ -66,7 +73,10 @@ export class PaymentProviderService {
     return this.providerRepo.save(entity);
   }
 
-  async update(id: string, payload: UpdatePaymentProviderDto): Promise<PaymentProvider> {
+  async update(
+    id: string,
+    payload: UpdatePaymentProviderDto,
+  ): Promise<PaymentProvider> {
     const existing = await this.providerRepo.findOne({ where: { id } });
     if (!existing) throw new NotFoundException('Payment provider not found');
 
@@ -81,10 +91,14 @@ export class PaymentProviderService {
     }
 
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
-    if (typeof payload.description !== 'undefined') existing.description = payload.description;
-    if (typeof payload.isActive !== 'undefined') existing.isActive = payload.isActive;
-    if (typeof payload.configJson !== 'undefined') existing.configJson = payload.configJson ?? {};
-    if (typeof payload.metadata !== 'undefined') existing.metadata = payload.metadata ?? {};
+    if (typeof payload.description !== 'undefined')
+      existing.description = payload.description;
+    if (typeof payload.isActive !== 'undefined')
+      existing.isActive = payload.isActive;
+    if (typeof payload.configJson !== 'undefined')
+      existing.configJson = payload.configJson ?? {};
+    if (typeof payload.metadata !== 'undefined')
+      existing.metadata = payload.metadata ?? {};
 
     return this.providerRepo.save(existing);
   }

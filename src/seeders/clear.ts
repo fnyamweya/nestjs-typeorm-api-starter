@@ -35,9 +35,7 @@ async function clearDatabase() {
     }
 
     // Use TRUNCATE ... CASCADE to safely clear tables without superuser privileges
-    const tableList = tables
-      .map((t) => `"${t.tablename}"`)
-      .join(', ');
+    const tableList = tables.map((t) => `"${t.tablename}"`).join(', ');
 
     await dataSource.query(`TRUNCATE TABLE ${tableList} CASCADE;`);
     console.log('🎉 All tables truncated successfully!');

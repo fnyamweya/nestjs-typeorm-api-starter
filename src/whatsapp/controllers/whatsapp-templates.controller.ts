@@ -29,18 +29,28 @@ import { CreateWhatsappTemplateDto } from '../dto/create-whatsapp-template.dto';
 import { UpdateWhatsappTemplateDto } from '../dto/update-whatsapp-template.dto';
 import { FilterWhatsappTemplateDto } from '../dto/filter-whatsapp-template.dto';
 import { FetchWhatsappProviderTemplatesDto } from '../dto/fetch-whatsapp-provider-templates.dto';
-import { MetaTemplateButtonDto, MetaTemplateComponentDto } from '../dto/meta-whatsapp-template-component.dto';
+import {
+  MetaTemplateButtonDto,
+  MetaTemplateComponentDto,
+} from '../dto/meta-whatsapp-template-component.dto';
 
 @Controller('whatsapp/templates')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @ApiTags('WhatsApp: Templates')
 @ApiBearerAuth('access-token')
-@ApiExtraModels(CreateWhatsappTemplateDto, MetaTemplateComponentDto, MetaTemplateButtonDto)
+@ApiExtraModels(
+  CreateWhatsappTemplateDto,
+  MetaTemplateComponentDto,
+  MetaTemplateButtonDto,
+)
 export class WhatsappTemplatesController {
   constructor(private readonly templateService: WhatsappTemplateService) {}
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'create',
+  })
   @ApiOperation({ summary: 'Create WhatsApp template' })
   @ApiBody({
     schema: { $ref: getSchemaPath(CreateWhatsappTemplateDto) },
@@ -112,8 +122,12 @@ export class WhatsappTemplatesController {
   @ApiOperation({ summary: 'Fetch WhatsApp templates from provider' })
   @ApiOkResponse({ description: 'Provider templates retrieved successfully' })
   async fetchProvider(@Query() filters: FetchWhatsappProviderTemplatesDto) {
-    const templates = await this.templateService.fetchProviderTemplates(filters);
-    return ResponseUtil.success(templates, 'Provider templates retrieved successfully');
+    const templates =
+      await this.templateService.fetchProviderTemplates(filters);
+    return ResponseUtil.success(
+      templates,
+      'Provider templates retrieved successfully',
+    );
   }
 
   @Get('/provider/:id')
@@ -122,7 +136,10 @@ export class WhatsappTemplatesController {
   @ApiOkResponse({ description: 'Provider template retrieved successfully' })
   async fetchProviderOne(@Param('id') id: string) {
     const template = await this.templateService.fetchProviderTemplate(id);
-    return ResponseUtil.success(template, 'Provider template retrieved successfully');
+    return ResponseUtil.success(
+      template,
+      'Provider template retrieved successfully',
+    );
   }
 
   @Get('/:id')
@@ -135,16 +152,25 @@ export class WhatsappTemplatesController {
   }
 
   @Patch('/:id')
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Update WhatsApp template' })
   @ApiOkResponse({ description: 'Template updated successfully' })
-  async update(@Param('id') id: string, @Body() payload: UpdateWhatsappTemplateDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() payload: UpdateWhatsappTemplateDto,
+  ) {
     const template = await this.templateService.update(id, payload);
     return ResponseUtil.updated(template, 'Template updated successfully');
   }
 
   @Post('/:id/submit')
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
   @ApiOperation({ summary: 'Submit template to WhatsApp provider' })
   @ApiOkResponse({ description: 'Template submitted successfully' })
   async submit(@Param('id') id: string) {
@@ -153,7 +179,10 @@ export class WhatsappTemplatesController {
   }
 
   @Delete('/:id')
-  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'delete',
+  })
   @ApiOperation({ summary: 'Delete WhatsApp template' })
   @ApiOkResponse({ description: 'Template deleted successfully' })
   async remove(@Param('id') id: string) {

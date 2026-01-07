@@ -5,7 +5,14 @@ import { WhatsappTemplate } from '../entities/whatsapp-template.entity';
 
 type SeedTemplate = Pick<
   WhatsappTemplate,
-  'name' | 'language' | 'category' | 'status' | 'isActive' | 'componentsJson' | 'defaultComponentsJson' | 'metaJson'
+  | 'name'
+  | 'language'
+  | 'category'
+  | 'status'
+  | 'isActive'
+  | 'componentsJson'
+  | 'defaultComponentsJson'
+  | 'metaJson'
 >;
 
 @Injectable()
@@ -69,7 +76,8 @@ export class WhatsappTemplateSeeder {
           seededBy: 'WhatsappTemplateSeeder',
           seedKey: 'customer_registration_success',
           seedVersion: 1,
-          description: 'Sent after customer registration completes successfully',
+          description:
+            'Sent after customer registration completes successfully',
         },
       },
     ];
@@ -79,7 +87,9 @@ export class WhatsappTemplateSeeder {
     const templates = this.buildSeedTemplates();
 
     for (const seed of templates) {
-      const existing = await this.templateRepository.findOne({ where: { name: seed.name } });
+      const existing = await this.templateRepository.findOne({
+        where: { name: seed.name },
+      });
 
       if (!existing) {
         const created = this.templateRepository.create(seed);
@@ -88,13 +98,19 @@ export class WhatsappTemplateSeeder {
         continue;
       }
 
-      const existingMeta = (existing.metaJson ?? {}) as Record<string, unknown>;
+      const existingMeta = existing.metaJson ?? {};
       const seededBy = existingMeta.seededBy;
       const seedKey = existingMeta.seedKey;
 
       // Avoid overwriting templates that were manually created/maintained.
-      if (seededBy && (seededBy !== 'WhatsappTemplateSeeder' || seedKey !== seed.metaJson.seedKey)) {
-        console.log(`Skipping WhatsApp template (not seeded by us): ${seed.name}`);
+      if (
+        seededBy &&
+        (seededBy !== 'WhatsappTemplateSeeder' ||
+          seedKey !== seed.metaJson.seedKey)
+      ) {
+        console.log(
+          `Skipping WhatsApp template (not seeded by us): ${seed.name}`,
+        );
         continue;
       }
 

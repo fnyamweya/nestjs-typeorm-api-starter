@@ -22,7 +22,6 @@ const SIM_CUSTOMER_EMAIL = 'simulate@example.com';
 const SIM_CUSTOMER_PHONE = '254700000001';
 
 async function runSimulationSeed() {
-  // eslint-disable-next-line no-console
   console.log('🧪 Starting simulation seed (order + mpesa payment)...');
 
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -39,9 +38,13 @@ async function runSimulationSeed() {
     const orderService = app.get(OrderService);
     const mpesaService = app.get(MpesaService);
 
-    const skuRepo = app.get<Repository<ProductSku>>(getRepositoryToken(ProductSku));
+    const skuRepo = app.get<Repository<ProductSku>>(
+      getRepositoryToken(ProductSku),
+    );
     const orderRepo = app.get<Repository<Order>>(getRepositoryToken(Order));
-    const locationRepo = app.get<Repository<Location>>(getRepositoryToken(Location));
+    const locationRepo = app.get<Repository<Location>>(
+      getRepositoryToken(Location),
+    );
     const userRepo = app.get<Repository<User>>(getRepositoryToken(User));
 
     // Ensure base data exists
@@ -60,14 +63,20 @@ async function runSimulationSeed() {
 
     const sku = await skuRepo.findOne({ where: { sku: 'PHONE-001' } });
     if (!sku) {
-      throw new Error('Missing seeded product SKU PHONE-001. Run db:seed first or check CatalogSeeder.');
+      throw new Error(
+        'Missing seeded product SKU PHONE-001. Run db:seed first or check CatalogSeeder.',
+      );
     }
 
     // Idempotent-ish: reuse the same simulated order if it exists
-    let order = await orderRepo.findOne({ where: { externalId: SIM_ORDER_EXTERNAL_ID } });
+    let order = await orderRepo.findOne({
+      where: { externalId: SIM_ORDER_EXTERNAL_ID },
+    });
 
     // Find/create a simulation customer
-    let customer: User | null = await userRepo.findOne({ where: { email: SIM_CUSTOMER_EMAIL } });
+    let customer: User | null = await userRepo.findOne({
+      where: { email: SIM_CUSTOMER_EMAIL },
+    });
     if (!customer) {
       const created = userRepo.create({
         email: SIM_CUSTOMER_EMAIL,
@@ -85,9 +94,13 @@ async function runSimulationSeed() {
       throw new Error('Failed to create or load simulation customer user');
     }
 
-    const kenya = await locationRepo.findOne({ where: { type: LocationType.COUNTRY, countryCode: 'KE' } });
+    const kenya = await locationRepo.findOne({
+      where: { type: LocationType.COUNTRY, countryCode: 'KE' },
+    });
     if (!kenya) {
-      throw new Error('Missing Kenya country location. Run LocationSeeder.seed() and verify location data.');
+      throw new Error(
+        'Missing Kenya country location. Run LocationSeeder.seed() and verify location data.',
+      );
     }
 
     if (!order) {
@@ -97,11 +110,14 @@ async function runSimulationSeed() {
         shippingLocationId: kenya.id,
       });
 
-      await orderRepo.update({ id: order.id } as any, {
-        externalId: SIM_ORDER_EXTERNAL_ID,
-        notesInternal: 'Created by simulation seeder',
-        metaJson: { ...(order.metaJson || {}), seed: 'simulation' },
-      } as any);
+      await orderRepo.update(
+        { id: order.id } as any,
+        {
+          externalId: SIM_ORDER_EXTERNAL_ID,
+          notesInternal: 'Created by simulation seeder',
+          metaJson: { ...(order.metaJson || {}), seed: 'simulation' },
+        } as any,
+      );
 
       order = (await orderRepo.findOne({ where: { id: order.id } })) ?? order;
     }
@@ -125,14 +141,16 @@ async function runSimulationSeed() {
       LastName: 'User',
     });
 
-    // eslint-disable-next-line no-console
     console.log('✅ Simulation seed complete');
-    // eslint-disable-next-line no-console
-    console.log(`- Order: id=${order.id} externalId=${SIM_ORDER_EXTERNAL_ID} orderNumber=${order.orderNumber} total=${order.grandTotal}`);
-    // eslint-disable-next-line no-console
-    console.log(`- Mpesa: transactionId=${SIM_MPESA_TX_ID} billRefNumber=${order.orderNumber}`);
+
+    console.log(
+      `- Order: id=${order.id} externalId=${SIM_ORDER_EXTERNAL_ID} orderNumber=${order.orderNumber} total=${order.grandTotal}`,
+    );
+
+    console.log(
+      `- Mpesa: transactionId=${SIM_MPESA_TX_ID} billRefNumber=${order.orderNumber}`,
+    );
   } catch (error) {
-    // eslint-disable-next-line no-console
     console.error('❌ Simulation seed failed:', error);
     process.exit(1);
   } finally {
@@ -141,7 +159,6 @@ async function runSimulationSeed() {
 }
 
 runSimulationSeed().catch((error) => {
-  // eslint-disable-next-line no-console
   console.error('❌ Fatal error during simulation seed:', error);
   process.exit(1);
 });

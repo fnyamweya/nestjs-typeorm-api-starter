@@ -32,7 +32,9 @@ export class CreateOrderShippingAddress20260101174500
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`DROP INDEX IF EXISTS "uq_order_shipping_address_order";`);
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "uq_order_shipping_address_order";`,
+    );
     await queryRunner.query(`DROP TABLE IF EXISTS "order_shipping_address";`);
   }
 }

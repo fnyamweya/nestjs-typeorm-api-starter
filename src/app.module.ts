@@ -31,6 +31,10 @@ import { CurrencyModule } from './currency/currency.module';
 import { CheckoutModule } from './checkout/checkout.module';
 import { PaymentProviderModule } from './payment-provider/payment-provider.module';
 import { PaymentMethodModule } from './payment-method/payment-method.module';
+import { OrderPaymentModule } from './order-payment/order-payment.module';
+import { OrderFulfillmentModule } from './order-fulfillment/order-fulfillment.module';
+import { OrderEventsModule } from './order-events/order-events.module';
+import { AccountingModule } from './accounting/accounting.module';
 
 @Module({
   imports: [
@@ -66,6 +70,10 @@ import { PaymentMethodModule } from './payment-method/payment-method.module';
     CheckoutModule,
     PaymentProviderModule,
     PaymentMethodModule,
+    OrderPaymentModule,
+    AccountingModule,
+    OrderFulfillmentModule,
+    OrderEventsModule,
   ],
   controllers: [AppController],
   providers: [

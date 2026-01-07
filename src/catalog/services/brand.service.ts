@@ -7,7 +7,10 @@ import { CreateBrandDto } from '../dto/create-brand.dto';
 import { UpdateBrandDto } from '../dto/update-brand.dto';
 import { FilterBrandDto } from '../dto/filter-brand.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
-import { cacheKeyFromParts, cacheKeyHash } from 'src/common/cache/cache-key.util';
+import {
+  cacheKeyFromParts,
+  cacheKeyHash,
+} from 'src/common/cache/cache-key.util';
 import { PublicBrandDto } from '../dto/public/public-brand.dto';
 import { PublicListBrandsDto } from '../dto/public/public-list-brands.dto';
 
@@ -67,13 +70,18 @@ export class BrandService {
           .orderBy('brand.createdAt', 'DESC');
 
         if (filters.isActive !== undefined) {
-          qb.andWhere('brand.is_active = :isActive', { isActive: filters.isActive });
+          qb.andWhere('brand.is_active = :isActive', {
+            isActive: filters.isActive,
+          });
         }
 
         if (filters.search) {
-          qb.andWhere('(brand.name ILIKE :search OR brand.slug ILIKE :search)', {
-            search: `%${filters.search}%`,
-          });
+          qb.andWhere(
+            '(brand.name ILIKE :search OR brand.slug ILIKE :search)',
+            {
+              search: `%${filters.search}%`,
+            },
+          );
         }
 
         const [data, total] = await qb.getManyAndCount();
@@ -98,7 +106,12 @@ export class BrandService {
     return brand;
   }
 
-  async findAllPublic(filters: PublicListBrandsDto): Promise<{ data: PublicBrandDto[]; total: number; page: number; limit: number }> {
+  async findAllPublic(filters: PublicListBrandsDto): Promise<{
+    data: PublicBrandDto[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
     const page = filters.page ?? 1;
     const limit = filters.limit ?? 10;
 
@@ -120,9 +133,12 @@ export class BrandService {
           .orderBy('brand.createdAt', 'DESC');
 
         if (filters.search) {
-          qb.andWhere('(brand.name ILIKE :search OR brand.slug ILIKE :search)', {
-            search: `%${filters.search}%`,
-          });
+          qb.andWhere(
+            '(brand.name ILIKE :search OR brand.slug ILIKE :search)',
+            {
+              search: `%${filters.search}%`,
+            },
+          );
         }
 
         const [data, total] = await qb.getManyAndCount();
@@ -145,7 +161,9 @@ export class BrandService {
   }
 
   async findOnePublic(id: string): Promise<PublicBrandDto> {
-    const rawKey = cacheKeyFromParts('public', 'catalog', 'brands', 'one', { id });
+    const rawKey = cacheKeyFromParts('public', 'catalog', 'brands', 'one', {
+      id,
+    });
     const key = `public:catalog:brands:${cacheKeyHash(rawKey)}`;
 
     const brand = await this.cache.remember(
@@ -170,7 +188,8 @@ export class BrandService {
     const brand = await this.findOneEntityOrThrow(id);
 
     const nextName = payload.name ?? brand.name;
-    const nameChanged = payload.name !== undefined && payload.name !== brand.name;
+    const nameChanged =
+      payload.name !== undefined && payload.name !== brand.name;
 
     Object.assign(brand, {
       name: nextName,
@@ -206,7 +225,10 @@ export class BrandService {
     return brand;
   }
 
-  private async generateUniqueSlug(name: string, excludeId?: string): Promise<string> {
+  private async generateUniqueSlug(
+    name: string,
+    excludeId?: string,
+  ): Promise<string> {
     const base = slugify(name, { lower: true, strict: true, trim: true });
     const baseSlug = base.length ? base : 'brand';
 
@@ -215,9 +237,11 @@ export class BrandService {
 
     // keep it simple and safe: loop until we find a free slug
     // (brands count is expected to be relatively small)
-    // eslint-disable-next-line no-constant-condition
+
     while (true) {
-      const existing = await this.brandRepository.findOne({ where: { slug: candidate } });
+      const existing = await this.brandRepository.findOne({
+        where: { slug: candidate },
+      });
       if (!existing || existing.id === excludeId) return candidate;
       candidate = `${baseSlug}-${suffix}`;
       suffix += 1;

@@ -1,4 +1,8 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Banner } from './entities/banner.entity';
@@ -16,7 +20,9 @@ export class BannerService {
   private validateCreative(creative: Record<string, unknown>) {
     const kind = String((creative as any)?.kind ?? '').trim();
     if (!kind) {
-      throw new BadRequestException("creative.kind is required (e.g. 'image' or 'color')");
+      throw new BadRequestException(
+        "creative.kind is required (e.g. 'image' or 'color')",
+      );
     }
 
     if (kind === 'image') {
@@ -42,7 +48,10 @@ export class BannerService {
   private normalizePlacements(placements: Array<Record<string, unknown>>) {
     const normalized = (placements || []).map((p) => ({
       ...p,
-      page: typeof (p as any).page === 'string' ? String((p as any).page).trim() : (p as any).page,
+      page:
+        typeof (p as any).page === 'string'
+          ? String((p as any).page).trim()
+          : (p as any).page,
       section:
         typeof (p as any).section === 'string'
           ? String((p as any).section).trim()
@@ -54,7 +63,8 @@ export class BannerService {
     }
 
     for (const item of normalized) {
-      if (!item.page) throw new BadRequestException('placements[].page is required');
+      if (!item.page)
+        throw new BadRequestException('placements[].page is required');
     }
 
     return normalized;
@@ -64,11 +74,14 @@ export class BannerService {
     const normalized = (targets || []).map((t) => ({
       ...t,
       kind:
-        typeof (t as any).kind === 'string' ? String((t as any).kind).trim() : (t as any).kind,
+        typeof (t as any).kind === 'string'
+          ? String((t as any).kind).trim()
+          : (t as any).kind,
     }));
 
     for (const item of normalized) {
-      if (!item.kind) throw new BadRequestException('targets[].kind is required');
+      if (!item.kind)
+        throw new BadRequestException('targets[].kind is required');
     }
 
     return normalized;
@@ -96,7 +109,10 @@ export class BannerService {
     const { getAll, limit, page } = filter;
     const skip = (page - 1) * limit;
 
-    const qb = this.repo.createQueryBuilder('b').orderBy('b.priority', 'DESC').addOrderBy('b.created_at', 'DESC');
+    const qb = this.repo
+      .createQueryBuilder('b')
+      .orderBy('b.priority', 'DESC')
+      .addOrderBy('b.created_at', 'DESC');
 
     // search
     if (filter.search) {
@@ -116,7 +132,9 @@ export class BannerService {
 
     if (filter.placementSection) {
       qb.andWhere('b.placements_json @> :placementsSection', {
-        placementsSection: JSON.stringify([{ section: filter.placementSection }]),
+        placementsSection: JSON.stringify([
+          { section: filter.placementSection },
+        ]),
       });
     }
 
@@ -132,7 +150,9 @@ export class BannerService {
       });
     }
 
-    const onlyCurrentlyActive = opts?.publicOnly ? true : (filter.onlyCurrentlyActive ?? false);
+    const onlyCurrentlyActive = opts?.publicOnly
+      ? true
+      : (filter.onlyCurrentlyActive ?? false);
 
     if (onlyCurrentlyActive) {
       const now = new Date();
@@ -165,13 +185,19 @@ export class BannerService {
     }
 
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
-    if (typeof payload.isActive !== 'undefined') existing.isActive = payload.isActive;
-    if (typeof payload.startsAt !== 'undefined') existing.startsAt = payload.startsAt ? new Date(payload.startsAt) : null;
-    if (typeof payload.endsAt !== 'undefined') existing.endsAt = payload.endsAt ? new Date(payload.endsAt) : null;
-    if (typeof payload.priority !== 'undefined') existing.priority = payload.priority;
+    if (typeof payload.isActive !== 'undefined')
+      existing.isActive = payload.isActive;
+    if (typeof payload.startsAt !== 'undefined')
+      existing.startsAt = payload.startsAt ? new Date(payload.startsAt) : null;
+    if (typeof payload.endsAt !== 'undefined')
+      existing.endsAt = payload.endsAt ? new Date(payload.endsAt) : null;
+    if (typeof payload.priority !== 'undefined')
+      existing.priority = payload.priority;
 
     if (typeof payload.placements !== 'undefined') {
-      existing.placementsJson = this.normalizePlacements(payload.placements as any);
+      existing.placementsJson = this.normalizePlacements(
+        payload.placements as any,
+      );
     }
 
     if (typeof payload.targets !== 'undefined') {

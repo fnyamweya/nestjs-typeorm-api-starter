@@ -1,10 +1,14 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
-export class AddCustomerProfileTierFk20260106_1768000000000 implements MigrationInterface {
+export class AddCustomerProfileTierFk20260106_1768000000000
+  implements MigrationInterface
+{
   name = 'AddCustomerProfileTierFk20260106_1768000000000';
 
   public async up(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_id" uuid`);
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" ADD COLUMN IF NOT EXISTS "tier_id" uuid`,
+    );
 
     await queryRunner.query(
       `CREATE INDEX IF NOT EXISTS "idx_customer_profiles_tier_id" ON "customer_profiles" ("tier_id")`,
@@ -37,8 +41,14 @@ export class AddCustomerProfileTierFk20260106_1768000000000 implements Migration
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
-    await queryRunner.query(`ALTER TABLE "customer_profiles" DROP CONSTRAINT IF EXISTS "fk_customer_profiles_tier"`);
-    await queryRunner.query(`DROP INDEX IF EXISTS "idx_customer_profiles_tier_id"`);
-    await queryRunner.query(`ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_id"`);
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" DROP CONSTRAINT IF EXISTS "fk_customer_profiles_tier"`,
+    );
+    await queryRunner.query(
+      `DROP INDEX IF EXISTS "idx_customer_profiles_tier_id"`,
+    );
+    await queryRunner.query(
+      `ALTER TABLE "customer_profiles" DROP COLUMN IF EXISTS "tier_id"`,
+    );
   }
 }

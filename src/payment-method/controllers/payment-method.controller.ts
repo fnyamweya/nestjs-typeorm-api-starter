@@ -30,13 +30,22 @@ import { PaymentMethodService } from '../services/payment-method.service';
 @Controller('payment-methods')
 @ApiTags('Payment Methods')
 @ApiBearerAuth('access-token')
-@UsePipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }))
+@UsePipes(
+  new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }),
+)
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class PaymentMethodController {
   constructor(private readonly methodService: PaymentMethodService) {}
 
   @Post()
-  @RequirePermissions({ module: PermissionModule.PAYMENT_METHODS, permission: 'create' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_METHODS,
+    permission: 'create',
+  })
   @ApiCreatedResponse({ description: 'Payment method created' })
   async create(@Body() payload: CreatePaymentMethodDto) {
     const row = await this.methodService.create(payload);
@@ -44,7 +53,10 @@ export class PaymentMethodController {
   }
 
   @Get()
-  @RequirePermissions({ module: PermissionModule.PAYMENT_METHODS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_METHODS,
+    permission: 'read',
+  })
   @ApiOkResponse({ description: 'Payment methods retrieved' })
   async list(@Query() query: ListPaymentMethodsDto) {
     const rows = await this.methodService.list(query);
@@ -52,7 +64,10 @@ export class PaymentMethodController {
   }
 
   @Get(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_METHODS, permission: 'read' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_METHODS,
+    permission: 'read',
+  })
   @ApiOkResponse({ description: 'Payment method retrieved' })
   async get(@Param('id') id: string) {
     const row = await this.methodService.getById(id);
@@ -60,15 +75,24 @@ export class PaymentMethodController {
   }
 
   @Patch(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_METHODS, permission: 'update' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_METHODS,
+    permission: 'update',
+  })
   @ApiOkResponse({ description: 'Payment method updated' })
-  async update(@Param('id') id: string, @Body() payload: UpdatePaymentMethodDto) {
+  async update(
+    @Param('id') id: string,
+    @Body() payload: UpdatePaymentMethodDto,
+  ) {
     const row = await this.methodService.update(id, payload);
     return ResponseUtil.success(row, 'Payment method updated');
   }
 
   @Delete(':id')
-  @RequirePermissions({ module: PermissionModule.PAYMENT_METHODS, permission: 'delete' })
+  @RequirePermissions({
+    module: PermissionModule.PAYMENT_METHODS,
+    permission: 'delete',
+  })
   @ApiOkResponse({ description: 'Payment method deleted' })
   async delete(@Param('id') id: string) {
     const res = await this.methodService.delete(id);

@@ -26,7 +26,6 @@ export class AdminAppleStrategy extends PassportStrategy(
     const keyID = configService.get<string>('APPLE_KEY_ID');
 
     if (!clientID || !teamID || !keyID || !privateKey) {
-      // eslint-disable-next-line no-console
       console.warn(
         'Apple OAuth credentials are not fully configured. Admin Apple login will remain disabled until APPLE_* env vars are set.',
       );
