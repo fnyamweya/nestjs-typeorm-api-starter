@@ -114,7 +114,15 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
     APPLE_KEY_ID=
     APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
     APPLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/apple/callback
+
+      # Encryption key (required for storing secrets in DB Settings)
+      ENCRYPTION_KEY=
    ```
+
+       Notes:
+
+       - Admin OAuth can be configured either via env vars **or** via the Settings API (DB-backed, encrypted secrets).
+       - See [docs/oauth-settings.md](docs/oauth-settings.md).
 
 4. **Database Setup**
 

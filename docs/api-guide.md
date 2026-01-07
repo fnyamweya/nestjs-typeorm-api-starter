@@ -15,6 +15,10 @@ Auth:
 Response format:
 - Endpoints generally return a wrapper via `ResponseUtil` (e.g. `{ data, message, ... }`).
 
+Settings:
+- Admin OAuth settings (Google/Apple) can be managed via `/api/v1/settings/oauth/*`.
+- Guide: [docs/oauth-settings.md](docs/oauth-settings.md)
+
 ---
 
 ## Orders
