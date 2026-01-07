@@ -108,12 +108,12 @@ A comprehensive, production-ready NestJS template with TypeORM, featuring authen
     APP_URL=http://localhost:8090
     GOOGLE_CLIENT_ID=
     GOOGLE_CLIENT_SECRET=
-    GOOGLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/google/callback
+    GOOGLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/google/callback
     APPLE_CLIENT_ID=
     APPLE_TEAM_ID=
     APPLE_KEY_ID=
     APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-    APPLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/apple/callback
+    APPLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/apple/callback
 
       # Encryption key (required for storing secrets in DB Settings)
       ENCRYPTION_KEY=

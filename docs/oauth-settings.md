@@ -170,11 +170,11 @@ curl -X POST \
 Once configured, admin OAuth flows are initiated at:
 
 - Google:
-  - `GET /api/auth/admin/google`
-  - `GET /api/auth/admin/google/callback`
+  - `GET /api/v1/auth/admin/google`
+  - `GET /api/v1/auth/admin/google/callback`
 - Apple:
-  - `GET /api/auth/admin/apple`
-  - `GET /api/auth/admin/apple/callback`
+  - `GET /api/v1/auth/admin/apple`
+  - `POST /api/v1/auth/admin/apple/callback`
 
 If credentials are missing, these routes return **503** rather than silently misbehaving.
 
@@ -189,11 +189,11 @@ APP_URL=http://localhost:8090
 
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/google/callback
+GOOGLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/google/callback
 
 APPLE_CLIENT_ID=
 APPLE_TEAM_ID=
 APPLE_KEY_ID=
 APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-APPLE_CALLBACK_URL=http://localhost:8090/api/auth/admin/apple/callback
+APPLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/apple/callback
 ```

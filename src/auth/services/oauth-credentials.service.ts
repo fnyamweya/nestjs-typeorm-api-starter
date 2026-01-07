@@ -52,7 +52,7 @@ export class OAuthCredentialsService {
     const defaultCallback = `${this.configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
-    )}/api/auth/admin/google/callback`;
+    )}/api/v1/auth/admin/google/callback`;
 
     const fromDb = await this.cache.remember(
       'settings:oauth:google:internal',
@@ -111,7 +111,7 @@ export class OAuthCredentialsService {
     const defaultCallback = `${this.configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
-    )}/api/auth/admin/apple/callback`;
+    )}/api/v1/auth/admin/apple/callback`;
 
     const fromDb = await this.cache.remember(
       'settings:oauth:apple:internal',

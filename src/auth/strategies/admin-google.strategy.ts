@@ -17,7 +17,7 @@ export class AdminGoogleStrategy extends PassportStrategy(
     const defaultCallback = `${configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
-    )}/api/auth/admin/google/callback`;
+    )}/api/v1/auth/admin/google/callback`;
 
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');

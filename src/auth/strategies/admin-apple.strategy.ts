@@ -23,7 +23,7 @@ export class AdminAppleStrategy extends PassportStrategy(
     const defaultCallback = `${configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
-    )}/api/auth/admin/apple/callback`;
+    )}/api/v1/auth/admin/apple/callback`;
 
     const clientID = configService.get<string>('APPLE_CLIENT_ID');
     const teamID = configService.get<string>('APPLE_TEAM_ID');
