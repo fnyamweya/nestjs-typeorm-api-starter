@@ -84,7 +84,7 @@ export class OAuthCredentialsService {
           callbackURL: callbackURL?.trim() || undefined,
         };
       },
-      { ttlSeconds: 300 },
+      { ttlSeconds: 3600 },
     );
 
     const envClientID = this.configService.get<string>('GOOGLE_CLIENT_ID');
@@ -149,7 +149,7 @@ export class OAuthCredentialsService {
           callbackURL: callbackURL?.trim() || undefined,
         };
       },
-      { ttlSeconds: 300 },
+      { ttlSeconds: 3600 },
     );
 
     const envPrivateKey = (this.configService.get<string>('APPLE_PRIVATE_KEY', '') || '').replace(

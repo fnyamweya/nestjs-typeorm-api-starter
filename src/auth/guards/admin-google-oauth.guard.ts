@@ -13,6 +13,13 @@ export class AdminGoogleOAuthGuard extends AuthGuard('admin-google') {
     if (!cfg.clientID || !cfg.clientSecret) {
       throw new ServiceUnavailableException('Google OAuth is not configured');
     }
+
+    // Reuse this config in the strategy.authenticate() call to avoid a second cache hit.
+    const req = context.switchToHttp().getRequest();
+    if (req) {
+      req.__oauthGoogleAdminConfig = cfg;
+    }
+
     return (await super.canActivate(context)) as boolean;
   }
 }

@@ -37,8 +37,12 @@ export class AdminGoogleStrategy extends PassportStrategy(
   }
 
   authenticate(req: any, options?: any): void {
-    void this.oauthCredentials
-      .getGoogleAdminConfig()
+    const fromGuard = req?.__oauthGoogleAdminConfig;
+    const cfgPromise = fromGuard
+      ? Promise.resolve(fromGuard)
+      : this.oauthCredentials.getGoogleAdminConfig();
+
+    void cfgPromise
       .then((cfg) => {
         if (!cfg.clientID || !cfg.clientSecret) {
           // Guard should prevent this path; keep a safe fallback.

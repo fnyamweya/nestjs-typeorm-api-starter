@@ -44,8 +44,12 @@ export class AdminAppleStrategy extends PassportStrategy(
   }
 
   authenticate(req: any, options?: any): void {
-    void this.oauthCredentials
-      .getAppleAdminConfig()
+    const fromGuard = req?.__oauthAppleAdminConfig;
+    const cfgPromise = fromGuard
+      ? Promise.resolve(fromGuard)
+      : this.oauthCredentials.getAppleAdminConfig();
+
+    void cfgPromise
       .then((cfg) => {
         if (!cfg.clientID || !cfg.teamID || !cfg.keyID || !cfg.privateKeyString) {
           // Guard should prevent this path; keep a safe fallback.
