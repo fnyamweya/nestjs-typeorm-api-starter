@@ -31,6 +31,9 @@ import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
 import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
 import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
 import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
+import { CreateGoogleOAuthCustomerSettingDto } from '../dto/create-google-oauth-customer-setting.dto';
+import { UpdateGoogleOAuthCustomerSecretDto } from '../dto/update-google-oauth-customer-secret.dto';
+import { GoogleOAuthCustomerResponseDto } from '../dto/google-oauth-customer-response.dto';
 import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
 import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
 import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
@@ -123,6 +126,86 @@ export class SettingController {
     return ResponseUtil.success(
       data,
       'Google OAuth settings retrieved successfully',
+    );
+  }
+
+  @Post('oauth/google/customer')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Customer Google OAuth settings updated successfully',
+    resourceType: 'oauth-google-customer-settings',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update Customer Google OAuth settings' })
+  @ApiBody({ type: CreateGoogleOAuthCustomerSettingDto })
+  @ApiCreatedResponse({
+    description: 'Customer Google OAuth settings updated successfully',
+    type: GoogleOAuthCustomerResponseDto,
+  })
+  async createGoogleOAuthCustomerSettings(
+    @Body() dto: CreateGoogleOAuthCustomerSettingDto,
+  ): Promise<ApiResponse<GoogleOAuthCustomerResponseDto>> {
+    const data = await this.settingService.createGoogleOAuthCustomerSettings(
+      dto,
+    );
+    return ResponseUtil.created(
+      data,
+      'Customer Google OAuth settings updated successfully',
+    );
+  }
+
+  @Post('oauth/google/customer/secret')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Customer Google OAuth client secret updated successfully',
+    resourceType: 'oauth-google-customer-secret',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update Customer Google OAuth client secret',
+    description:
+      'Stores the secret encrypted at rest. Secret values are never returned in responses.',
+  })
+  @ApiBody({ type: UpdateGoogleOAuthCustomerSecretDto })
+  @ApiOkResponse({
+    description: 'Customer Google OAuth client secret updated successfully',
+    type: GoogleOAuthCustomerResponseDto,
+  })
+  async updateGoogleOAuthCustomerSecret(
+    @Body() dto: UpdateGoogleOAuthCustomerSecretDto,
+  ): Promise<ApiResponse<GoogleOAuthCustomerResponseDto>> {
+    const data = await this.settingService.updateGoogleOAuthCustomerSecret(dto);
+    return ResponseUtil.success(
+      data,
+      'Customer Google OAuth client secret updated successfully',
+    );
+  }
+
+  @Get('oauth/google/customer')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve configured Customer Google OAuth settings' })
+  @ApiOkResponse({
+    description: 'Customer Google OAuth settings retrieved successfully',
+    type: GoogleOAuthCustomerResponseDto,
+  })
+  async getGoogleOAuthCustomerSettings(): Promise<
+    ApiResponse<GoogleOAuthCustomerResponseDto>
+  > {
+    const data = await this.settingService.getGoogleOAuthCustomerSettings();
+    return ResponseUtil.success(
+      data,
+      'Customer Google OAuth settings retrieved successfully',
     );
   }
 

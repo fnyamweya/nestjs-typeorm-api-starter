@@ -60,6 +60,8 @@ import {
   AUTH_OTP_QUEUE,
 } from '../workers/auth-otp.worker';
 import { QueueService } from 'src/queue/queue.service';
+import axios from 'axios';
+import { OAuthCredentialsService } from './oauth-credentials.service';
 
 @Injectable()
 export class AuthService {
@@ -92,7 +94,227 @@ export class AuthService {
     private whatsappMessageService: WhatsappMessageService,
     private readonly rateLimitService: RateLimitService,
     private readonly queueService: QueueService,
+    private readonly oauthCredentialsService: OAuthCredentialsService,
   ) {}
+
+  async exchangeCustomerGoogleOAuthCodeAndLogin(
+    input: { code: string; codeVerifier?: string },
+    request: Request,
+  ) {
+    const cfg = await this.oauthCredentialsService.getGoogleCustomerConfig();
+    if (!cfg.clientID || !cfg.clientSecret) {
+      throw new BadRequestException('Customer Google OAuth is not configured');
+    }
+
+    const params = new URLSearchParams({
+      code: input.code,
+      client_id: cfg.clientID,
+      client_secret: cfg.clientSecret,
+      redirect_uri: cfg.callbackURL,
+      grant_type: 'authorization_code',
+    });
+
+    if (input.codeVerifier) {
+      params.set('code_verifier', input.codeVerifier);
+    }
+
+    const tokenResponse = await axios.post(
+      'https://oauth2.googleapis.com/token',
+      params.toString(),
+      {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      },
+    );
+
+    const idToken: string | undefined = tokenResponse.data?.id_token;
+    if (!idToken) {
+      throw new UnauthorizedException('Google OAuth did not return an id_token');
+    }
+
+    const tokenInfo = await axios.get(
+      'https://oauth2.googleapis.com/tokeninfo',
+      { params: { id_token: idToken } },
+    );
+
+    const aud = tokenInfo.data?.aud as string | undefined;
+    if (aud && aud !== cfg.clientID) {
+      throw new UnauthorizedException('Google token audience mismatch');
+    }
+
+    const email = (tokenInfo.data?.email as string | undefined)?.toLowerCase();
+    const emailVerifiedRaw = tokenInfo.data?.email_verified;
+    const emailVerified =
+      emailVerifiedRaw === true ||
+      emailVerifiedRaw === 'true' ||
+      emailVerifiedRaw === 1 ||
+      emailVerifiedRaw === '1';
+
+    if (!email) {
+      throw new UnauthorizedException('Google account did not provide an email');
+    }
+    if (!emailVerified) {
+      throw new UnauthorizedException('Google email is not verified');
+    }
+
+    const providerId = tokenInfo.data?.sub as string | undefined;
+    if (!providerId) {
+      throw new UnauthorizedException('Google token is missing subject');
+    }
+
+    const profile: OAuthAdminProfile = {
+      provider: 'google',
+      providerId,
+      email,
+      firstName: tokenInfo.data?.given_name as string | undefined,
+      lastName: tokenInfo.data?.family_name as string | undefined,
+      picture: tokenInfo.data?.picture as string | undefined,
+    };
+
+    return this.loginCustomerWithOAuth(profile, request);
+  }
+
+  async loginCustomerWithOAuth(oauthProfile: OAuthAdminProfile, request: Request) {
+    if (!oauthProfile?.email) {
+      throw new UnauthorizedException(
+        'OAuth provider did not supply an email address',
+      );
+    }
+
+    const normalizedEmail = oauthProfile.email.toLowerCase();
+
+    const relations: string[] = [
+      'role',
+      'role.rolePermissions',
+      'role.rolePermissions.permission',
+    ];
+
+    const linkedByProvider = await this.userAuthProviderRepository.findOne({
+      where: {
+        provider: oauthProfile.provider,
+        providerId: oauthProfile.providerId,
+      },
+      relations: [
+        'user',
+        'user.role',
+        'user.role.rolePermissions',
+        'user.role.rolePermissions.permission',
+      ],
+    });
+
+    let user: User | undefined;
+
+    if (linkedByProvider?.user) {
+      user = linkedByProvider.user;
+    } else {
+      user =
+        (await this.userRepository.findOne({
+          where: { email: normalizedEmail },
+          relations,
+        })) || undefined;
+    }
+
+    const customerRole = await this.roleRepository.findOne({
+      where: [{ name: 'customer' }, { name: ILike('customer') }],
+    });
+
+    if (!customerRole) {
+      throw new BadRequestException('Customer role is not configured');
+    }
+
+    const ensureCustomerProfile = async (userId: string) => {
+      const existingProfile = await this.customerProfileRepository.findOne({
+        where: { userId } as any,
+      });
+
+      if (!existingProfile) {
+        await this.customerProfileRepository.save(
+          this.customerProfileRepository.create({ userId }),
+        );
+      }
+    };
+
+    const provider = AuthProviderType.GOOGLE;
+
+    if (!user) {
+      const generatedPhone = `oauth-${oauthProfile.provider}-${oauthProfile.providerId}`;
+
+      user = this.userRepository.create({
+        email: normalizedEmail,
+        phone: generatedPhone,
+        firstName: oauthProfile.firstName,
+        lastName: oauthProfile.lastName,
+        roleId: customerRole.id,
+        authProvider: provider,
+        isActive: true,
+        status: UserStatus.ACTIVE,
+        mfaChannel: MfaChannel.EMAIL,
+        twoFactorEnabled: false,
+      });
+
+      user = await this.userRepository.save(user);
+
+      await this.userAuthProviderRepository.save(
+        this.userAuthProviderRepository.create({
+          userId: user.id,
+          provider: oauthProfile.provider,
+          providerId: oauthProfile.providerId,
+        }),
+      );
+
+      await ensureCustomerProfile(user.id);
+    } else {
+      const treeRepo = this.roleRepository.manager.getTreeRepository(Role);
+      const allowedRoles = await treeRepo.findDescendants(customerRole);
+      const allowedRoleIds = new Set((allowedRoles || []).map((r) => r.id));
+      const isCustomer = allowedRoleIds.has(user.roleId);
+
+      if (!isCustomer) {
+        throw new UnauthorizedException(
+          'Account is not authorized as customer',
+        );
+      }
+
+      if (user.isBanned || user.isActive === false) {
+        throw new UnauthorizedException('Account is disabled');
+      }
+
+      user.authProvider = provider;
+      user.firstName = user.firstName || oauthProfile.firstName;
+      user.lastName = user.lastName || oauthProfile.lastName;
+
+      await this.userRepository.save(user);
+
+      const existingLink = await this.userAuthProviderRepository.findOne({
+        where: {
+          provider: oauthProfile.provider,
+          providerId: oauthProfile.providerId,
+        },
+      });
+
+      if (!existingLink) {
+        await this.userAuthProviderRepository.save(
+          this.userAuthProviderRepository.create({
+            userId: user.id,
+            provider: oauthProfile.provider,
+            providerId: oauthProfile.providerId,
+          }),
+        );
+      }
+
+      await ensureCustomerProfile(user.id);
+    }
+
+    const hydratedUser = await this.userRepository.findOne({
+      where: { id: user.id },
+      relations,
+    });
+
+    if (!hydratedUser) {
+      throw new UnauthorizedException('Unable to load customer account');
+    }
+
+    return this.completeLogin(hydratedUser, request);
+  }
 
   private signTwoFactorLoginToken(userId: string): string {
     return this.jwtService.sign(

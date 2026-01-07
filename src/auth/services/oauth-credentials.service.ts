@@ -110,6 +110,69 @@ export class OAuthCredentialsService {
     return resolved;
   }
 
+  async getGoogleCustomerConfig(): Promise<GoogleOAuthRuntimeConfig> {
+    const callbackBase =
+      this.configService.get<string>('CLIENT_URL') ||
+      this.configService.get<string>('APP_URL') ||
+      'http://localhost:5000';
+
+    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/auth/customer/google/callback`;
+
+    const fromDb = await this.cache.remember(
+      'settings:oauth:google-customer:internal',
+      async () => {
+        const keys = [
+          'oauth_google_customer_client_id',
+          'oauth_google_customer_client_secret',
+          'oauth_google_customer_callback_url',
+        ];
+
+        const settings = await this.settingRepository.find({
+          where: keys.map((key) => ({ key })),
+        });
+
+        const getRaw = (key: string) =>
+          settings.find((s) => s.key === key)?.value || '';
+
+        const clientID = getRaw('oauth_google_customer_client_id') || undefined;
+        const encClientSecret = getRaw('oauth_google_customer_client_secret') || '';
+        const clientSecret = this.safeDecrypt('google-customer', encClientSecret);
+        const callbackURL =
+          getRaw('oauth_google_customer_callback_url') || undefined;
+
+        return {
+          clientID: clientID?.trim() || undefined,
+          clientSecret: clientSecret?.trim() || undefined,
+          callbackURL: callbackURL?.trim() || undefined,
+        };
+      },
+      { ttlSeconds: 3600 },
+    );
+
+    const envClientID = this.configService.get<string>('GOOGLE_CUSTOMER_CLIENT_ID');
+    const envClientSecret = this.configService.get<string>(
+      'GOOGLE_CUSTOMER_CLIENT_SECRET',
+    );
+    const envCallbackURL = this.configService.get<string>(
+      'GOOGLE_CUSTOMER_CALLBACK_URL',
+    );
+
+    const resolved: GoogleOAuthRuntimeConfig = {
+      clientID: fromDb.clientID || envClientID || undefined,
+      clientSecret: fromDb.clientSecret || envClientSecret || undefined,
+      callbackURL: fromDb.callbackURL || envCallbackURL || defaultCallback,
+    };
+
+    if ((!resolved.clientID || !resolved.clientSecret) && !this.warned.has('google-customer')) {
+      this.warned.add('google-customer');
+      console.warn(
+        'Customer Google OAuth credentials are not configured. Customer Google login will not function until credentials are set (env vars or Settings).',
+      );
+    }
+
+    return resolved;
+  }
+
   async getAppleAdminConfig(): Promise<AppleOAuthRuntimeConfig> {
     const defaultCallback = `${this.configService.get<string>(
       'APP_URL',

@@ -42,6 +42,7 @@ import { AdminRegisterDto } from '../dto/admin-register.dto';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
 import { AdminGoogleOAuthGuard } from '../guards/admin-google-oauth.guard';
 import { AdminAppleOAuthGuard } from '../guards/admin-apple-oauth.guard';
+import { ExchangeCustomerGoogleOAuthDto } from '../dto/exchange-customer-google-oauth.dto';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -311,6 +312,28 @@ export class AuthController {
     const result = await this.authService.loginAdminWithOAuth(profile, request);
 
     return ResponseUtil.success(result, 'Admin login via Apple successful');
+  }
+
+  @Post('customer/google/exchange')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Exchange Google OAuth code for customer login tokens',
+    description:
+      'Used when the customer UI handles the OAuth redirect itself (callback on the client) and then exchanges the `code` with the API.',
+  })
+  @ApiOkResponse({ description: 'Customer login via Google successful' })
+  @ApiBadRequestResponse({ description: 'Validation failed' })
+  @ApiUnauthorizedResponse({ description: 'Invalid OAuth code or token' })
+  async customerGoogleExchange(
+    @Body() dto: ExchangeCustomerGoogleOAuthDto,
+    @Req() request: Request,
+  ) {
+    const result = await this.authService.exchangeCustomerGoogleOAuthCodeAndLogin(
+      { code: dto.code, codeVerifier: dto.codeVerifier },
+      request,
+    );
+
+    return ResponseUtil.success(result, 'Customer login via Google successful');
   }
 
   @Post('refresh')

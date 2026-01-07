@@ -18,6 +18,9 @@ import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
 import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
 import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
 import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
+import { CreateGoogleOAuthCustomerSettingDto } from '../dto/create-google-oauth-customer-setting.dto';
+import { UpdateGoogleOAuthCustomerSecretDto } from '../dto/update-google-oauth-customer-secret.dto';
+import { GoogleOAuthCustomerResponseDto } from '../dto/google-oauth-customer-response.dto';
 import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
 import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
 import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
@@ -130,8 +133,105 @@ export class SettingService {
       key === 's3_access_key_id' ||
       key === 's3_secret_access_key' ||
       key === 'oauth_google_client_secret' ||
+      key === 'oauth_google_customer_client_secret' ||
       key === 'oauth_apple_private_key'
     );
+  }
+
+  async createGoogleOAuthCustomerSettings(
+    dto: CreateGoogleOAuthCustomerSettingDto,
+  ): Promise<GoogleOAuthCustomerResponseDto> {
+    const entries: Array<{ key: string; value: string }> = [
+      { key: 'oauth_google_customer_client_id', value: dto.clientId.trim() },
+      {
+        key: 'oauth_google_customer_callback_url',
+        value: dto.callbackUrl?.trim() || '',
+      },
+    ];
+
+    for (const entry of entries) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: entry.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = entry.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(entry);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    await this.cache.del('settings:oauth:google-customer');
+    await this.cache.del('settings:oauth:google-customer:internal');
+
+    return this.getGoogleOAuthCustomerSettings();
+  }
+
+  async updateGoogleOAuthCustomerSecret(
+    dto: UpdateGoogleOAuthCustomerSecretDto,
+  ): Promise<GoogleOAuthCustomerResponseDto> {
+    const entry = {
+      key: 'oauth_google_customer_client_secret',
+      value: this.crypto.encrypt(dto.clientSecret),
+    };
+
+    const existingSetting = await this.settingRepository.findOne({
+      where: { key: entry.key },
+    });
+
+    if (existingSetting) {
+      existingSetting.value = entry.value;
+      await this.settingRepository.save(existingSetting);
+    } else {
+      const newSetting = this.settingRepository.create(entry);
+      await this.settingRepository.save(newSetting);
+    }
+
+    await this.cache.del('settings:oauth:google-customer');
+    await this.cache.del('settings:oauth:google-customer:internal');
+
+    return this.getGoogleOAuthCustomerSettings();
+  }
+
+  async getGoogleOAuthCustomerSettings(): Promise<GoogleOAuthCustomerResponseDto> {
+    const data = await this.cache.remember(
+      'settings:oauth:google-customer',
+      async () => {
+        const keys = [
+          'oauth_google_customer_client_id',
+          'oauth_google_customer_callback_url',
+          'oauth_google_customer_client_secret',
+        ];
+
+        const settings = await this.settingRepository.find({
+          where: keys.map((key) => ({ key })),
+        });
+
+        if (settings.length === 0) {
+          throw new NotFoundException('Customer Google OAuth settings not found');
+        }
+
+        const getRaw = (key: string) =>
+          settings.find((s) => s.key === key)?.value || '';
+
+        const clientId = getRaw('oauth_google_customer_client_id');
+        const callbackUrl = getRaw('oauth_google_customer_callback_url');
+        const clientSecretStored = getRaw('oauth_google_customer_client_secret');
+
+        return {
+          clientId,
+          callbackUrl: callbackUrl || undefined,
+          hasClientSecret: Boolean(clientSecretStored),
+          createdAt: settings[0]?.createdAt,
+          updatedAt: settings[0]?.updatedAt,
+        };
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(GoogleOAuthCustomerResponseDto, data);
   }
 
   async createGoogleOAuthSettings(
