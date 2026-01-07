@@ -1,15 +1,19 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Strategy, Profile, StrategyOptions } from 'passport-google-oauth20';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
+import { OAuthCredentialsService } from '../services/oauth-credentials.service';
 
 @Injectable()
 export class AdminGoogleStrategy extends PassportStrategy(
   Strategy,
   'admin-google',
 ) {
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly oauthCredentials: OAuthCredentialsService,
+  ) {
     const defaultCallback = `${configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
@@ -17,12 +21,6 @@ export class AdminGoogleStrategy extends PassportStrategy(
 
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
-
-    if (!clientID || !clientSecret) {
-      console.warn(
-        'Google OAuth credentials are not configured. Admin Google login will not function until GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET are set.',
-      );
-    }
 
     const options: StrategyOptions = {
       clientID: clientID || 'missing-google-client-id',
@@ -33,6 +31,35 @@ export class AdminGoogleStrategy extends PassportStrategy(
     };
 
     super(options);
+  }
+
+  authenticate(req: any, options?: any): void {
+    void this.oauthCredentials
+      .getGoogleAdminConfig()
+      .then((cfg) => {
+        if (!cfg.clientID || !cfg.clientSecret) {
+          return this.error(
+            new ServiceUnavailableException('Google OAuth is not configured'),
+          );
+        }
+
+        const self: any = this;
+
+        if (self._oauth2) {
+          self._oauth2._clientId = cfg.clientID;
+          self._oauth2._clientSecret = cfg.clientSecret;
+        }
+
+        if (typeof self._callbackURL === 'string') {
+          self._callbackURL = cfg.callbackURL;
+        }
+
+        self._clientID = cfg.clientID;
+        self._clientSecret = cfg.clientSecret;
+
+        return super.authenticate(req, options);
+      })
+      .catch((err) => this.error(err));
   }
 
   validate(

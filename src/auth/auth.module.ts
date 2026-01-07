@@ -32,6 +32,7 @@ import { AdminProfile } from 'src/user/entities/admin-profile.entity';
 import { UserInvite } from './entities/user-invite.entity';
 import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
 import { AuthOtpWorkerService } from './workers/auth-otp.worker';
+import { OAuthCredentialsService } from './services/oauth-credentials.service';
 
 @Module({
   imports: [
@@ -67,6 +68,7 @@ import { AuthOtpWorkerService } from './workers/auth-otp.worker';
     RoleService,
     TwoFactorService,
     AuthOtpWorkerService,
+    OAuthCredentialsService,
     EmailServiceUtils,
     SmsServiceUtils,
     JwtStrategy,

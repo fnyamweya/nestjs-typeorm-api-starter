@@ -28,6 +28,12 @@ import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
 import { S3ResponseDto } from '../dto/s3-response.dto';
 import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
 import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
+import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
+import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
+import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
+import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
+import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
+import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -46,6 +52,152 @@ import {
 @ApiBearerAuth('access-token')
 export class SettingController {
   constructor(private readonly settingService: SettingService) {}
+
+  @Post('oauth/google')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Google OAuth settings updated successfully',
+    resourceType: 'oauth-google-settings',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update Google OAuth settings' })
+  @ApiBody({ type: CreateGoogleOAuthSettingDto })
+  @ApiCreatedResponse({
+    description: 'Google OAuth settings updated successfully',
+    type: GoogleOAuthResponseDto,
+  })
+  async createGoogleOAuthSettings(
+    @Body() dto: CreateGoogleOAuthSettingDto,
+  ): Promise<ApiResponse<GoogleOAuthResponseDto>> {
+    const data = await this.settingService.createGoogleOAuthSettings(dto);
+    return ResponseUtil.created(data, 'Google OAuth settings updated successfully');
+  }
+
+  @Post('oauth/google/secret')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Google OAuth client secret updated successfully',
+    resourceType: 'oauth-google-secret',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update Google OAuth client secret',
+    description:
+      'Stores the secret encrypted at rest. Secret values are never returned in responses.',
+  })
+  @ApiBody({ type: UpdateGoogleOAuthSecretDto })
+  @ApiOkResponse({
+    description: 'Google OAuth client secret updated successfully',
+    type: GoogleOAuthResponseDto,
+  })
+  async updateGoogleOAuthSecret(
+    @Body() dto: UpdateGoogleOAuthSecretDto,
+  ): Promise<ApiResponse<GoogleOAuthResponseDto>> {
+    const data = await this.settingService.updateGoogleOAuthSecret(dto);
+    return ResponseUtil.success(
+      data,
+      'Google OAuth client secret updated successfully',
+    );
+  }
+
+  @Get('oauth/google')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve configured Google OAuth settings' })
+  @ApiOkResponse({
+    description: 'Google OAuth settings retrieved successfully',
+    type: GoogleOAuthResponseDto,
+  })
+  async getGoogleOAuthSettings(): Promise<ApiResponse<GoogleOAuthResponseDto>> {
+    const data = await this.settingService.getGoogleOAuthSettings();
+    return ResponseUtil.success(
+      data,
+      'Google OAuth settings retrieved successfully',
+    );
+  }
+
+  @Post('oauth/apple')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Apple OAuth settings updated successfully',
+    resourceType: 'oauth-apple-settings',
+  })
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create or update Apple OAuth settings' })
+  @ApiBody({ type: CreateAppleOAuthSettingDto })
+  @ApiCreatedResponse({
+    description: 'Apple OAuth settings updated successfully',
+    type: AppleOAuthResponseDto,
+  })
+  async createAppleOAuthSettings(
+    @Body() dto: CreateAppleOAuthSettingDto,
+  ): Promise<ApiResponse<AppleOAuthResponseDto>> {
+    const data = await this.settingService.createAppleOAuthSettings(dto);
+    return ResponseUtil.created(data, 'Apple OAuth settings updated successfully');
+  }
+
+  @Post('oauth/apple/secret')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'update',
+  })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Apple OAuth private key updated successfully',
+    resourceType: 'oauth-apple-secret',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Update Apple OAuth private key',
+    description:
+      'Stores the private key encrypted at rest. Secret values are never returned in responses.',
+  })
+  @ApiBody({ type: UpdateAppleOAuthSecretDto })
+  @ApiOkResponse({
+    description: 'Apple OAuth private key updated successfully',
+    type: AppleOAuthResponseDto,
+  })
+  async updateAppleOAuthSecret(
+    @Body() dto: UpdateAppleOAuthSecretDto,
+  ): Promise<ApiResponse<AppleOAuthResponseDto>> {
+    const data = await this.settingService.updateAppleOAuthSecret(dto);
+    return ResponseUtil.success(
+      data,
+      'Apple OAuth private key updated successfully',
+    );
+  }
+
+  @Get('oauth/apple')
+  @RequirePermissions({
+    module: PermissionModule.SETTINGS,
+    permission: 'read',
+  })
+  @ApiOperation({ summary: 'Retrieve configured Apple OAuth settings' })
+  @ApiOkResponse({
+    description: 'Apple OAuth settings retrieved successfully',
+    type: AppleOAuthResponseDto,
+  })
+  async getAppleOAuthSettings(): Promise<ApiResponse<AppleOAuthResponseDto>> {
+    const data = await this.settingService.getAppleOAuthSettings();
+    return ResponseUtil.success(
+      data,
+      'Apple OAuth settings retrieved successfully',
+    );
+  }
 
   @Post('smtp')
   @RequirePermissions({

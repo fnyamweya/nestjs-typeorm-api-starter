@@ -15,6 +15,12 @@ import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
 import { S3ResponseDto } from '../dto/s3-response.dto';
 import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
 import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
+import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
+import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
+import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
+import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
+import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
+import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { SettingCryptoService } from 'src/common/utils/setting-crypto.service';
 
@@ -122,8 +128,204 @@ export class SettingService {
       key === 'whatsapp_app_secret' ||
       key === 'whatsapp_webhook_verify_token' ||
       key === 's3_access_key_id' ||
-      key === 's3_secret_access_key'
+      key === 's3_secret_access_key' ||
+      key === 'oauth_google_client_secret' ||
+      key === 'oauth_apple_private_key'
     );
+  }
+
+  async createGoogleOAuthSettings(
+    dto: CreateGoogleOAuthSettingDto,
+  ): Promise<GoogleOAuthResponseDto> {
+    const entries: Array<{ key: string; value: string }> = [
+      { key: 'oauth_google_client_id', value: dto.clientId.trim() },
+      { key: 'oauth_google_callback_url', value: dto.callbackUrl?.trim() || '' },
+    ];
+
+    for (const entry of entries) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: entry.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = entry.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(entry);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    await this.cache.del('settings:oauth:google');
+    await this.cache.del('settings:oauth:google:internal');
+
+    return this.getGoogleOAuthSettings();
+  }
+
+  async updateGoogleOAuthSecret(
+    dto: UpdateGoogleOAuthSecretDto,
+  ): Promise<GoogleOAuthResponseDto> {
+    const entry = {
+      key: 'oauth_google_client_secret',
+      value: this.crypto.encrypt(dto.clientSecret),
+    };
+
+    const existingSetting = await this.settingRepository.findOne({
+      where: { key: entry.key },
+    });
+
+    if (existingSetting) {
+      existingSetting.value = entry.value;
+      await this.settingRepository.save(existingSetting);
+    } else {
+      const newSetting = this.settingRepository.create(entry);
+      await this.settingRepository.save(newSetting);
+    }
+
+    await this.cache.del('settings:oauth:google');
+    await this.cache.del('settings:oauth:google:internal');
+
+    return this.getGoogleOAuthSettings();
+  }
+
+  async getGoogleOAuthSettings(): Promise<GoogleOAuthResponseDto> {
+    const data = await this.cache.remember(
+      'settings:oauth:google',
+      async () => {
+        const keys = [
+          'oauth_google_client_id',
+          'oauth_google_callback_url',
+          'oauth_google_client_secret',
+        ];
+
+        const settings = await this.settingRepository.find({
+          where: keys.map((key) => ({ key })),
+        });
+
+        if (settings.length === 0) {
+          throw new NotFoundException('Google OAuth settings not found');
+        }
+
+        const getRaw = (key: string) =>
+          settings.find((s) => s.key === key)?.value || '';
+
+        const clientId = getRaw('oauth_google_client_id');
+        const callbackUrl = getRaw('oauth_google_callback_url');
+        const clientSecretStored = getRaw('oauth_google_client_secret');
+
+        return {
+          clientId,
+          callbackUrl: callbackUrl || undefined,
+          hasClientSecret: Boolean(clientSecretStored),
+          createdAt: settings[0]?.createdAt,
+          updatedAt: settings[0]?.updatedAt,
+        };
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(GoogleOAuthResponseDto, data);
+  }
+
+  async createAppleOAuthSettings(
+    dto: CreateAppleOAuthSettingDto,
+  ): Promise<AppleOAuthResponseDto> {
+    const entries: Array<{ key: string; value: string }> = [
+      { key: 'oauth_apple_client_id', value: dto.clientId.trim() },
+      { key: 'oauth_apple_team_id', value: dto.teamId.trim() },
+      { key: 'oauth_apple_key_id', value: dto.keyId.trim() },
+      { key: 'oauth_apple_callback_url', value: dto.callbackUrl?.trim() || '' },
+    ];
+
+    for (const entry of entries) {
+      const existingSetting = await this.settingRepository.findOne({
+        where: { key: entry.key },
+      });
+
+      if (existingSetting) {
+        existingSetting.value = entry.value;
+        await this.settingRepository.save(existingSetting);
+      } else {
+        const newSetting = this.settingRepository.create(entry);
+        await this.settingRepository.save(newSetting);
+      }
+    }
+
+    await this.cache.del('settings:oauth:apple');
+    await this.cache.del('settings:oauth:apple:internal');
+
+    return this.getAppleOAuthSettings();
+  }
+
+  async updateAppleOAuthSecret(
+    dto: UpdateAppleOAuthSecretDto,
+  ): Promise<AppleOAuthResponseDto> {
+    const entry = {
+      key: 'oauth_apple_private_key',
+      value: this.crypto.encrypt(dto.privateKey),
+    };
+
+    const existingSetting = await this.settingRepository.findOne({
+      where: { key: entry.key },
+    });
+
+    if (existingSetting) {
+      existingSetting.value = entry.value;
+      await this.settingRepository.save(existingSetting);
+    } else {
+      const newSetting = this.settingRepository.create(entry);
+      await this.settingRepository.save(newSetting);
+    }
+
+    await this.cache.del('settings:oauth:apple');
+    await this.cache.del('settings:oauth:apple:internal');
+
+    return this.getAppleOAuthSettings();
+  }
+
+  async getAppleOAuthSettings(): Promise<AppleOAuthResponseDto> {
+    const data = await this.cache.remember(
+      'settings:oauth:apple',
+      async () => {
+        const keys = [
+          'oauth_apple_client_id',
+          'oauth_apple_team_id',
+          'oauth_apple_key_id',
+          'oauth_apple_callback_url',
+          'oauth_apple_private_key',
+        ];
+
+        const settings = await this.settingRepository.find({
+          where: keys.map((key) => ({ key })),
+        });
+
+        if (settings.length === 0) {
+          throw new NotFoundException('Apple OAuth settings not found');
+        }
+
+        const getRaw = (key: string) =>
+          settings.find((s) => s.key === key)?.value || '';
+
+        const clientId = getRaw('oauth_apple_client_id');
+        const teamId = getRaw('oauth_apple_team_id');
+        const keyId = getRaw('oauth_apple_key_id');
+        const callbackUrl = getRaw('oauth_apple_callback_url');
+        const privateKeyStored = getRaw('oauth_apple_private_key');
+
+        return {
+          clientId,
+          teamId,
+          keyId,
+          callbackUrl: callbackUrl || undefined,
+          hasPrivateKey: Boolean(privateKeyStored),
+          createdAt: settings[0]?.createdAt,
+          updatedAt: settings[0]?.updatedAt,
+        };
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(AppleOAuthResponseDto, data);
   }
 
   async createS3Settings(dto: CreateS3SettingDto): Promise<S3ResponseDto> {

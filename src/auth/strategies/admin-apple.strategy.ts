@@ -1,17 +1,21 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import AppleStrategy = require('passport-apple');
 type AppleProfile = AppleStrategy.Profile;
 type AppleStrategyOptions = AppleStrategy.AuthenticateOptions;
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
+import { OAuthCredentialsService } from '../services/oauth-credentials.service';
 
 @Injectable()
 export class AdminAppleStrategy extends PassportStrategy(
   AppleStrategy,
   'admin-apple',
 ) {
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly oauthCredentials: OAuthCredentialsService,
+  ) {
     const privateKey = configService
       .get<string>('APPLE_PRIVATE_KEY', '')
       .replace(/\\n/g, '\n');
@@ -25,12 +29,6 @@ export class AdminAppleStrategy extends PassportStrategy(
     const teamID = configService.get<string>('APPLE_TEAM_ID');
     const keyID = configService.get<string>('APPLE_KEY_ID');
 
-    if (!clientID || !teamID || !keyID || !privateKey) {
-      console.warn(
-        'Apple OAuth credentials are not fully configured. Admin Apple login will remain disabled until APPLE_* env vars are set.',
-      );
-    }
-
     const options: AppleStrategyOptions = {
       clientID: clientID || 'missing-apple-client-id',
       teamID: teamID || 'missing-apple-team-id',
@@ -43,6 +41,37 @@ export class AdminAppleStrategy extends PassportStrategy(
     };
 
     super(options);
+  }
+
+  authenticate(req: any, options?: any): void {
+    void this.oauthCredentials
+      .getAppleAdminConfig()
+      .then((cfg) => {
+        if (!cfg.clientID || !cfg.teamID || !cfg.keyID || !cfg.privateKeyString) {
+          return this.error(
+            new ServiceUnavailableException('Apple OAuth is not configured'),
+          );
+        }
+
+        const self: any = this;
+        self._clientID = cfg.clientID;
+        self._teamID = cfg.teamID;
+        self._keyID = cfg.keyID;
+        self._privateKey = cfg.privateKeyString;
+        self._callbackURL = cfg.callbackURL;
+
+        // Some versions keep config in _options
+        if (self._options) {
+          self._options.clientID = cfg.clientID;
+          self._options.teamID = cfg.teamID;
+          self._options.keyID = cfg.keyID;
+          self._options.privateKeyString = cfg.privateKeyString;
+          self._options.callbackURL = cfg.callbackURL;
+        }
+
+        return super.authenticate(req, options);
+      })
+      .catch((err) => this.error(err));
   }
 
   validate(
