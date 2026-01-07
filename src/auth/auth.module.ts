@@ -33,6 +33,8 @@ import { UserInvite } from './entities/user-invite.entity';
 import { WhatsappModule } from 'src/whatsapp/whatsapp.module';
 import { AuthOtpWorkerService } from './workers/auth-otp.worker';
 import { OAuthCredentialsService } from './services/oauth-credentials.service';
+import { AdminGoogleOAuthGuard } from './guards/admin-google-oauth.guard';
+import { AdminAppleOAuthGuard } from './guards/admin-apple-oauth.guard';
 
 @Module({
   imports: [
@@ -69,6 +71,8 @@ import { OAuthCredentialsService } from './services/oauth-credentials.service';
     TwoFactorService,
     AuthOtpWorkerService,
     OAuthCredentialsService,
+    AdminGoogleOAuthGuard,
+    AdminAppleOAuthGuard,
     EmailServiceUtils,
     SmsServiceUtils,
     JwtStrategy,

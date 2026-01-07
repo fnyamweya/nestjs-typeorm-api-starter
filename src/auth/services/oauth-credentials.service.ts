@@ -24,6 +24,22 @@ export interface AppleOAuthRuntimeConfig {
 export class OAuthCredentialsService {
   private warned = new Set<string>();
 
+  private safeDecrypt(provider: string, value: string): string | undefined {
+    if (!value) return undefined;
+    try {
+      return this.crypto.decrypt(value);
+    } catch (err: any) {
+      const key = `${provider}:decrypt`;
+      if (!this.warned.has(key)) {
+        this.warned.add(key);
+        console.warn(
+          `Unable to decrypt ${provider} OAuth secret from DB settings. Ensure ENCRYPTION_KEY is set and matches the key used to encrypt the secret.`,
+        );
+      }
+      return undefined;
+    }
+  }
+
   constructor(
     @InjectRepository(Setting)
     private readonly settingRepository: Repository<Setting>,
@@ -56,9 +72,7 @@ export class OAuthCredentialsService {
 
         const clientID = getRaw('oauth_google_client_id') || undefined;
         const encClientSecret = getRaw('oauth_google_client_secret') || '';
-        const clientSecret = encClientSecret
-          ? this.crypto.decrypt(encClientSecret)
-          : undefined;
+        const clientSecret = this.safeDecrypt('google', encClientSecret);
         const callbackURL = getRaw('oauth_google_callback_url') || undefined;
 
         return {
@@ -121,9 +135,7 @@ export class OAuthCredentialsService {
         const teamID = getRaw('oauth_apple_team_id') || undefined;
         const keyID = getRaw('oauth_apple_key_id') || undefined;
         const encPrivateKey = getRaw('oauth_apple_private_key') || '';
-        const privateKeyString = encPrivateKey
-          ? this.crypto.decrypt(encPrivateKey)
-          : undefined;
+        const privateKeyString = this.safeDecrypt('apple', encPrivateKey);
         const callbackURL = getRaw('oauth_apple_callback_url') || undefined;
 
         return {

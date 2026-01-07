@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import AppleStrategy = require('passport-apple');
@@ -48,9 +48,8 @@ export class AdminAppleStrategy extends PassportStrategy(
       .getAppleAdminConfig()
       .then((cfg) => {
         if (!cfg.clientID || !cfg.teamID || !cfg.keyID || !cfg.privateKeyString) {
-          return this.error(
-            new ServiceUnavailableException('Apple OAuth is not configured'),
-          );
+          // Guard should prevent this path; keep a safe fallback.
+          return (this as any).fail('Apple OAuth is not configured', 503);
         }
 
         const self: any = this;

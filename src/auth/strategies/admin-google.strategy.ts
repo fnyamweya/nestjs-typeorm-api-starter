@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Strategy, Profile, StrategyOptions } from 'passport-google-oauth20';
@@ -38,9 +38,8 @@ export class AdminGoogleStrategy extends PassportStrategy(
       .getGoogleAdminConfig()
       .then((cfg) => {
         if (!cfg.clientID || !cfg.clientSecret) {
-          return this.error(
-            new ServiceUnavailableException('Google OAuth is not configured'),
-          );
+          // Guard should prevent this path; keep a safe fallback.
+          return (this as any).fail('Google OAuth is not configured', 503);
         }
 
         const self: any = this;

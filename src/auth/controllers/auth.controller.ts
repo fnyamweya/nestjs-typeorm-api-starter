@@ -40,6 +40,8 @@ import { AdminLoginDto } from '../dto/admin-login.dto';
 import { CustomerRegisterDto } from '../dto/customer-register.dto';
 import { AdminRegisterDto } from '../dto/admin-register.dto';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
+import { AdminGoogleOAuthGuard } from '../guards/admin-google-oauth.guard';
+import { AdminAppleOAuthGuard } from '../guards/admin-apple-oauth.guard';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -267,7 +269,7 @@ export class AuthController {
   }
 
   @Get('admin/google')
-  @UseGuards(AuthGuard('admin-google'))
+  @UseGuards(AdminGoogleOAuthGuard)
   @ApiOperation({ summary: 'Initiate Google OAuth 2.0 login for admins' })
   @ApiOkResponse({ description: 'Redirecting to Google OAuth 2.0' })
   async googleAdminAuth() {
@@ -278,7 +280,7 @@ export class AuthController {
   }
 
   @Get('admin/google/callback')
-  @UseGuards(AuthGuard('admin-google'))
+  @UseGuards(AdminGoogleOAuthGuard)
   @ApiOperation({ summary: 'Google OAuth 2.0 callback for admin login' })
   @ApiOkResponse({ description: 'Admin login via Google successful' })
   async googleAdminCallback(@Req() request: Request) {
@@ -288,7 +290,7 @@ export class AuthController {
   }
 
   @Get('admin/apple')
-  @UseGuards(AuthGuard('admin-apple'))
+  @UseGuards(AdminAppleOAuthGuard)
   @ApiOperation({ summary: 'Initiate Sign in with Apple for admins' })
   @ApiOkResponse({ description: 'Redirecting to Apple login' })
   async appleAdminAuth() {
@@ -299,7 +301,7 @@ export class AuthController {
   }
 
   @Post('admin/apple/callback')
-  @UseGuards(AuthGuard('admin-apple'))
+  @UseGuards(AdminAppleOAuthGuard)
   @HttpCode(200)
   @ApiOperation({ summary: 'Apple callback handler for admin login' })
   @ApiOkResponse({ description: 'Admin login via Apple successful' })
