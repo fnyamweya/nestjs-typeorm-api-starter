@@ -13,7 +13,7 @@ export class CreateGoogleOAuthSettingDto {
     example: 'https://api.example.com/api/auth/admin/google/callback',
   })
   @IsOptional()
-  @IsUrl()
+  @IsUrl({ require_tld: false })
   @MaxLength(1024)
   callbackUrl?: string;
 }
