@@ -5,6 +5,7 @@ import {
   UseGuards,
   Get,
   Req,
+  Res,
   Delete,
   Patch,
   UseInterceptors,
@@ -42,6 +43,9 @@ import { AdminRegisterDto } from '../dto/admin-register.dto';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
 import { AdminGoogleOAuthGuard } from '../guards/admin-google-oauth.guard';
 import { AdminAppleOAuthGuard } from '../guards/admin-apple-oauth.guard';
+import { ConfigService } from '@nestjs/config';
+import type { Response } from 'express';
+import { buildAdminOAuthRedirectUrl } from '../utils/oauth-redirect.util';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -77,7 +81,23 @@ export class AuthController {
     private authService: AuthService,
     private twoFactorService: TwoFactorService,
     private s3ClientUtils: S3ClientUtils,
+    private configService: ConfigService,
   ) {}
+
+  private decodeOauthStateReturnTo(state?: unknown): string | undefined {
+    if (typeof state !== 'string' || !state.trim()) return undefined;
+
+    try {
+      // base64url -> base64
+      const b64 = state.replace(/-/g, '+').replace(/_/g, '/');
+      const padded = b64.padEnd(b64.length + ((4 - (b64.length % 4)) % 4), '=');
+      const json = Buffer.from(padded, 'base64').toString('utf8');
+      const parsed = JSON.parse(json);
+      return typeof parsed?.returnTo === 'string' ? parsed.returnTo : undefined;
+    } catch {
+      return undefined;
+    }
+  }
 
   @Post('login')
   @HttpCode(200)
@@ -283,10 +303,42 @@ export class AuthController {
   @UseGuards(AdminGoogleOAuthGuard)
   @ApiOperation({ summary: 'Google OAuth 2.0 callback for admin login' })
   @ApiOkResponse({ description: 'Admin login via Google successful' })
-  async googleAdminCallback(@Req() request: Request) {
+  async googleAdminCallback(@Req() request: Request, @Res() res: Response) {
     const profile = request.user as OAuthAdminProfile;
     const result = await this.authService.loginAdminWithOAuth(profile, request);
-    return ResponseUtil.success(result, 'Admin login via Google successful');
+
+    const wantsHtml = (request.headers?.accept || '').includes('text/html');
+    const stateReturnTo = this.decodeOauthStateReturnTo(request.query?.state);
+
+    if (!wantsHtml && !stateReturnTo) {
+      return res.json(
+        ResponseUtil.success(result, 'Admin login via Google successful'),
+      );
+    }
+
+    const isProd =
+      this.configService.get<string>('NODE_ENV', 'development') === 'production';
+
+    // Use httpOnly cookies for browser flows (so we can safely redirect).
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+    });
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    const redirectUrl = buildAdminOAuthRedirectUrl({
+      configService: this.configService,
+      returnTo: stateReturnTo,
+    });
+
+    return res.redirect(redirectUrl);
   }
 
   @Get('admin/apple')
@@ -305,10 +357,43 @@ export class AuthController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Apple callback handler for admin login' })
   @ApiOkResponse({ description: 'Admin login via Apple successful' })
-  async appleAdminCallback(@Req() request: Request) {
+  async appleAdminCallback(@Req() request: Request, @Res() res: Response) {
     const profile = request.user as OAuthAdminProfile;
     const result = await this.authService.loginAdminWithOAuth(profile, request);
-    return ResponseUtil.success(result, 'Admin login via Apple successful');
+
+    const wantsHtml = (request.headers?.accept || '').includes('text/html');
+    const stateReturnTo = this.decodeOauthStateReturnTo(
+      (request.body as any)?.state ?? request.query?.state,
+    );
+
+    if (!wantsHtml && !stateReturnTo) {
+      return res.json(
+        ResponseUtil.success(result, 'Admin login via Apple successful'),
+      );
+    }
+
+    const isProd =
+      this.configService.get<string>('NODE_ENV', 'development') === 'production';
+
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+    });
+    res.cookie('refreshToken', result.refreshToken, {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax',
+      path: '/',
+    });
+
+    const redirectUrl = buildAdminOAuthRedirectUrl({
+      configService: this.configService,
+      returnTo: stateReturnTo,
+    });
+
+    return res.redirect(redirectUrl);
   }
 
   @Post('refresh')
