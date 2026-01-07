@@ -330,6 +330,10 @@ export class AuthService {
       where: [{ name: 'admin' }, { name: ILike('admin') }],
     });
 
+    const superAdminRole = await this.roleRepository.findOne({
+      where: [{ name: 'super admin' }, { name: ILike('super admin') }],
+    });
+
     if (!adminRole) {
       throw new BadRequestException('Admin role is not configured');
     }
@@ -805,6 +809,10 @@ export class AuthService {
       where: [{ name: 'admin' }, { name: ILike('admin') }],
     });
 
+    const superAdminRole = await this.roleRepository.findOne({
+      where: [{ name: 'super admin' }, { name: ILike('super admin') }],
+    });
+
     if (!adminRole) {
       throw new BadRequestException('Admin role is not configured');
     }
@@ -849,9 +857,12 @@ export class AuthService {
       );
       await ensureAdminProfile(user.id);
     } else {
+      const roleName = user.role?.name?.toLowerCase();
+      const isAdminOrSuper = roleName === 'admin' || roleName === 'super admin';
       const isAdmin =
-        user.role?.name?.toLowerCase() === 'admin' ||
-        user.roleId === adminRole.id;
+        isAdminOrSuper ||
+        user.roleId === adminRole.id ||
+        (superAdminRole ? user.roleId === superAdminRole.id : false);
 
       if (!isAdmin) {
         throw new UnauthorizedException('Account is not authorized as admin');
