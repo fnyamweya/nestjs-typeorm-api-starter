@@ -49,10 +49,13 @@ export class OAuthCredentialsService {
   ) {}
 
   async getGoogleAdminConfig(): Promise<GoogleOAuthRuntimeConfig> {
-    const defaultCallback = `${this.configService.get<string>(
-      'APP_URL',
-      'http://localhost:8090',
-    )}/api/v1/auth/admin/google/callback`;
+    const callbackBase =
+      this.configService.get<string>('CLIENT_URL') ||
+      this.configService.get<string>('ADMIN_APP_URL') ||
+      this.configService.get<string>('APP_URL') ||
+      'http://localhost:5000';
+
+    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/axis/auth/google/callback`;
 
     const fromDb = await this.cache.remember(
       'settings:oauth:google:internal',

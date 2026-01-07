@@ -22,6 +22,7 @@ import { PermissionsGuard } from './guards/permissions.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { User } from 'src/user/entities/user.entity';
 import { AuthController } from './controllers/auth.controller';
+import { AxisAuthController } from './controllers/axis-auth.controller';
 import { UserActivityLog } from 'src/activity-log/entities/user-activity-log.entity';
 import { Setting } from 'src/setting/entities/setting.entity';
 import { AuthSeeder } from './seeders/auth.seeder';
@@ -84,7 +85,7 @@ import { AdminAppleOAuthGuard } from './guards/admin-apple-oauth.guard';
     RolesGuard,
     AuthSeeder,
   ],
-  controllers: [AuthController, RoleController],
+  controllers: [AuthController, AxisAuthController, RoleController],
   exports: [
     AuthService,
     RoleService,

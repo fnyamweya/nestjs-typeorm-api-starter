@@ -14,10 +14,13 @@ export class AdminGoogleStrategy extends PassportStrategy(
     private readonly configService: ConfigService,
     private readonly oauthCredentials: OAuthCredentialsService,
   ) {
-    const defaultCallback = `${configService.get<string>(
-      'APP_URL',
-      'http://localhost:8090',
-    )}/api/v1/auth/admin/google/callback`;
+    const callbackBase =
+      configService.get<string>('CLIENT_URL') ||
+      configService.get<string>('ADMIN_APP_URL') ||
+      configService.get<string>('APP_URL') ||
+      'http://localhost:5000';
+
+    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/axis/auth/google/callback`;
 
     const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
     const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');

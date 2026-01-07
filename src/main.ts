@@ -1,6 +1,7 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import {
   ClassSerializerInterceptor,
+  RequestMethod,
   ValidationPipe,
   VersioningType,
 } from '@nestjs/common';
@@ -54,7 +55,14 @@ async function bootstrap() {
   app.enableCors(corsOptions);
 
   // Global API prefix and URI versioning
-  app.setGlobalPrefix('api');
+  // NOTE: OAuth providers may require exact callback URLs. We expose
+  // /axis/auth/google/callback without the /api prefix for the admin UI flow.
+  app.setGlobalPrefix('api', {
+    exclude: [
+      { path: 'axis/auth/google', method: RequestMethod.GET },
+      { path: 'axis/auth/google/callback', method: RequestMethod.GET },
+    ],
+  });
   app.enableVersioning({
     type: VersioningType.URI,
     defaultVersion: '1',
