@@ -20,6 +20,7 @@ import { ProductChannel } from './entities/product-channel.entity';
 import { ProductContextOverride } from './entities/product-context-override.entity';
 import { Collection } from './entities/collection.entity';
 import { CollectionItem } from './entities/collection-item.entity';
+import { CustomerProductView } from './entities/customer-product-view.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import { TaxonomyController } from './controllers/taxonomy.controller';
 import { CategoryController } from './controllers/category.controller';
@@ -31,12 +32,16 @@ import { PublicBrandsController } from './controllers/public/public-brands.contr
 import { PublicCategoriesController } from './controllers/public/public-categories.controller';
 import { PublicTaxonomiesController } from './controllers/public/public-taxonomies.controller';
 import { PublicCollectionsController } from './controllers/public/public-collections.controller';
+import { PublicPersonalizationController } from './controllers/public/public-personalization.controller';
 import { TaxonomyService } from './services/taxonomy.service';
 import { CategoryService } from './services/category.service';
 import { ProductService } from './services/product.service';
 import { BrandService } from './services/brand.service';
 import { CollectionService } from './services/collection.service';
+import { CustomerProductViewService } from './services/customer-product-view.service';
+import { RecommendationsService } from './services/recommendations.service';
 import { CatalogSeeder } from './seeders/catalog.seeder';
+import { CollectionSeeder } from './seeders/collection.seeder';
 import { PriceService } from './services/price.service';
 import { CustomerTierModule } from '../customer-tier/customer-tier.module';
 import { CurrencyModule } from '../currency/currency.module';
@@ -60,6 +65,7 @@ import { CurrencyModule } from '../currency/currency.module';
       ProductContextOverride,
       Collection,
       CollectionItem,
+      CustomerProductView,
       Currency,
       PriceList,
       PriceRow,
@@ -80,6 +86,7 @@ import { CurrencyModule } from '../currency/currency.module';
     PublicCategoriesController,
     PublicTaxonomiesController,
     PublicCollectionsController,
+    PublicPersonalizationController,
   ],
   providers: [
     TaxonomyService,
@@ -87,7 +94,10 @@ import { CurrencyModule } from '../currency/currency.module';
     ProductService,
     BrandService,
     CollectionService,
+    CustomerProductViewService,
+    RecommendationsService,
     CatalogSeeder,
+    CollectionSeeder,
     PriceService,
   ],
   exports: [
@@ -97,7 +107,10 @@ import { CurrencyModule } from '../currency/currency.module';
     ProductService,
     BrandService,
     CollectionService,
+    CustomerProductViewService,
+    RecommendationsService,
     CatalogSeeder,
+    CollectionSeeder,
     PriceService,
   ],
 })

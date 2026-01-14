@@ -17,6 +17,7 @@ import { PublicListProductsDto } from '../../dto/public/public-list-products.dto
 import { PublicListProductsViewDto } from '../../dto/public/public-list-products-view.dto';
 import { PublicProductViewQueryDto } from '../../dto/public/public-product-view-query.dto';
 import { CustomerTierService } from 'src/customer-tier/customer-tier.service';
+import { CustomerProductViewService } from '../../services/customer-product-view.service';
 
 @Controller('public/catalog/products')
 @ApiTags('Public Catalog: Products')
@@ -31,6 +32,7 @@ export class PublicProductsController {
   constructor(
     private readonly productService: ProductService,
     private readonly customerTierService: CustomerTierService,
+    private readonly customerProductViewService: CustomerProductViewService,
   ) {}
 
   @Get()
@@ -100,6 +102,10 @@ export class PublicProductsController {
     @Query() query: PublicProductViewQueryDto,
   ) {
     const user = (req as any).user as { id: string } | undefined;
+
+    if (user?.id) {
+      await this.customerProductViewService.recordView(user.id, id);
+    }
     const resolvedTier = user?.id
       ? await this.customerTierService.resolveTierForUser(user.id)
       : { tierCode: 'BASE', source: 'default' };

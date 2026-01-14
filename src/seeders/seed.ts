@@ -4,6 +4,7 @@ import { AuthSeeder } from '../auth/seeders/auth.seeder';
 import { SettingSeeder } from '../setting/seeders/setting.seeder';
 import { OAuthProviderSettingSeeder } from '../setting/seeders/oauth-provider-setting.seeder';
 import { CatalogSeeder } from '../catalog/seeders/catalog.seeder';
+import { CollectionSeeder } from '../catalog/seeders/collection.seeder';
 import { ShippingSeeder } from '../shipping/seeders/shipping.seeder';
 import { LocationSeeder } from '../location/seeders/location.seeder';
 import { ChannelsSeeder } from '../channels/seeders/channels.seeder';
@@ -23,6 +24,7 @@ async function runSeeders() {
     const settingSeeder = app.get(SettingSeeder);
     const oauthProviderSettingSeeder = app.get(OAuthProviderSettingSeeder);
     const catalogSeeder = app.get(CatalogSeeder);
+    const collectionSeeder = app.get(CollectionSeeder);
     const shippingSeeder = app.get(ShippingSeeder);
     const locationSeeder = app.get(LocationSeeder);
     const channelsSeeder = app.get(ChannelsSeeder);
@@ -86,6 +88,11 @@ async function runSeeders() {
 
     console.log('🗂️ Seeding catalog data...');
     await catalogSeeder.seed();
+
+    console.log('🧺 Seeding default collections (Deal Of The Day, New Arrivals)...');
+    await collectionSeeder.seed();
+
+    console.log('✅ Collections seeding completed');
 
     console.log('🚚 Seeding shipping data...');
     try {
