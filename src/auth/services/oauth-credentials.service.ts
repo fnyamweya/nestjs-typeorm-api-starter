@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { Setting } from 'src/setting/entities/setting.entity';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { SettingCryptoService } from 'src/common/utils/setting-crypto.service';
+import { OAuthProvider, OAuthProviderSetting } from 'src/setting/entities/oauth-provider-setting.entity';
 
 export interface GoogleOAuthRuntimeConfig {
   clientID?: string;
@@ -20,9 +21,31 @@ export interface AppleOAuthRuntimeConfig {
   callbackURL: string;
 }
 
+export interface AppleOAuthResolvedConfig {
+  config: AppleOAuthRuntimeConfig;
+  allowedRoleIds?: string[];
+  allowedDomains?: string[];
+  profileId?: string;
+}
+
+export interface GoogleOAuthResolvedConfig {
+  config: GoogleOAuthRuntimeConfig;
+  // Role IDs attached to the profile. Descendants should be checked at login time.
+  allowedRoleIds?: string[];
+  // Optional domain restrictions for this profile.
+  allowedDomains?: string[];
+  profileId?: string;
+}
+
 @Injectable()
 export class OAuthCredentialsService {
   private warned = new Set<string>();
+
+  private isUuid(value: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      value,
+    );
+  }
 
   private safeDecrypt(provider: string, value: string): string | undefined {
     if (!value) return undefined;
@@ -43,141 +66,177 @@ export class OAuthCredentialsService {
   constructor(
     @InjectRepository(Setting)
     private readonly settingRepository: Repository<Setting>,
+    @InjectRepository(OAuthProviderSetting)
+    private readonly oauthProviderSettingRepository: Repository<OAuthProviderSetting>,
     private readonly cache: AppCacheService,
     private readonly configService: ConfigService,
     private readonly crypto: SettingCryptoService,
   ) {}
 
-  async getGoogleAdminConfig(): Promise<GoogleOAuthRuntimeConfig> {
-    const callbackBase =
-      this.configService.get<string>('CLIENT_URL') ||
-      this.configService.get<string>('ADMIN_APP_URL') ||
-      this.configService.get<string>('APP_URL') ||
-      'http://localhost:5000';
+  async getGoogleConfigForContext(
+    context: 'admin' | 'customer',
+    profileIdOrKey?: string,
+  ): Promise<GoogleOAuthResolvedConfig> {
+    // Deprecated: Google OAuth is now always selected by profile key/id.
+    if (!profileIdOrKey) {
+      throw new Error(
+        'Google OAuth profile selection is required. No legacy fallback supported.',
+      );
+    }
+    return this.getGoogleProfileConfig(profileIdOrKey);
+  }
 
-    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/axis/auth/google/callback`;
+  async getAppleConfigForContext(
+    context: 'admin',
+    profileIdOrKey?: string,
+  ): Promise<AppleOAuthResolvedConfig> {
+    if (profileIdOrKey) {
+      return this.getAppleProfileConfig(profileIdOrKey);
+    }
 
-    const fromDb = await this.cache.remember(
-      'settings:oauth:google:internal',
+    const cfg = await this.getAppleAdminConfig();
+    return { config: cfg };
+  }
+
+  async getAppleProfileConfig(
+    profileIdOrKey: string,
+  ): Promise<AppleOAuthResolvedConfig> {
+    const resolvedId = await this.cache.remember(
+      `settings:oauth:apple:profile:resolve:${profileIdOrKey}`,
       async () => {
-        const keys = [
-          'oauth_google_client_id',
-          'oauth_google_client_secret',
-          'oauth_google_callback_url',
-        ];
+        const where = this.isUuid(profileIdOrKey)
+          ? ({ id: profileIdOrKey, provider: OAuthProvider.APPLE } as const)
+          : ({ key: profileIdOrKey, provider: OAuthProvider.APPLE } as const);
 
-        const settings = await this.settingRepository.find({
-          where: keys.map((key) => ({ key })),
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where,
+          select: ['id'],
         });
 
-        const getRaw = (key: string) =>
-          settings.find((s) => s.key === key)?.value || '';
-
-        const clientID = getRaw('oauth_google_client_id') || undefined;
-        const encClientSecret = getRaw('oauth_google_client_secret') || '';
-        const clientSecret = this.safeDecrypt('google', encClientSecret);
-        const callbackURL = getRaw('oauth_google_callback_url') || undefined;
-
-        return {
-          clientID: clientID?.trim() || undefined,
-          clientSecret: clientSecret?.trim() || undefined,
-          callbackURL: callbackURL?.trim() || undefined,
-        };
+        if (!profile?.id) {
+          throw new Error('Apple OAuth profile not found');
+        }
+        return profile.id;
       },
       { ttlSeconds: 3600 },
     );
 
-    const envClientID = this.configService.get<string>('GOOGLE_CLIENT_ID');
-    const envClientSecret = this.configService.get<string>(
-      'GOOGLE_CLIENT_SECRET',
-    );
-    const envCallbackURL = this.configService.get<string>('GOOGLE_CALLBACK_URL');
-
-    const resolved: GoogleOAuthRuntimeConfig = {
-      clientID: fromDb.clientID || envClientID || undefined,
-      clientSecret: fromDb.clientSecret || envClientSecret || undefined,
-      callbackURL:
-        fromDb.callbackURL || envCallbackURL || defaultCallback,
-    };
-
-    if ((!resolved.clientID || !resolved.clientSecret) && !this.warned.has('google')) {
-      this.warned.add('google');
-      console.warn(
-        'Google OAuth credentials are not configured. Admin Google login will not function until credentials are set (env vars or Settings).',
-      );
-    }
-
-    return resolved;
-  }
-
-  async getGoogleCustomerConfig(): Promise<GoogleOAuthRuntimeConfig> {
-    const callbackBase =
-      this.configService.get<string>('CLIENT_URL') ||
-      this.configService.get<string>('APP_URL') ||
-      'http://localhost:5000';
-
-    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/auth/customer/google/callback`;
-
-    const fromDb = await this.cache.remember(
-      'settings:oauth:google-customer:internal',
+    const data = await this.cache.remember(
+      `settings:oauth:apple:profile:${resolvedId}:internal`,
       async () => {
-        const keys = [
-          'oauth_google_customer_client_id',
-          'oauth_google_customer_client_secret',
-          'oauth_google_customer_callback_url',
-        ];
-
-        const settings = await this.settingRepository.find({
-          where: keys.map((key) => ({ key })),
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where: { id: resolvedId, provider: OAuthProvider.APPLE },
+          relations: ['allowedRoles'],
         });
 
-        const getRaw = (key: string) =>
-          settings.find((s) => s.key === key)?.value || '';
+        if (!profile) {
+          throw new Error('Apple OAuth profile not found');
+        }
 
-        const clientID = getRaw('oauth_google_customer_client_id') || undefined;
-        const encClientSecret = getRaw('oauth_google_customer_client_secret') || '';
-        const clientSecret = this.safeDecrypt('google-customer', encClientSecret);
-        const callbackURL =
-          getRaw('oauth_google_customer_callback_url') || undefined;
+        const clientID = profile.clientId?.trim() || undefined;
+        const teamID = profile.teamId?.trim() || undefined;
+        const keyID = profile.keyId?.trim() || undefined;
+        const privateKeyString = this.safeDecrypt(
+          `apple-profile:${profile.id}`,
+          profile.privateKey || '',
+        );
+        const callbackURL = profile.callbackUrl?.trim() || '';
 
         return {
-          clientID: clientID?.trim() || undefined,
-          clientSecret: clientSecret?.trim() || undefined,
-          callbackURL: callbackURL?.trim() || undefined,
-        };
+          profileId: profile.id,
+          config: {
+            clientID,
+            teamID,
+            keyID,
+            privateKeyString: privateKeyString?.trim() || undefined,
+            callbackURL,
+          },
+          allowedRoleIds: (profile.allowedRoles || []).map((r) => r.id),
+          allowedDomains: Array.isArray(profile.allowedDomains)
+            ? profile.allowedDomains
+                .map((d) => String(d).trim().toLowerCase())
+                .filter((d) => d.length > 0)
+            : undefined,
+        } satisfies AppleOAuthResolvedConfig;
       },
       { ttlSeconds: 3600 },
     );
 
-    const envClientID = this.configService.get<string>('GOOGLE_CUSTOMER_CLIENT_ID');
-    const envClientSecret = this.configService.get<string>(
-      'GOOGLE_CUSTOMER_CLIENT_SECRET',
-    );
-    const envCallbackURL = this.configService.get<string>(
-      'GOOGLE_CUSTOMER_CALLBACK_URL',
-    );
-
-    const resolved: GoogleOAuthRuntimeConfig = {
-      clientID: fromDb.clientID || envClientID || undefined,
-      clientSecret: fromDb.clientSecret || envClientSecret || undefined,
-      callbackURL: fromDb.callbackURL || envCallbackURL || defaultCallback,
-    };
-
-    if ((!resolved.clientID || !resolved.clientSecret) && !this.warned.has('google-customer')) {
-      this.warned.add('google-customer');
-      console.warn(
-        'Customer Google OAuth credentials are not configured. Customer Google login will not function until credentials are set (env vars or Settings).',
-      );
-    }
-
-    return resolved;
+    return data as AppleOAuthResolvedConfig;
   }
+
+  async getGoogleProfileConfig(profileIdOrKey: string): Promise<GoogleOAuthResolvedConfig> {
+    // First resolve identifier to a profile id (supports both uuid id and the new key).
+    const resolvedId = await this.cache.remember(
+      `settings:oauth:google:profile:resolve:${profileIdOrKey}`,
+      async () => {
+        const where = this.isUuid(profileIdOrKey)
+          ? ({ id: profileIdOrKey, provider: OAuthProvider.GOOGLE } as const)
+          : ({ key: profileIdOrKey, provider: OAuthProvider.GOOGLE } as const);
+
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where,
+          select: ['id'],
+        });
+
+        if (!profile?.id) {
+          throw new Error('Google OAuth profile not found');
+        }
+        return profile.id;
+      },
+      { ttlSeconds: 3600 },
+    );
+
+    const data = await this.cache.remember(
+      `settings:oauth:google:profile:${resolvedId}:internal`,
+      async () => {
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where: { id: resolvedId, provider: OAuthProvider.GOOGLE },
+          relations: ['allowedRoles'],
+        });
+
+        if (!profile) {
+          throw new Error('Google OAuth profile not found');
+        }
+
+        const clientID = profile.clientId?.trim() || undefined;
+        const clientSecret = this.safeDecrypt(
+          `google-profile:${profile.id}`,
+          profile.clientSecret || '',
+        );
+        const callbackURL = profile.callbackUrl?.trim() || '';
+
+        return {
+          profileId: profile.id,
+          config: {
+            clientID,
+            clientSecret: clientSecret?.trim() || undefined,
+            callbackURL,
+          },
+          allowedRoleIds: (profile.allowedRoles || []).map((r) => r.id),
+          allowedDomains: Array.isArray(profile.allowedDomains)
+            ? profile.allowedDomains
+                .map((d) => String(d).trim().toLowerCase())
+                .filter((d) => d.length > 0)
+            : undefined,
+        } satisfies GoogleOAuthResolvedConfig;
+      },
+      { ttlSeconds: 3600 },
+    );
+
+    return data as GoogleOAuthResolvedConfig;
+  }
+
+  // NOTE: legacy Google OAuth fallback methods were removed.
+  // Always use getGoogleProfileConfig(profileIdOrKey).
+
+  // Removed: legacy Google OAuth settings fallback (use profile-based config only)
 
   async getAppleAdminConfig(): Promise<AppleOAuthRuntimeConfig> {
     const defaultCallback = `${this.configService.get<string>(
       'APP_URL',
       'http://localhost:8090',
-    )}/api/v1/auth/admin/apple/callback`;
+    )}/api/v1/auth/apple/callback`;
 
     const fromDb = await this.cache.remember(
       'settings:oauth:apple:internal',

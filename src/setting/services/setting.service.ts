@@ -15,26 +15,429 @@ import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
 import { S3ResponseDto } from '../dto/s3-response.dto';
 import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
 import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
-import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
-import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
-import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
-import { CreateGoogleOAuthCustomerSettingDto } from '../dto/create-google-oauth-customer-setting.dto';
-import { UpdateGoogleOAuthCustomerSecretDto } from '../dto/update-google-oauth-customer-secret.dto';
-import { GoogleOAuthCustomerResponseDto } from '../dto/google-oauth-customer-response.dto';
+// Legacy Google OAuth single-setting DTOs removed (profiles are the only supported mechanism).
 import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
 import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
 import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { SettingCryptoService } from 'src/common/utils/setting-crypto.service';
+import {
+  OAuthProviderSetting,
+  OAuthProvider,
+} from '../entities/oauth-provider-setting.entity';
+import { Role } from 'src/auth/entities/role.entity';
+import { CreateGoogleOAuthProfileDto } from '../dto/create-google-oauth-profile.dto';
+import { UpdateGoogleOAuthProfileDto } from '../dto/update-google-oauth-profile.dto';
+import { UpdateGoogleOAuthProfileSecretDto } from '../dto/update-google-oauth-profile-secret.dto';
+import { GoogleOAuthProfileResponseDto } from '../dto/google-oauth-profile-response.dto';
+import { CreateAppleOAuthProfileDto } from '../dto/create-apple-oauth-profile.dto';
+import { UpdateAppleOAuthProfileDto } from '../dto/update-apple-oauth-profile.dto';
+import { UpdateAppleOAuthProfileSecretDto } from '../dto/update-apple-oauth-profile-secret.dto';
+import { AppleOAuthProfileResponseDto } from '../dto/apple-oauth-profile-response.dto';
 
 @Injectable()
 export class SettingService {
   constructor(
     @InjectRepository(Setting)
     private settingRepository: Repository<Setting>,
+    @InjectRepository(OAuthProviderSetting)
+    private oauthProviderSettingRepository: Repository<OAuthProviderSetting>,
+    @InjectRepository(Role)
+    private roleRepository: Repository<Role>,
     private readonly cache: AppCacheService,
     private readonly crypto: SettingCryptoService,
   ) {}
+
+  private toGoogleOAuthProfileResponse(
+    profile: OAuthProviderSetting,
+  ): GoogleOAuthProfileResponseDto {
+    const key = profile.key ?? undefined;
+    return plainToClass(GoogleOAuthProfileResponseDto, {
+      id: profile.id,
+      key,
+      computedCallbackPath: key ? `/auth/${key}/google/callback` : undefined,
+      name: profile.name,
+      clientId: profile.clientId,
+      callbackUrl: profile.callbackUrl,
+      allowedRoleIds: (profile.allowedRoles || []).map((r) => r.id),
+      allowedDomains: (profile.allowedDomains || undefined) as any,
+      hasClientSecret: Boolean(profile.clientSecret),
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    });
+  }
+
+  private toAppleOAuthProfileResponse(
+    profile: OAuthProviderSetting,
+  ): AppleOAuthProfileResponseDto {
+    const key = profile.key ?? undefined;
+    return plainToClass(AppleOAuthProfileResponseDto, {
+      id: profile.id,
+      key,
+      computedCallbackPath: key ? `/auth/${key}/apple/callback` : undefined,
+      name: profile.name,
+      clientId: profile.clientId,
+      teamId: profile.teamId,
+      keyId: profile.keyId,
+      callbackUrl: profile.callbackUrl,
+      allowedRoleIds: (profile.allowedRoles || []).map((r) => r.id),
+      allowedDomains: (profile.allowedDomains || undefined) as any,
+      hasPrivateKey: Boolean(profile.privateKey),
+      createdAt: profile.createdAt,
+      updatedAt: profile.updatedAt,
+    });
+  }
+
+  async createAppleOAuthProfile(
+    dto: CreateAppleOAuthProfileDto,
+  ): Promise<AppleOAuthProfileResponseDto> {
+    const roles = await this.roleRepository.find({
+      where: dto.allowedRoleIds.map((id) => ({ id })),
+    });
+
+    if (roles.length !== dto.allowedRoleIds.length) {
+      throw new NotFoundException('One or more roles were not found');
+    }
+
+    const entity = this.oauthProviderSettingRepository.create({
+      provider: OAuthProvider.APPLE,
+      key: dto.key.trim().toLowerCase(),
+      name: dto.name.trim(),
+      clientId: dto.clientId.trim(),
+      teamId: dto.teamId.trim(),
+      keyId: dto.keyId.trim(),
+      callbackUrl: dto.callbackUrl.trim(),
+      // Apple does not use clientSecret in our flow; keep null.
+      clientSecret: null,
+      privateKey: null,
+      allowedRoles: roles,
+      allowedDomains:
+        dto.allowedDomains
+          ?.map((d) => d.trim().toLowerCase())
+          .filter((d) => d.length > 0) || undefined,
+    });
+
+    const saved = await this.oauthProviderSettingRepository.save(entity);
+
+    await this.cache.del('settings:oauth:apple:profiles');
+    await this.cache.del(`settings:oauth:apple:profile:${saved.id}`);
+    await this.cache.del(`settings:oauth:apple:profile:${saved.id}:internal`);
+    await this.cache.del(`settings:oauth:apple:profile:resolve:${saved.id}`);
+    if (saved.key) {
+      await this.cache.del(`settings:oauth:apple:profile:resolve:${saved.key}`);
+    }
+
+    const reloaded = await this.oauthProviderSettingRepository.findOne({
+      where: { id: saved.id, provider: OAuthProvider.APPLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!reloaded) {
+      throw new NotFoundException('Apple OAuth profile not found');
+    }
+
+    return this.toAppleOAuthProfileResponse(reloaded);
+  }
+
+  async updateAppleOAuthProfile(
+    id: string,
+    dto: UpdateAppleOAuthProfileDto,
+  ): Promise<AppleOAuthProfileResponseDto> {
+    const profile = await this.oauthProviderSettingRepository.findOne({
+      where: { id, provider: OAuthProvider.APPLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Apple OAuth profile not found');
+    }
+
+    if (dto.key !== undefined) profile.key = dto.key.trim().toLowerCase();
+    if (dto.name !== undefined) profile.name = dto.name.trim();
+    if (dto.clientId !== undefined) profile.clientId = dto.clientId.trim();
+    if (dto.teamId !== undefined) profile.teamId = dto.teamId.trim();
+    if (dto.keyId !== undefined) profile.keyId = dto.keyId.trim();
+    if (dto.callbackUrl !== undefined) profile.callbackUrl = dto.callbackUrl.trim();
+
+    if (dto.allowedDomains !== undefined) {
+      profile.allowedDomains = dto.allowedDomains
+        .map((d) => d.trim().toLowerCase())
+        .filter((d) => d.length > 0);
+    }
+
+    if (dto.allowedRoleIds !== undefined) {
+      const roles = await this.roleRepository.find({
+        where: dto.allowedRoleIds.map((rid) => ({ id: rid })),
+      });
+      if (roles.length !== dto.allowedRoleIds.length) {
+        throw new NotFoundException('One or more roles were not found');
+      }
+      profile.allowedRoles = roles;
+    }
+
+    await this.oauthProviderSettingRepository.save(profile);
+
+    await this.cache.del('settings:oauth:apple:profiles');
+    await this.cache.del(`settings:oauth:apple:profile:${profile.id}`);
+    await this.cache.del(`settings:oauth:apple:profile:${profile.id}:internal`);
+    await this.cache.del(`settings:oauth:apple:profile:resolve:${profile.id}`);
+    if (profile.key) {
+      await this.cache.del(`settings:oauth:apple:profile:resolve:${profile.key}`);
+    }
+
+    return this.toAppleOAuthProfileResponse(profile);
+  }
+
+  async updateAppleOAuthProfileSecret(
+    id: string,
+    dto: UpdateAppleOAuthProfileSecretDto,
+  ): Promise<AppleOAuthProfileResponseDto> {
+    const profile = await this.oauthProviderSettingRepository.findOne({
+      where: { id, provider: OAuthProvider.APPLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Apple OAuth profile not found');
+    }
+
+    profile.privateKey = this.crypto.encrypt(dto.privateKey);
+    await this.oauthProviderSettingRepository.save(profile);
+
+    await this.cache.del('settings:oauth:apple:profiles');
+    await this.cache.del(`settings:oauth:apple:profile:${profile.id}`);
+    await this.cache.del(`settings:oauth:apple:profile:${profile.id}:internal`);
+    await this.cache.del(`settings:oauth:apple:profile:resolve:${profile.id}`);
+    if (profile.key) {
+      await this.cache.del(`settings:oauth:apple:profile:resolve:${profile.key}`);
+    }
+
+    return this.toAppleOAuthProfileResponse(profile);
+  }
+
+  async listAppleOAuthProfiles(): Promise<AppleOAuthProfileResponseDto[]> {
+    const data = await this.cache.remember(
+      'settings:oauth:apple:profiles',
+      async () => {
+        const profiles = await this.oauthProviderSettingRepository.find({
+          where: { provider: OAuthProvider.APPLE },
+          relations: ['allowedRoles'],
+          order: { createdAt: 'DESC' },
+        });
+        return profiles.map((p) => this.toAppleOAuthProfileResponse(p));
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return data as AppleOAuthProfileResponseDto[];
+  }
+
+  async getAppleOAuthProfile(id: string): Promise<AppleOAuthProfileResponseDto> {
+    const data = await this.cache.remember(
+      `settings:oauth:apple:profile:${id}`,
+      async () => {
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where: { id, provider: OAuthProvider.APPLE },
+          relations: ['allowedRoles'],
+        });
+        if (!profile) {
+          throw new NotFoundException('Apple OAuth profile not found');
+        }
+        return this.toAppleOAuthProfileResponse(profile);
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(AppleOAuthProfileResponseDto, data as any);
+  }
+
+  async createGoogleOAuthProfile(
+    dto: CreateGoogleOAuthProfileDto,
+  ): Promise<GoogleOAuthProfileResponseDto> {
+    const roles = await this.roleRepository.find({
+      where: dto.allowedRoleIds.map((id) => ({ id })),
+    });
+
+    if (roles.length !== dto.allowedRoleIds.length) {
+      throw new NotFoundException('One or more roles were not found');
+    }
+
+    const entity = this.oauthProviderSettingRepository.create({
+      provider: OAuthProvider.GOOGLE,
+      key: dto.key.trim().toLowerCase(),
+      name: dto.name.trim(),
+      clientId: dto.clientId.trim(),
+      callbackUrl: dto.callbackUrl.trim(),
+      clientSecret: null,
+      allowedRoles: roles,
+      allowedDomains:
+        dto.allowedDomains
+          ?.map((d) => d.trim().toLowerCase())
+          .filter((d) => d.length > 0) || undefined,
+    });
+
+    const saved = await this.oauthProviderSettingRepository.save(entity);
+
+    await this.cache.del('settings:oauth:google:profiles');
+    await this.cache.del(`settings:oauth:google:profile:${saved.id}`);
+    await this.cache.del(`settings:oauth:google:profile:${saved.id}:internal`);
+    await this.cache.del(`settings:oauth:google:profile:resolve:${saved.id}`);
+    if (saved.key) {
+      await this.cache.del(`settings:oauth:google:profile:resolve:${saved.key}`);
+      await this.cache.del(`settings:oauth:google:profile:key:${saved.key}`);
+    }
+
+    const reloaded = await this.oauthProviderSettingRepository.findOne({
+      where: { id: saved.id, provider: OAuthProvider.GOOGLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!reloaded) {
+      throw new NotFoundException('Google OAuth profile not found');
+    }
+
+    return this.toGoogleOAuthProfileResponse(reloaded);
+  }
+
+  async updateGoogleOAuthProfile(
+    id: string,
+    dto: UpdateGoogleOAuthProfileDto,
+  ): Promise<GoogleOAuthProfileResponseDto> {
+    const profile = await this.oauthProviderSettingRepository.findOne({
+      where: { id, provider: OAuthProvider.GOOGLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Google OAuth profile not found');
+    }
+
+    if (dto.name !== undefined) {
+      profile.name = dto.name.trim();
+    }
+    if (dto.key !== undefined) {
+      profile.key = dto.key.trim().toLowerCase();
+    }
+    if (dto.clientId !== undefined) {
+      profile.clientId = dto.clientId.trim();
+    }
+    if (dto.callbackUrl !== undefined) {
+      profile.callbackUrl = dto.callbackUrl.trim();
+    }
+
+    if (dto.allowedDomains !== undefined) {
+      profile.allowedDomains = dto.allowedDomains
+        .map((d) => d.trim().toLowerCase())
+        .filter((d) => d.length > 0);
+    }
+
+    if (dto.allowedRoleIds !== undefined) {
+      const roles = await this.roleRepository.find({
+        where: dto.allowedRoleIds.map((rid) => ({ id: rid })),
+      });
+      if (roles.length !== dto.allowedRoleIds.length) {
+        throw new NotFoundException('One or more roles were not found');
+      }
+      profile.allowedRoles = roles;
+    }
+
+    await this.oauthProviderSettingRepository.save(profile);
+
+    await this.cache.del('settings:oauth:google:profiles');
+    await this.cache.del(`settings:oauth:google:profile:${profile.id}`);
+    await this.cache.del(`settings:oauth:google:profile:${profile.id}:internal`);
+    await this.cache.del(`settings:oauth:google:profile:resolve:${profile.id}`);
+    if (profile.key) {
+      await this.cache.del(`settings:oauth:google:profile:resolve:${profile.key}`);
+      await this.cache.del(`settings:oauth:google:profile:key:${profile.key}`);
+    }
+
+    return this.toGoogleOAuthProfileResponse(profile);
+  }
+
+  async updateGoogleOAuthProfileSecret(
+    id: string,
+    dto: UpdateGoogleOAuthProfileSecretDto,
+  ): Promise<GoogleOAuthProfileResponseDto> {
+    const profile = await this.oauthProviderSettingRepository.findOne({
+      where: { id, provider: OAuthProvider.GOOGLE },
+      relations: ['allowedRoles'],
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Google OAuth profile not found');
+    }
+
+    profile.clientSecret = this.crypto.encrypt(dto.clientSecret);
+    await this.oauthProviderSettingRepository.save(profile);
+
+    await this.cache.del('settings:oauth:google:profiles');
+    await this.cache.del(`settings:oauth:google:profile:${profile.id}`);
+    await this.cache.del(`settings:oauth:google:profile:${profile.id}:internal`);
+    await this.cache.del(`settings:oauth:google:profile:resolve:${profile.id}`);
+    if (profile.key) {
+      await this.cache.del(`settings:oauth:google:profile:resolve:${profile.key}`);
+      await this.cache.del(`settings:oauth:google:profile:key:${profile.key}`);
+    }
+
+    return this.toGoogleOAuthProfileResponse(profile);
+  }
+
+  async listGoogleOAuthProfiles(): Promise<GoogleOAuthProfileResponseDto[]> {
+    const data = await this.cache.remember(
+      'settings:oauth:google:profiles',
+      async () => {
+        const profiles = await this.oauthProviderSettingRepository.find({
+          where: { provider: OAuthProvider.GOOGLE },
+          relations: ['allowedRoles'],
+          order: { createdAt: 'DESC' },
+        });
+        return profiles.map((p) => this.toGoogleOAuthProfileResponse(p));
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return data as GoogleOAuthProfileResponseDto[];
+  }
+
+  async getGoogleOAuthProfile(id: string): Promise<GoogleOAuthProfileResponseDto> {
+    const data = await this.cache.remember(
+      `settings:oauth:google:profile:${id}`,
+      async () => {
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where: { id, provider: OAuthProvider.GOOGLE },
+          relations: ['allowedRoles'],
+        });
+        if (!profile) {
+          throw new NotFoundException('Google OAuth profile not found');
+        }
+        return this.toGoogleOAuthProfileResponse(profile);
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(GoogleOAuthProfileResponseDto, data as any);
+  }
+
+  async getGoogleOAuthProfileByKey(key: string): Promise<GoogleOAuthProfileResponseDto> {
+    const normalizedKey = key.trim().toLowerCase();
+    const data = await this.cache.remember(
+      `settings:oauth:google:profile:key:${normalizedKey}`,
+      async () => {
+        const profile = await this.oauthProviderSettingRepository.findOne({
+          where: { key: normalizedKey, provider: OAuthProvider.GOOGLE },
+          relations: ['allowedRoles'],
+        });
+        if (!profile) {
+          throw new NotFoundException('Google OAuth profile not found');
+        }
+        return this.toGoogleOAuthProfileResponse(profile);
+      },
+      { ttlSeconds: 300 },
+    );
+
+    return plainToClass(GoogleOAuthProfileResponseDto, data as any);
+  }
 
   async createSMTPSettings(
     createSMTPDto: CreateSMTPDto,
@@ -138,194 +541,6 @@ export class SettingService {
     );
   }
 
-  async createGoogleOAuthCustomerSettings(
-    dto: CreateGoogleOAuthCustomerSettingDto,
-  ): Promise<GoogleOAuthCustomerResponseDto> {
-    const entries: Array<{ key: string; value: string }> = [
-      { key: 'oauth_google_customer_client_id', value: dto.clientId.trim() },
-      {
-        key: 'oauth_google_customer_callback_url',
-        value: dto.callbackUrl?.trim() || '',
-      },
-    ];
-
-    for (const entry of entries) {
-      const existingSetting = await this.settingRepository.findOne({
-        where: { key: entry.key },
-      });
-
-      if (existingSetting) {
-        existingSetting.value = entry.value;
-        await this.settingRepository.save(existingSetting);
-      } else {
-        const newSetting = this.settingRepository.create(entry);
-        await this.settingRepository.save(newSetting);
-      }
-    }
-
-    await this.cache.del('settings:oauth:google-customer');
-    await this.cache.del('settings:oauth:google-customer:internal');
-
-    return this.getGoogleOAuthCustomerSettings();
-  }
-
-  async updateGoogleOAuthCustomerSecret(
-    dto: UpdateGoogleOAuthCustomerSecretDto,
-  ): Promise<GoogleOAuthCustomerResponseDto> {
-    const entry = {
-      key: 'oauth_google_customer_client_secret',
-      value: this.crypto.encrypt(dto.clientSecret),
-    };
-
-    const existingSetting = await this.settingRepository.findOne({
-      where: { key: entry.key },
-    });
-
-    if (existingSetting) {
-      existingSetting.value = entry.value;
-      await this.settingRepository.save(existingSetting);
-    } else {
-      const newSetting = this.settingRepository.create(entry);
-      await this.settingRepository.save(newSetting);
-    }
-
-    await this.cache.del('settings:oauth:google-customer');
-    await this.cache.del('settings:oauth:google-customer:internal');
-
-    return this.getGoogleOAuthCustomerSettings();
-  }
-
-  async getGoogleOAuthCustomerSettings(): Promise<GoogleOAuthCustomerResponseDto> {
-    const data = await this.cache.remember(
-      'settings:oauth:google-customer',
-      async () => {
-        const keys = [
-          'oauth_google_customer_client_id',
-          'oauth_google_customer_callback_url',
-          'oauth_google_customer_client_secret',
-        ];
-
-        const settings = await this.settingRepository.find({
-          where: keys.map((key) => ({ key })),
-        });
-
-        if (settings.length === 0) {
-          throw new NotFoundException('Customer Google OAuth settings not found');
-        }
-
-        const getRaw = (key: string) =>
-          settings.find((s) => s.key === key)?.value || '';
-
-        const clientId = getRaw('oauth_google_customer_client_id');
-        const callbackUrl = getRaw('oauth_google_customer_callback_url');
-        const clientSecretStored = getRaw('oauth_google_customer_client_secret');
-
-        return {
-          clientId,
-          callbackUrl: callbackUrl || undefined,
-          hasClientSecret: Boolean(clientSecretStored),
-          createdAt: settings[0]?.createdAt,
-          updatedAt: settings[0]?.updatedAt,
-        };
-      },
-      { ttlSeconds: 300 },
-    );
-
-    return plainToClass(GoogleOAuthCustomerResponseDto, data);
-  }
-
-  async createGoogleOAuthSettings(
-    dto: CreateGoogleOAuthSettingDto,
-  ): Promise<GoogleOAuthResponseDto> {
-    const entries: Array<{ key: string; value: string }> = [
-      { key: 'oauth_google_client_id', value: dto.clientId.trim() },
-      { key: 'oauth_google_callback_url', value: dto.callbackUrl?.trim() || '' },
-    ];
-
-    for (const entry of entries) {
-      const existingSetting = await this.settingRepository.findOne({
-        where: { key: entry.key },
-      });
-
-      if (existingSetting) {
-        existingSetting.value = entry.value;
-        await this.settingRepository.save(existingSetting);
-      } else {
-        const newSetting = this.settingRepository.create(entry);
-        await this.settingRepository.save(newSetting);
-      }
-    }
-
-    await this.cache.del('settings:oauth:google');
-    await this.cache.del('settings:oauth:google:internal');
-
-    return this.getGoogleOAuthSettings();
-  }
-
-  async updateGoogleOAuthSecret(
-    dto: UpdateGoogleOAuthSecretDto,
-  ): Promise<GoogleOAuthResponseDto> {
-    const entry = {
-      key: 'oauth_google_client_secret',
-      value: this.crypto.encrypt(dto.clientSecret),
-    };
-
-    const existingSetting = await this.settingRepository.findOne({
-      where: { key: entry.key },
-    });
-
-    if (existingSetting) {
-      existingSetting.value = entry.value;
-      await this.settingRepository.save(existingSetting);
-    } else {
-      const newSetting = this.settingRepository.create(entry);
-      await this.settingRepository.save(newSetting);
-    }
-
-    await this.cache.del('settings:oauth:google');
-    await this.cache.del('settings:oauth:google:internal');
-
-    return this.getGoogleOAuthSettings();
-  }
-
-  async getGoogleOAuthSettings(): Promise<GoogleOAuthResponseDto> {
-    const data = await this.cache.remember(
-      'settings:oauth:google',
-      async () => {
-        const keys = [
-          'oauth_google_client_id',
-          'oauth_google_callback_url',
-          'oauth_google_client_secret',
-        ];
-
-        const settings = await this.settingRepository.find({
-          where: keys.map((key) => ({ key })),
-        });
-
-        if (settings.length === 0) {
-          throw new NotFoundException('Google OAuth settings not found');
-        }
-
-        const getRaw = (key: string) =>
-          settings.find((s) => s.key === key)?.value || '';
-
-        const clientId = getRaw('oauth_google_client_id');
-        const callbackUrl = getRaw('oauth_google_callback_url');
-        const clientSecretStored = getRaw('oauth_google_client_secret');
-
-        return {
-          clientId,
-          callbackUrl: callbackUrl || undefined,
-          hasClientSecret: Boolean(clientSecretStored),
-          createdAt: settings[0]?.createdAt,
-          updatedAt: settings[0]?.updatedAt,
-        };
-      },
-      { ttlSeconds: 300 },
-    );
-
-    return plainToClass(GoogleOAuthResponseDto, data);
-  }
 
   async createAppleOAuthSettings(
     dto: CreateAppleOAuthSettingDto,

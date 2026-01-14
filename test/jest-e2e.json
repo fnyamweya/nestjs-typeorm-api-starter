@@ -4,6 +4,8 @@
   "testEnvironment": "node",
   "maxWorkers": 1,
   "testTimeout": 120000,
+  "globalSetup": "<rootDir>/e2e/jest-global-setup.ts",
+  "globalTeardown": "<rootDir>/e2e/jest-global-teardown.ts",
   "testRegex": ".e2e-spec.ts$",
   "transform": {
     "^.+\\.(t|j)s$": "ts-jest"

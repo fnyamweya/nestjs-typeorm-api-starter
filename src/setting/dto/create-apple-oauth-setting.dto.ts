@@ -20,7 +20,7 @@ export class CreateAppleOAuthSettingDto {
   @ApiPropertyOptional({
     description:
       'Optional override for the callback URL. If omitted, the app default callback URL is used.',
-    example: 'https://api.example.com/api/auth/admin/apple/callback',
+    example: 'https://api.example.com/api/auth/apple/callback',
   })
   @IsOptional()
   @IsUrl({ require_tld: false })

@@ -11,3 +11,4 @@ export class UpdateGoogleOAuthCustomerSecretDto {
   @IsNotEmpty()
   clientSecret: string;
 }
+// Legacy: Use Google OAuth profiles instead

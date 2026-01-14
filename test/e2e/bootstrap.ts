@@ -1,13 +1,17 @@
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import type { TestingModuleBuilder } from '@nestjs/testing';
 import { DataSource } from 'typeorm';
+import { HttpExceptionFilter } from '../../src/common/filters/http-exception.filter';
 
 export type TestApp = {
   app: INestApplication;
   ds: DataSource;
 };
 
-export async function createTestApp(): Promise<TestApp> {
+export async function createTestApp(options?: {
+  override?: (builder: TestingModuleBuilder) => void;
+}): Promise<TestApp> {
   // Force test mode for e2e. The repository's `.env` typically points to
   // hosted DB/Redis, which is not appropriate (or reliable) for automated tests.
   process.env.NODE_ENV = 'test';
@@ -32,15 +36,21 @@ export async function createTestApp(): Promise<TestApp> {
   process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'e2e_jwt_secret';
   process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? 'e2e_jwt_refresh_secret';
   process.env.SUPER_ADMIN_EMAIL = process.env.SUPER_ADMIN_EMAIL ?? 'superadmin@gmail.com';
+  process.env.ENCRYPTION_KEY = process.env.ENCRYPTION_KEY ?? 'e2e_encryption_key';
 
   // Import AppModule only after env is set, so TypeORM picks up the test DB.
   const { AppModule } = await import('../../src/app.module');
 
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const builder = Test.createTestingModule({ imports: [AppModule] });
+  options?.override?.(builder);
+  const moduleRef = await builder.compile();
   const app = moduleRef.createNestApplication({
     // Needed for webhook signature verification tests.
     rawBody: true,
   });
+
+  // Align e2e error responses with production.
+  app.useGlobalFilters(new HttpExceptionFilter());
 
   // Optionally configure global pipes/filters/logging for e2e clarity
   app.enableShutdownHooks();

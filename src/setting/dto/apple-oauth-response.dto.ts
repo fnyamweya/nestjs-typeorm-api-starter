@@ -10,7 +10,7 @@ export class AppleOAuthResponseDto {
   @ApiProperty({ description: 'Apple Key ID.' })
   keyId: string;
 
-  @ApiPropertyOptional({ example: 'https://api.example.com/api/auth/admin/apple/callback' })
+  @ApiPropertyOptional({ example: 'https://api.example.com/api/auth/apple/callback' })
   callbackUrl?: string;
 
   @ApiProperty({

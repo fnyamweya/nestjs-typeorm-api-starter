@@ -4,7 +4,7 @@ export class GoogleOAuthResponseDto {
   @ApiProperty({ example: '1234567890-abc123def456.apps.googleusercontent.com' })
   clientId: string;
 
-  @ApiPropertyOptional({ example: 'https://api.example.com/api/auth/admin/google/callback' })
+  @ApiPropertyOptional({ example: 'https://api.example.com/api/auth/google/callback' })
   callbackUrl?: string;
 
   @ApiProperty({
@@ -19,3 +19,4 @@ export class GoogleOAuthResponseDto {
   @ApiPropertyOptional()
   updatedAt?: Date;
 }
+// Legacy: Use Google OAuth profiles instead

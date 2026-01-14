@@ -6,6 +6,8 @@ import {
   Body,
   HttpCode,
   HttpStatus,
+  Patch,
+  Param,
 } from '@nestjs/common';
 import { JwtAuthGuard } from 'src/auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from 'src/auth/guards/permissions.guard';
@@ -28,15 +30,18 @@ import { CreateS3SettingDto } from '../dto/create-s3-setting.dto';
 import { S3ResponseDto } from '../dto/s3-response.dto';
 import { UpdateS3SecretsDto } from '../dto/update-s3-secrets.dto';
 import { S3SecretsResponseDto } from '../dto/s3-secrets-response.dto';
-import { CreateGoogleOAuthSettingDto } from '../dto/create-google-oauth-setting.dto';
-import { UpdateGoogleOAuthSecretDto } from '../dto/update-google-oauth-secret.dto';
-import { GoogleOAuthResponseDto } from '../dto/google-oauth-response.dto';
-import { CreateGoogleOAuthCustomerSettingDto } from '../dto/create-google-oauth-customer-setting.dto';
-import { UpdateGoogleOAuthCustomerSecretDto } from '../dto/update-google-oauth-customer-secret.dto';
-import { GoogleOAuthCustomerResponseDto } from '../dto/google-oauth-customer-response.dto';
+// Legacy Google OAuth single-setting DTOs removed (profiles are the only supported mechanism).
 import { CreateAppleOAuthSettingDto } from '../dto/create-apple-oauth-setting.dto';
 import { UpdateAppleOAuthSecretDto } from '../dto/update-apple-oauth-secret.dto';
 import { AppleOAuthResponseDto } from '../dto/apple-oauth-response.dto';
+import { CreateAppleOAuthProfileDto } from '../dto/create-apple-oauth-profile.dto';
+import { UpdateAppleOAuthProfileDto } from '../dto/update-apple-oauth-profile.dto';
+import { UpdateAppleOAuthProfileSecretDto } from '../dto/update-apple-oauth-profile-secret.dto';
+import { AppleOAuthProfileResponseDto } from '../dto/apple-oauth-profile-response.dto';
+import { CreateGoogleOAuthProfileDto } from '../dto/create-google-oauth-profile.dto';
+import { UpdateGoogleOAuthProfileDto } from '../dto/update-google-oauth-profile.dto';
+import { UpdateGoogleOAuthProfileSecretDto } from '../dto/update-google-oauth-profile-secret.dto';
+import { GoogleOAuthProfileResponseDto } from '../dto/google-oauth-profile-response.dto';
 import {
   ApiBearerAuth,
   ApiBody,
@@ -56,157 +61,233 @@ import {
 export class SettingController {
   constructor(private readonly settingService: SettingService) {}
 
-  @Post('oauth/google')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'update',
-  })
+  @Post('oauth/apple/profiles')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
   @LogActivity({
-    action: ActivityAction.UPDATE,
-    description: 'Google OAuth settings updated successfully',
-    resourceType: 'oauth-google-settings',
+    action: ActivityAction.CREATE,
+    description: 'Apple OAuth profile created successfully',
+    resourceType: 'oauth-apple-profile',
   })
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create or update Google OAuth settings' })
-  @ApiBody({ type: CreateGoogleOAuthSettingDto })
+  @ApiOperation({ summary: 'Create an Apple OAuth profile (role-scoped credentials)' })
+  @ApiBody({ type: CreateAppleOAuthProfileDto })
   @ApiCreatedResponse({
-    description: 'Google OAuth settings updated successfully',
-    type: GoogleOAuthResponseDto,
+    description: 'Apple OAuth profile created successfully',
+    type: AppleOAuthProfileResponseDto,
   })
-  async createGoogleOAuthSettings(
-    @Body() dto: CreateGoogleOAuthSettingDto,
-  ): Promise<ApiResponse<GoogleOAuthResponseDto>> {
-    const data = await this.settingService.createGoogleOAuthSettings(dto);
-    return ResponseUtil.created(data, 'Google OAuth settings updated successfully');
+  async createAppleOAuthProfile(
+    @Body() dto: CreateAppleOAuthProfileDto,
+  ): Promise<ApiResponse<AppleOAuthProfileResponseDto>> {
+    const data = await this.settingService.createAppleOAuthProfile(dto);
+    return ResponseUtil.created(data, 'Apple OAuth profile created successfully');
   }
 
-  @Post('oauth/google/secret')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'update',
-  })
+  @Patch('oauth/apple/profiles/:id')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
   @LogActivity({
     action: ActivityAction.UPDATE,
-    description: 'Google OAuth client secret updated successfully',
-    resourceType: 'oauth-google-secret',
+    description: 'Apple OAuth profile updated successfully',
+    resourceType: 'oauth-apple-profile',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update an Apple OAuth profile (excluding private key)' })
+  @ApiBody({ type: UpdateAppleOAuthProfileDto })
+  @ApiOkResponse({
+    description: 'Apple OAuth profile updated successfully',
+    type: AppleOAuthProfileResponseDto,
+  })
+  async updateAppleOAuthProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateAppleOAuthProfileDto,
+  ): Promise<ApiResponse<AppleOAuthProfileResponseDto>> {
+    const data = await this.settingService.updateAppleOAuthProfile(id, dto);
+    return ResponseUtil.success(data, 'Apple OAuth profile updated successfully');
+  }
+
+  @Post('oauth/apple/profiles/:id/secret')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Apple OAuth profile private key updated successfully',
+    resourceType: 'oauth-apple-profile-secret',
   })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Update Google OAuth client secret',
+    summary: 'Update Apple OAuth profile private key',
     description:
-      'Stores the secret encrypted at rest. Secret values are never returned in responses.',
+      'Stores the key encrypted at rest. Key values are never returned in responses.',
   })
-  @ApiBody({ type: UpdateGoogleOAuthSecretDto })
+  @ApiBody({ type: UpdateAppleOAuthProfileSecretDto })
   @ApiOkResponse({
-    description: 'Google OAuth client secret updated successfully',
-    type: GoogleOAuthResponseDto,
+    description: 'Apple OAuth profile private key updated successfully',
+    type: AppleOAuthProfileResponseDto,
   })
-  async updateGoogleOAuthSecret(
-    @Body() dto: UpdateGoogleOAuthSecretDto,
-  ): Promise<ApiResponse<GoogleOAuthResponseDto>> {
-    const data = await this.settingService.updateGoogleOAuthSecret(dto);
+  async updateAppleOAuthProfileSecret(
+    @Param('id') id: string,
+    @Body() dto: UpdateAppleOAuthProfileSecretDto,
+  ): Promise<ApiResponse<AppleOAuthProfileResponseDto>> {
+    const data = await this.settingService.updateAppleOAuthProfileSecret(id, dto);
     return ResponseUtil.success(
       data,
-      'Google OAuth client secret updated successfully',
+      'Apple OAuth profile private key updated successfully',
     );
   }
 
-  @Get('oauth/google')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'read',
-  })
-  @ApiOperation({ summary: 'Retrieve configured Google OAuth settings' })
+  @Get('oauth/apple/profiles')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'List Apple OAuth profiles' })
   @ApiOkResponse({
-    description: 'Google OAuth settings retrieved successfully',
-    type: GoogleOAuthResponseDto,
+    description: 'Apple OAuth profiles retrieved successfully',
+    type: [AppleOAuthProfileResponseDto],
   })
-  async getGoogleOAuthSettings(): Promise<ApiResponse<GoogleOAuthResponseDto>> {
-    const data = await this.settingService.getGoogleOAuthSettings();
+  async listAppleOAuthProfiles(): Promise<
+    ApiResponse<AppleOAuthProfileResponseDto[]>
+  > {
+    const data = await this.settingService.listAppleOAuthProfiles();
     return ResponseUtil.success(
       data,
-      'Google OAuth settings retrieved successfully',
+      'Apple OAuth profiles retrieved successfully',
     );
   }
 
-  @Post('oauth/google/customer')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'update',
+  @Get('oauth/apple/profiles/:id')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'Get a single Apple OAuth profile' })
+  @ApiOkResponse({
+    description: 'Apple OAuth profile retrieved successfully',
+    type: AppleOAuthProfileResponseDto,
   })
+  async getAppleOAuthProfile(
+    @Param('id') id: string,
+  ): Promise<ApiResponse<AppleOAuthProfileResponseDto>> {
+    const data = await this.settingService.getAppleOAuthProfile(id);
+    return ResponseUtil.success(data, 'Apple OAuth profile retrieved successfully');
+  }
+
+  @Post('oauth/google/profiles')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
   @LogActivity({
-    action: ActivityAction.UPDATE,
-    description: 'Customer Google OAuth settings updated successfully',
-    resourceType: 'oauth-google-customer-settings',
+    action: ActivityAction.CREATE,
+    description: 'Google OAuth profile created successfully',
+    resourceType: 'oauth-google-profile',
   })
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Create or update Customer Google OAuth settings' })
-  @ApiBody({ type: CreateGoogleOAuthCustomerSettingDto })
+  @ApiOperation({ summary: 'Create a Google OAuth profile (role-scoped credentials)' })
+  @ApiBody({ type: CreateGoogleOAuthProfileDto })
   @ApiCreatedResponse({
-    description: 'Customer Google OAuth settings updated successfully',
-    type: GoogleOAuthCustomerResponseDto,
+    description: 'Google OAuth profile created successfully',
+    type: GoogleOAuthProfileResponseDto,
   })
-  async createGoogleOAuthCustomerSettings(
-    @Body() dto: CreateGoogleOAuthCustomerSettingDto,
-  ): Promise<ApiResponse<GoogleOAuthCustomerResponseDto>> {
-    const data = await this.settingService.createGoogleOAuthCustomerSettings(
-      dto,
-    );
+  async createGoogleOAuthProfile(
+    @Body() dto: CreateGoogleOAuthProfileDto,
+  ): Promise<ApiResponse<GoogleOAuthProfileResponseDto>> {
+    const data = await this.settingService.createGoogleOAuthProfile(dto);
     return ResponseUtil.created(
       data,
-      'Customer Google OAuth settings updated successfully',
+      'Google OAuth profile created successfully',
     );
   }
 
-  @Post('oauth/google/customer/secret')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'update',
-  })
+  @Patch('oauth/google/profiles/:id')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
   @LogActivity({
     action: ActivityAction.UPDATE,
-    description: 'Customer Google OAuth client secret updated successfully',
-    resourceType: 'oauth-google-customer-secret',
+    description: 'Google OAuth profile updated successfully',
+    resourceType: 'oauth-google-profile',
+  })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Update a Google OAuth profile (excluding secret)' })
+  @ApiBody({ type: UpdateGoogleOAuthProfileDto })
+  @ApiOkResponse({
+    description: 'Google OAuth profile updated successfully',
+    type: GoogleOAuthProfileResponseDto,
+  })
+  async updateGoogleOAuthProfile(
+    @Param('id') id: string,
+    @Body() dto: UpdateGoogleOAuthProfileDto,
+  ): Promise<ApiResponse<GoogleOAuthProfileResponseDto>> {
+    const data = await this.settingService.updateGoogleOAuthProfile(id, dto);
+    return ResponseUtil.success(
+      data,
+      'Google OAuth profile updated successfully',
+    );
+  }
+
+  @Post('oauth/google/profiles/:id/secret')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'update' })
+  @LogActivity({
+    action: ActivityAction.UPDATE,
+    description: 'Google OAuth profile secret updated successfully',
+    resourceType: 'oauth-google-profile-secret',
   })
   @HttpCode(HttpStatus.OK)
   @ApiOperation({
-    summary: 'Update Customer Google OAuth client secret',
+    summary: 'Update Google OAuth profile client secret',
     description:
       'Stores the secret encrypted at rest. Secret values are never returned in responses.',
   })
-  @ApiBody({ type: UpdateGoogleOAuthCustomerSecretDto })
+  @ApiBody({ type: UpdateGoogleOAuthProfileSecretDto })
   @ApiOkResponse({
-    description: 'Customer Google OAuth client secret updated successfully',
-    type: GoogleOAuthCustomerResponseDto,
+    description: 'Google OAuth profile secret updated successfully',
+    type: GoogleOAuthProfileResponseDto,
   })
-  async updateGoogleOAuthCustomerSecret(
-    @Body() dto: UpdateGoogleOAuthCustomerSecretDto,
-  ): Promise<ApiResponse<GoogleOAuthCustomerResponseDto>> {
-    const data = await this.settingService.updateGoogleOAuthCustomerSecret(dto);
+  async updateGoogleOAuthProfileSecret(
+    @Param('id') id: string,
+    @Body() dto: UpdateGoogleOAuthProfileSecretDto,
+  ): Promise<ApiResponse<GoogleOAuthProfileResponseDto>> {
+    const data = await this.settingService.updateGoogleOAuthProfileSecret(
+      id,
+      dto,
+    );
     return ResponseUtil.success(
       data,
-      'Customer Google OAuth client secret updated successfully',
+      'Google OAuth profile secret updated successfully',
     );
   }
 
-  @Get('oauth/google/customer')
-  @RequirePermissions({
-    module: PermissionModule.SETTINGS,
-    permission: 'read',
-  })
-  @ApiOperation({ summary: 'Retrieve configured Customer Google OAuth settings' })
+  @Get('oauth/google/profiles')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'List Google OAuth profiles' })
   @ApiOkResponse({
-    description: 'Customer Google OAuth settings retrieved successfully',
-    type: GoogleOAuthCustomerResponseDto,
+    description: 'Google OAuth profiles retrieved successfully',
+    type: [GoogleOAuthProfileResponseDto],
   })
-  async getGoogleOAuthCustomerSettings(): Promise<
-    ApiResponse<GoogleOAuthCustomerResponseDto>
+  async listGoogleOAuthProfiles(): Promise<
+    ApiResponse<GoogleOAuthProfileResponseDto[]>
   > {
-    const data = await this.settingService.getGoogleOAuthCustomerSettings();
+    const data = await this.settingService.listGoogleOAuthProfiles();
     return ResponseUtil.success(
       data,
-      'Customer Google OAuth settings retrieved successfully',
+      'Google OAuth profiles retrieved successfully',
     );
+  }
+
+  @Get('oauth/google/profiles/:id')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'Get a single Google OAuth profile by ID' })
+  @ApiOkResponse({
+    description: 'Google OAuth profile retrieved successfully',
+    type: GoogleOAuthProfileResponseDto,
+  })
+  async getGoogleOAuthProfile(
+    @Param('id') id: string,
+  ): Promise<ApiResponse<GoogleOAuthProfileResponseDto>> {
+    const data = await this.settingService.getGoogleOAuthProfile(id);
+    return ResponseUtil.success(data, 'Google OAuth profile retrieved successfully');
+  }
+
+  @Get('oauth/google/profiles/key/:key')
+  @RequirePermissions({ module: PermissionModule.SETTINGS, permission: 'read' })
+  @ApiOperation({ summary: 'Get a single Google OAuth profile by key' })
+  @ApiOkResponse({
+    description: 'Google OAuth profile retrieved successfully',
+    type: GoogleOAuthProfileResponseDto,
+  })
+  async getGoogleOAuthProfileByKey(
+    @Param('key') key: string,
+  ): Promise<ApiResponse<GoogleOAuthProfileResponseDto>> {
+    const data = await this.settingService.getGoogleOAuthProfileByKey(key);
+    return ResponseUtil.success(data, 'Google OAuth profile retrieved successfully');
   }
 
   @Post('oauth/apple')

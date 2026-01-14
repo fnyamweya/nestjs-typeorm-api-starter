@@ -15,3 +15,4 @@ export class CreateGoogleOAuthCustomerSettingDto {
   @IsUrl({ require_tld: false })
   callbackUrl?: string;
 }
+// Legacy: Use Google OAuth profiles instead

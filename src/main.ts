@@ -59,8 +59,11 @@ async function bootstrap() {
   // /axis/auth/google/callback without the /api prefix for the admin UI flow.
   app.setGlobalPrefix('api', {
     exclude: [
-      { path: 'axis/auth/google', method: RequestMethod.GET },
-      { path: 'axis/auth/google/callback', method: RequestMethod.GET },
+      // Unified Google OAuth endpoints must be reachable without /api prefix
+      // so callback URLs can be configured as: <APP_URL>/auth/<key>/google/callback
+      { path: 'auth/:oauthKey/google', method: RequestMethod.GET },
+      { path: 'auth/:oauthKey/google/callback', method: RequestMethod.GET },
+      { path: 'auth/oauth/exchange', method: RequestMethod.POST },
     ],
   });
   app.enableVersioning({

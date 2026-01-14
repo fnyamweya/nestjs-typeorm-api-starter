@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from '../app.module';
 import { AuthSeeder } from '../auth/seeders/auth.seeder';
 import { SettingSeeder } from '../setting/seeders/setting.seeder';
+import { OAuthProviderSettingSeeder } from '../setting/seeders/oauth-provider-setting.seeder';
 import { CatalogSeeder } from '../catalog/seeders/catalog.seeder';
 import { ShippingSeeder } from '../shipping/seeders/shipping.seeder';
 import { LocationSeeder } from '../location/seeders/location.seeder';
@@ -20,6 +21,7 @@ async function runSeeders() {
   try {
     const authSeeder = app.get(AuthSeeder);
     const settingSeeder = app.get(SettingSeeder);
+    const oauthProviderSettingSeeder = app.get(OAuthProviderSettingSeeder);
     const catalogSeeder = app.get(CatalogSeeder);
     const shippingSeeder = app.get(ShippingSeeder);
     const locationSeeder = app.get(LocationSeeder);
@@ -76,6 +78,11 @@ async function runSeeders() {
     await authSeeder.seed();
 
     console.log('✅ Authentication seeding completed');
+
+    console.log('🔐 Seeding OAuth provider profiles (Google)...');
+    await oauthProviderSettingSeeder.seed();
+
+    console.log('✅ OAuth provider profiles seeding completed');
 
     console.log('🗂️ Seeding catalog data...');
     await catalogSeeder.seed();

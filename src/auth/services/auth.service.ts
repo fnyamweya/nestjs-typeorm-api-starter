@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, ILike, Raw } from 'typeorm';
+import { Repository, ILike, Raw, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import { User } from 'src/user/entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
@@ -60,7 +60,6 @@ import {
   AUTH_OTP_QUEUE,
 } from '../workers/auth-otp.worker';
 import { QueueService } from 'src/queue/queue.service';
-import axios from 'axios';
 import { OAuthCredentialsService } from './oauth-credentials.service';
 
 @Injectable()
@@ -97,80 +96,372 @@ export class AuthService {
     private readonly oauthCredentialsService: OAuthCredentialsService,
   ) {}
 
-  async exchangeCustomerGoogleOAuthCodeAndLogin(
-    input: { code: string; codeVerifier?: string },
-    request: Request,
-  ) {
-    const cfg = await this.oauthCredentialsService.getGoogleCustomerConfig();
-    if (!cfg.clientID || !cfg.clientSecret) {
-      throw new BadRequestException('Customer Google OAuth is not configured');
-    }
-
-    const params = new URLSearchParams({
-      code: input.code,
-      client_id: cfg.clientID,
-      client_secret: cfg.clientSecret,
-      redirect_uri: cfg.callbackURL,
-      grant_type: 'authorization_code',
+  private async ensureCustomerProfile(userId: string) {
+    const existingProfile = await this.customerProfileRepository.findOne({
+      where: { userId } as any,
     });
 
-    if (input.codeVerifier) {
-      params.set('code_verifier', input.codeVerifier);
+    if (!existingProfile) {
+      await this.customerProfileRepository.save(
+        this.customerProfileRepository.create({ userId }),
+      );
+    }
+  }
+
+  private async isRoleAllowedByRoots(
+    userRoleId: string | undefined,
+    allowedRootRoleIds: string[] | undefined,
+  ): Promise<boolean> {
+    if (!userRoleId) return false;
+    if (!allowedRootRoleIds?.length) return false;
+
+    const treeRepo = this.roleRepository.manager.getTreeRepository(Role);
+
+    for (const rootId of allowedRootRoleIds) {
+      const root = await this.roleRepository.findOne({ where: { id: rootId } });
+      if (!root) continue;
+      const descendants = await treeRepo.findDescendants(root);
+      const allowedIds = new Set((descendants || []).map((r) => r.id));
+      if (allowedIds.has(userRoleId)) {
+        return true;
+      }
     }
 
-    const tokenResponse = await axios.post(
-      'https://oauth2.googleapis.com/token',
-      params.toString(),
-      {
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    return false;
+  }
+
+  async authorizeWithGoogleOAuth(oauthProfile: OAuthAdminProfile, request: Request) {
+    if (!oauthProfile?.email) {
+      throw new UnauthorizedException(
+        'OAuth provider did not supply an email address',
+      );
+    }
+
+    const normalizedEmail = oauthProfile.email.toLowerCase();
+    const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() || '';
+
+    const allowedRoleIds = (request as any)?.__oauthGoogleAllowedRoleIds as
+      | string[]
+      | undefined;
+    const allowedDomains = (request as any)?.__oauthGoogleAllowedDomains as
+      | string[]
+      | undefined;
+
+    if (allowedDomains?.length) {
+      const allowed = allowedDomains
+        .map((d) => String(d).trim().toLowerCase())
+        .filter((d) => d.length > 0);
+      if (allowed.length > 0 && !allowed.includes(emailDomain)) {
+        throw new UnauthorizedException('Account is not allowed for this domain');
+      }
+    }
+
+    if (!allowedRoleIds?.length) {
+      throw new UnauthorizedException('OAuth profile is not configured for any role');
+    }
+
+    // Determine which type of account this OAuth profile is intended for (admin vs customer)
+    // based on the root roles attached to the OAuth profile.
+    const rootRoles = await this.roleRepository.find({
+      where: { id: In(allowedRoleIds) },
+      select: ['id', 'name'],
+    });
+    const rootRoleNames = new Set(
+      (rootRoles || []).map((r) => (r.name || '').toLowerCase()),
+    );
+
+    const isAdminProfile =
+      rootRoleNames.has('admin') || rootRoleNames.has('super admin');
+
+    const relations: string[] = [
+      'role',
+      'role.rolePermissions',
+      'role.rolePermissions.permission',
+    ];
+
+    const linkedByProvider = await this.userAuthProviderRepository.findOne({
+      where: {
+        provider: oauthProfile.provider,
+        providerId: oauthProfile.providerId,
       },
+      relations: [
+        'user',
+        'user.role',
+        'user.role.rolePermissions',
+        'user.role.rolePermissions.permission',
+      ],
+    });
+
+    let user: User | undefined;
+
+    if (linkedByProvider?.user) {
+      user = linkedByProvider.user;
+    } else {
+      user =
+        (await this.userRepository.findOne({
+          where: { email: normalizedEmail },
+          relations,
+        })) || undefined;
+    }
+
+    const provider = AuthProviderType.GOOGLE;
+
+    if (isAdminProfile) {
+      const adminRole = await this.roleRepository.findOne({
+        where: [{ name: 'admin' }, { name: ILike('admin') }],
+      });
+      const superAdminRole = await this.roleRepository.findOne({
+        where: [{ name: 'super admin' }, { name: ILike('super admin') }],
+      });
+
+      if (!adminRole) {
+        throw new BadRequestException('Admin role is not configured');
+      }
+
+      if (!user) {
+        const isAllowedByProfile = await this.isRoleAllowedByRoots(
+          adminRole.id,
+          allowedRoleIds,
+        );
+
+        if (!isAllowedByProfile) {
+          throw new UnauthorizedException('Account is not authorized as admin');
+        }
+
+        const generatedPhone = `oauth-${oauthProfile.provider}-${oauthProfile.providerId}`;
+
+        user = this.userRepository.create({
+          email: normalizedEmail,
+          phone: generatedPhone,
+          firstName: oauthProfile.firstName,
+          lastName: oauthProfile.lastName,
+          roleId: adminRole.id,
+          authProvider: provider,
+          isActive: true,
+          status: UserStatus.ACTIVE,
+          mfaChannel: MfaChannel.EMAIL,
+        });
+
+        user = await this.userRepository.save(user);
+
+        await this.userAuthProviderRepository.save(
+          this.userAuthProviderRepository.create({
+            userId: user.id,
+            provider: oauthProfile.provider,
+            providerId: oauthProfile.providerId,
+          }),
+        );
+
+        await this.ensureAdminProfile(user.id);
+      } else {
+        const roleName = user.role?.name?.toLowerCase();
+        const isAdminOrSuper =
+          roleName === 'admin' || roleName === 'super admin';
+        const isAdmin =
+          isAdminOrSuper ||
+          user.roleId === adminRole.id ||
+          (superAdminRole ? user.roleId === superAdminRole.id : false);
+
+        const isAllowedByProfile = await this.isRoleAllowedByRoots(
+          user.roleId,
+          allowedRoleIds,
+        );
+
+        if (!isAdmin || !isAllowedByProfile) {
+          throw new UnauthorizedException('Account is not authorized as admin');
+        }
+
+        if (user.isBanned || user.isActive === false) {
+          throw new UnauthorizedException('Account is disabled');
+        }
+
+        user.authProvider = provider;
+        user.firstName = user.firstName || oauthProfile.firstName;
+        user.lastName = user.lastName || oauthProfile.lastName;
+
+        await this.userRepository.save(user);
+
+        const existingLink = await this.userAuthProviderRepository.findOne({
+          where: {
+            provider: oauthProfile.provider,
+            providerId: oauthProfile.providerId,
+          },
+        });
+
+        if (!existingLink) {
+          await this.userAuthProviderRepository.save(
+            this.userAuthProviderRepository.create({
+              userId: user.id,
+              provider: oauthProfile.provider,
+              providerId: oauthProfile.providerId,
+            }),
+          );
+        }
+
+        await this.ensureAdminProfile(user.id);
+      }
+
+      return { userId: user.id };
+    }
+
+    // Customer profile
+    const customerRole = await this.roleRepository.findOne({
+      where: [{ name: 'customer' }, { name: ILike('customer') }],
+    });
+
+    if (!customerRole) {
+      throw new BadRequestException('Customer role is not configured');
+    }
+
+    if (!user) {
+      const isAllowedByProfile = await this.isRoleAllowedByRoots(
+        customerRole.id,
+        allowedRoleIds,
+      );
+
+      if (!isAllowedByProfile) {
+        throw new UnauthorizedException(
+          'Account is not authorized as customer',
+        );
+      }
+
+      const generatedPhone = `oauth-${oauthProfile.provider}-${oauthProfile.providerId}`;
+
+      user = this.userRepository.create({
+        email: normalizedEmail,
+        phone: generatedPhone,
+        firstName: oauthProfile.firstName,
+        lastName: oauthProfile.lastName,
+        roleId: customerRole.id,
+        authProvider: provider,
+        isActive: true,
+        status: UserStatus.ACTIVE,
+        mfaChannel: MfaChannel.EMAIL,
+        twoFactorEnabled: false,
+      });
+
+      user = await this.userRepository.save(user);
+
+      await this.userAuthProviderRepository.save(
+        this.userAuthProviderRepository.create({
+          userId: user.id,
+          provider: oauthProfile.provider,
+          providerId: oauthProfile.providerId,
+        }),
+      );
+
+      await this.ensureCustomerProfile(user.id);
+    } else {
+      const isCustomer = await this.isRoleAllowedByRoots(user.roleId, [
+        customerRole.id,
+      ]);
+
+      const isAllowedByProfile = await this.isRoleAllowedByRoots(
+        user.roleId,
+        allowedRoleIds,
+      );
+
+      if (!isCustomer || !isAllowedByProfile) {
+        throw new UnauthorizedException(
+          'Account is not authorized as customer',
+        );
+      }
+
+      if (user.isBanned || user.isActive === false) {
+        throw new UnauthorizedException('Account is disabled');
+      }
+
+      user.authProvider = provider;
+      user.firstName = user.firstName || oauthProfile.firstName;
+      user.lastName = user.lastName || oauthProfile.lastName;
+
+      await this.userRepository.save(user);
+
+      const existingLink = await this.userAuthProviderRepository.findOne({
+        where: {
+          provider: oauthProfile.provider,
+          providerId: oauthProfile.providerId,
+        },
+      });
+
+      if (!existingLink) {
+        await this.userAuthProviderRepository.save(
+          this.userAuthProviderRepository.create({
+            userId: user.id,
+            provider: oauthProfile.provider,
+            providerId: oauthProfile.providerId,
+          }),
+        );
+      }
+
+      await this.ensureCustomerProfile(user.id);
+    }
+
+    return { userId: user.id };
+  }
+
+  async loginWithOAuth(oauthProfile: OAuthAdminProfile, request: Request) {
+    const allowedRoleIds =
+      ((request as any)?.__oauthAllowedRoleIds ??
+        (request as any)?.__oauthGoogleAllowedRoleIds) as string[] | undefined;
+
+    const allowedDomains =
+      ((request as any)?.__oauthAllowedDomains ??
+        (request as any)?.__oauthGoogleAllowedDomains) as string[] | undefined;
+
+    if (allowedDomains?.length && oauthProfile?.email) {
+      const normalizedEmail = oauthProfile.email.toLowerCase();
+      const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() || '';
+      const allowed = allowedDomains
+        .map((d) => String(d).trim().toLowerCase())
+        .filter((d) => d.length > 0);
+      if (allowed.length > 0 && !allowed.includes(emailDomain)) {
+        throw new UnauthorizedException('Account is not allowed for this domain');
+      }
+    }
+
+    // Legacy behavior: if no role scoping is supplied, treat as admin.
+    if (!allowedRoleIds?.length) {
+      return this.loginAdminWithOAuth(oauthProfile, request);
+    }
+
+    const rootRoles = await this.roleRepository.find({
+      where: { id: In(allowedRoleIds) },
+      select: ['id', 'name'],
+    });
+    const rootRoleNames = new Set(
+      (rootRoles || []).map((r) => (r.name || '').toLowerCase()),
     );
 
-    const idToken: string | undefined = tokenResponse.data?.id_token;
-    if (!idToken) {
-      throw new UnauthorizedException('Google OAuth did not return an id_token');
+    const isAdminProfile =
+      rootRoleNames.has('admin') || rootRoleNames.has('super admin');
+
+    if (isAdminProfile) {
+      return this.loginAdminWithOAuth(oauthProfile, request);
     }
 
-    const tokenInfo = await axios.get(
-      'https://oauth2.googleapis.com/tokeninfo',
-      { params: { id_token: idToken } },
-    );
+    return this.loginCustomerWithOAuth(oauthProfile, request);
+  }
 
-    const aud = tokenInfo.data?.aud as string | undefined;
-    if (aud && aud !== cfg.clientID) {
-      throw new UnauthorizedException('Google token audience mismatch');
+  async loginUserById(userId: string, request: Request) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+      relations: [
+        'role',
+        'role.rolePermissions',
+        'role.rolePermissions.permission',
+      ],
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
-    const email = (tokenInfo.data?.email as string | undefined)?.toLowerCase();
-    const emailVerifiedRaw = tokenInfo.data?.email_verified;
-    const emailVerified =
-      emailVerifiedRaw === true ||
-      emailVerifiedRaw === 'true' ||
-      emailVerifiedRaw === 1 ||
-      emailVerifiedRaw === '1';
-
-    if (!email) {
-      throw new UnauthorizedException('Google account did not provide an email');
-    }
-    if (!emailVerified) {
-      throw new UnauthorizedException('Google email is not verified');
+    if (user.isBanned || user.isActive === false) {
+      throw new UnauthorizedException('Account is disabled');
     }
 
-    const providerId = tokenInfo.data?.sub as string | undefined;
-    if (!providerId) {
-      throw new UnauthorizedException('Google token is missing subject');
-    }
-
-    const profile: OAuthAdminProfile = {
-      provider: 'google',
-      providerId,
-      email,
-      firstName: tokenInfo.data?.given_name as string | undefined,
-      lastName: tokenInfo.data?.family_name as string | undefined,
-      picture: tokenInfo.data?.picture as string | undefined,
-    };
-
-    return this.loginCustomerWithOAuth(profile, request);
+    return this.completeLogin(user, request);
   }
 
   async loginCustomerWithOAuth(oauthProfile: OAuthAdminProfile, request: Request) {

@@ -7,3 +7,4 @@ export class UpdateGoogleOAuthSecretDto {
   @MaxLength(2048)
   clientSecret: string;
 }
+// Legacy: Use Google OAuth profiles instead

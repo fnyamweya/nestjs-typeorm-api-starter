@@ -22,3 +22,4 @@ export class GoogleOAuthCustomerResponseDto {
   @ApiProperty({ required: false })
   updatedAt?: Date;
 }
+// Legacy: Use Google OAuth profiles instead

@@ -39,10 +39,8 @@ import { CustomerLoginDto } from '../dto/customer-login.dto';
 import { AdminLoginDto } from '../dto/admin-login.dto';
 import { CustomerRegisterDto } from '../dto/customer-register.dto';
 import { AdminRegisterDto } from '../dto/admin-register.dto';
+import { AppleOAuthGuard } from '../guards/apple-oauth.guard';
 import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
-import { AdminGoogleOAuthGuard } from '../guards/admin-google-oauth.guard';
-import { AdminAppleOAuthGuard } from '../guards/admin-apple-oauth.guard';
-import { ExchangeCustomerGoogleOAuthDto } from '../dto/exchange-customer-google-oauth.dto';
 import {
   ApiBadRequestResponse,
   ApiCreatedResponse,
@@ -269,72 +267,59 @@ export class AuthController {
     return ResponseUtil.success(result, 'User invitation declined');
   }
 
-  @Get('admin/google')
-  @UseGuards(AdminGoogleOAuthGuard)
-  @ApiOperation({ summary: 'Initiate Google OAuth 2.0 login for admins' })
-  @ApiOkResponse({ description: 'Redirecting to Google OAuth 2.0' })
-  async googleAdminAuth() {
-    return ResponseUtil.success(
-      null,
-      'Redirecting to Google OAuth 2.0 for authentication',
-    );
-  }
-
-  @Get('admin/google/callback')
-  @UseGuards(AdminGoogleOAuthGuard)
-  @ApiOperation({ summary: 'Google OAuth 2.0 callback for admin login' })
-  @ApiOkResponse({ description: 'Admin login via Google successful' })
-  async googleAdminCallback(@Req() request: Request) {
-    const profile = request.user as OAuthAdminProfile;
-    const result = await this.authService.loginAdminWithOAuth(profile, request);
-
-    return ResponseUtil.success(result, 'Admin login via Google successful');
-  }
-
-  @Get('admin/apple')
-  @UseGuards(AdminAppleOAuthGuard)
-  @ApiOperation({ summary: 'Initiate Sign in with Apple for admins' })
+  @Get('apple')
+  @UseGuards(AppleOAuthGuard)
+  @ApiOperation({ summary: 'Initiate Sign in with Apple (role-based)' })
   @ApiOkResponse({ description: 'Redirecting to Apple login' })
-  async appleAdminAuth() {
+  async appleAuth() {
     return ResponseUtil.success(
       null,
       'Redirecting to Apple for authentication',
     );
   }
 
-  @Post('admin/apple/callback')
-  @UseGuards(AdminAppleOAuthGuard)
-  @HttpCode(200)
-  @ApiOperation({ summary: 'Apple callback handler for admin login' })
-  @ApiOkResponse({ description: 'Admin login via Apple successful' })
-  async appleAdminCallback(@Req() request: Request) {
-    const profile = request.user as OAuthAdminProfile;
-    const result = await this.authService.loginAdminWithOAuth(profile, request);
-
-    return ResponseUtil.success(result, 'Admin login via Apple successful');
+  @Get(':oauthKey/apple')
+  @UseGuards(AppleOAuthGuard)
+  @ApiOperation({
+    summary:
+      'Initiate Sign in with Apple using a profile key (e.g. /auth/<key>/apple)',
+  })
+  @ApiOkResponse({ description: 'Redirecting to Apple login' })
+  async appleAuthByKey() {
+    return ResponseUtil.success(
+      null,
+      'Redirecting to Apple for authentication',
+    );
   }
 
-  @Post('customer/google/exchange')
+  @Post('apple/callback')
+  @UseGuards(AppleOAuthGuard)
+  @HttpCode(200)
+  @ApiOperation({ summary: 'Apple callback handler for role-based login' })
+  @ApiOkResponse({ description: 'Login via Apple successful' })
+  async appleCallback(@Req() request: Request) {
+    const profile = request.user as OAuthAdminProfile;
+    const result = await this.authService.loginWithOAuth(profile, request);
+
+    return ResponseUtil.success(result, 'Login via Apple successful');
+  }
+
+  @Post(':oauthKey/apple/callback')
+  @UseGuards(AppleOAuthGuard)
   @HttpCode(200)
   @ApiOperation({
-    summary: 'Exchange Google OAuth code for customer login tokens',
-    description:
-      'Used when the customer UI handles the OAuth redirect itself (callback on the client) and then exchanges the `code` with the API.',
+    summary:
+      'Apple callback handler for role-based login using a profile key (e.g. /auth/<key>/apple/callback)',
   })
-  @ApiOkResponse({ description: 'Customer login via Google successful' })
-  @ApiBadRequestResponse({ description: 'Validation failed' })
-  @ApiUnauthorizedResponse({ description: 'Invalid OAuth code or token' })
-  async customerGoogleExchange(
-    @Body() dto: ExchangeCustomerGoogleOAuthDto,
-    @Req() request: Request,
-  ) {
-    const result = await this.authService.exchangeCustomerGoogleOAuthCodeAndLogin(
-      { code: dto.code, codeVerifier: dto.codeVerifier },
-      request,
-    );
+  @ApiOkResponse({ description: 'Login via Apple successful' })
+  async appleCallbackByKey(@Req() request: Request) {
+    const profile = request.user as OAuthAdminProfile;
+    const result = await this.authService.loginWithOAuth(profile, request);
 
-    return ResponseUtil.success(result, 'Customer login via Google successful');
+    return ResponseUtil.success(result, 'Login via Apple successful');
   }
+
+
 
   @Post('refresh')
   @HttpCode(200)

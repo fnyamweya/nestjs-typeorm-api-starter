@@ -61,7 +61,7 @@ export class SettingSeeder {
     }
 
     console.log('SMTP configuration seeding completed');
-    // Seed default shipping & tax settings
+    // Seed default shipping & tax settings (no Google OAuth keys)
     const defaults = [
       { key: 'shipping_enabled', value: 'true' },
       { key: 'shipping_free_threshold', value: '1000' },

@@ -10,10 +10,11 @@ export class CreateGoogleOAuthSettingDto {
   @ApiPropertyOptional({
     description:
       'Optional override for the callback URL. If omitted, the app default callback URL is used.',
-    example: 'https://api.example.com/api/auth/admin/google/callback',
+    example: 'https://api.example.com/api/auth/google/callback',
   })
   @IsOptional()
   @IsUrl({ require_tld: false })
   @MaxLength(1024)
   callbackUrl?: string;
 }
+// Legacy: Use Google OAuth profiles instead

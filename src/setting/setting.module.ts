@@ -6,11 +6,22 @@ import { Setting } from './entities/setting.entity';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { SettingSeeder } from './seeders/setting.seeder';
 import { SmsServiceUtils } from 'src/common/utils/sms-service.utils';
+import { OAuthProviderSetting } from './entities/oauth-provider-setting.entity';
+import { Role } from 'src/auth/entities/role.entity';
+import { OAuthProviderSettingSeeder } from './seeders/oauth-provider-setting.seeder';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Setting]), ActivityLogModule],
+  imports: [
+    TypeOrmModule.forFeature([Setting, OAuthProviderSetting, Role]),
+    ActivityLogModule,
+  ],
   controllers: [SettingController],
-  providers: [SettingService, SettingSeeder, SmsServiceUtils],
-  exports: [SettingService, SmsServiceUtils],
+  providers: [
+    SettingService,
+    SettingSeeder,
+    OAuthProviderSettingSeeder,
+    SmsServiceUtils,
+  ],
+  exports: [SettingService, SmsServiceUtils, OAuthProviderSettingSeeder],
 })
 export class SettingModule {}

@@ -1,18 +1,10 @@
 # OAuth Settings (Google & Apple)
 
-This project supports **Admin OAuth** login via Google and Apple.
+This project supports OAuth login via **Google** and **Apple**.
 
-You can configure credentials in two ways:
+For Google, credentials are stored as **role-scoped OAuth profiles** identified by a stable **`key`** (e.g. `customer`, `axis`). The UI selects which profile to use by calling the backend with `:oauthKey`.
 
-1) **Environment variables** (traditional `.env`)
-2) **Database-backed Settings** via the Settings API (**recommended**) — secrets are encrypted at rest.
-
-The OAuth strategies resolve credentials in this order:
-
-- **DB Settings first**
-- fallback to **env vars**
-
-If credentials are missing, the OAuth endpoints will return **503 Service Unavailable** with a clear message.
+Secrets are stored **encrypted at rest**.
 
 ---
 
@@ -49,34 +41,40 @@ You’ll need a valid admin access token with `SETTINGS:read` and/or `SETTINGS:u
 
 So Settings endpoints are under:
 
-- `/api/v1/settings/...`
+ - `/api/v1/settings/...`
 
 ---
 
-## Google OAuth settings
+## Google OAuth profiles (recommended)
 
-### Configure non-secret fields
+Google OAuth is configured via **profiles**. Each profile has:
 
-Endpoint:
+- `key`: stable identifier used by clients (e.g. `customer`, `axis`)
+- `callbackUrl`: should match `APP_URL/auth/<key>/google/callback`
+- `clientId`
+- `clientSecret` (encrypted; never returned)
+- `allowedRoles`: role roots permitted to use this profile (descendants allowed)
+- `allowedDomains` (optional): list of allowed email domains
 
-- `POST /api/v1/settings/oauth/google`
+### Create a Google profile
 
-Body:
+- `POST /api/v1/settings/oauth/google/profiles`
+
+Body (example):
 
 ```json
 {
+  "key": "axis",
   "clientId": "1234567890-abc123def456.apps.googleusercontent.com",
-  "callbackUrl": "https://api.example.com/api/auth/admin/google/callback"
+  "callbackUrl": "https://api.example.com/auth/axis/google/callback",
+  "allowedRoleIds": ["<admin-role-id>", "<super-admin-role-id>"],
+  "allowedDomains": ["example.com"]
 }
 ```
 
-### Configure secret (encrypted)
+### Set the Google client secret (encrypted)
 
-Endpoint:
-
-- `POST /api/v1/settings/oauth/google/secret`
-
-Body:
+- `POST /api/v1/settings/oauth/google/profiles/:id/secret`
 
 ```json
 {
@@ -84,16 +82,11 @@ Body:
 }
 ```
 
-Response:
+### Read Google profiles
 
-- The secret is **never returned**.
-- The response includes `hasClientSecret: true|false`.
-
-### Read current configuration
-
-Endpoint:
-
-- `GET /api/v1/settings/oauth/google`
+- `GET /api/v1/settings/oauth/google/profiles`
+- `GET /api/v1/settings/oauth/google/profiles/:id`
+- `GET /api/v1/settings/oauth/google/profiles/key/:key`
 
 ---
 
@@ -165,35 +158,73 @@ curl -X POST \
 
 ---
 
-## OAuth login endpoints
+## Google OAuth login (backend-only, key-driven)
 
-Once configured, admin OAuth flows are initiated at:
+Google OAuth is handled entirely by the backend using a **one-time exchange code** flow.
 
-- Google:
-  - `GET /api/v1/auth/admin/google`
-  - `GET /api/v1/auth/admin/google/callback`
-- Apple:
-  - `GET /api/v1/auth/admin/apple`
-  - `POST /api/v1/auth/admin/apple/callback`
+### 1) Initiate OAuth
 
-If credentials are missing, these routes return **503** rather than silently misbehaving.
+- `GET /auth/:oauthKey/google`
+
+Optional query:
+
+- `redirect=/relative/path` (only same-origin relative paths are accepted)
+
+Example:
+
+- `GET https://api.example.com/auth/axis/google?redirect=/auth/callback`
+
+### 2) Callback
+
+- `GET /auth/:oauthKey/google/callback`
+
+On success, the backend:
+
+- creates/links the user
+- issues a short-lived **`exchangeCode`** (single-use)
+- redirects back to `redirect` with `?exchangeCode=...`
+
+If no `redirect` was provided, the callback responds with JSON containing `{ exchangeCode }`.
+
+### 3) Exchange for tokens
+
+- `POST /auth/oauth/exchange`
+
+Body:
+
+```json
+{
+  "exchangeCode": "..."
+}
+```
+
+Response:
+
+```json
+{
+  "data": {
+    "accessToken": "...",
+    "refreshToken": "..."
+  }
+}
+```
+
+Exchange code properties:
+
+- short TTL (about 60s)
+- single-use (consumed on exchange)
 
 ---
 
-## Environment variable fallback (optional)
+## Apple OAuth
 
-If you prefer env vars instead of DB Settings, configure:
+Apple OAuth remains available via the versioned API auth controller.
 
-```env
-APP_URL=http://localhost:8090
+- Initiate: `GET /api/v1/auth/apple` or `GET /api/v1/auth/:oauthKey/apple`
+- Callback: `POST /api/v1/auth/apple/callback` or `POST /api/v1/auth/:oauthKey/apple/callback`
 
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GOOGLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/google/callback
+Apple can also be configured via profiles:
 
-APPLE_CLIENT_ID=
-APPLE_TEAM_ID=
-APPLE_KEY_ID=
-APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"
-APPLE_CALLBACK_URL=http://localhost:8090/api/v1/auth/admin/apple/callback
-```
+- `GET /api/v1/settings/oauth/apple/profiles`
+- `POST /api/v1/settings/oauth/apple/profiles`
+- `POST /api/v1/settings/oauth/apple/profiles/:id/secret`

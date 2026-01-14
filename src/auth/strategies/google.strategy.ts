@@ -2,45 +2,27 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { Strategy, Profile, StrategyOptions } from 'passport-google-oauth20';
-import { OAuthAdminProfile } from '../interfaces/oauth-admin-profile.interface';
+import { OAuthProfile } from '../interfaces/oauth-profile.interface';
 import { OAuthCredentialsService } from '../services/oauth-credentials.service';
 
 @Injectable()
-export class AdminGoogleStrategy extends PassportStrategy(
+export class GoogleStrategy extends PassportStrategy(
   Strategy,
-  'admin-google',
+  'google',
 ) {
   constructor(
     private readonly configService: ConfigService,
     private readonly oauthCredentials: OAuthCredentialsService,
   ) {
-    const callbackBase =
-      configService.get<string>('CLIENT_URL') ||
-      configService.get<string>('ADMIN_APP_URL') ||
-      configService.get<string>('APP_URL') ||
-      'http://localhost:5000';
-
-    const defaultCallback = `${callbackBase.replace(/\/+$/, '')}/axis/auth/google/callback`;
-
-    const clientID = configService.get<string>('GOOGLE_CLIENT_ID');
-    const clientSecret = configService.get<string>('GOOGLE_CLIENT_SECRET');
-
-    const options: StrategyOptions = {
-      clientID: clientID || 'missing-google-client-id',
-      clientSecret: clientSecret || 'missing-google-client-secret',
-      callbackURL:
-        configService.get<string>('GOOGLE_CALLBACK_URL') || defaultCallback,
-      scope: ['email', 'profile'],
-    };
-
-    super(options);
+    // Legacy env/config fallback removed. Strategy config is set dynamically in authenticate().
+    super({ clientID: 'placeholder', clientSecret: 'placeholder', callbackURL: 'placeholder', scope: ['email', 'profile'] });
   }
 
   authenticate(req: any, options?: any): void {
-    const fromGuard = req?.__oauthGoogleAdminConfig;
+    const fromGuard = req?.__oauthGoogleConfig;
     const cfgPromise = fromGuard
       ? Promise.resolve(fromGuard)
-      : this.oauthCredentials.getGoogleAdminConfig();
+      : Promise.reject(new Error('Google OAuth profile config required'));
 
     void cfgPromise
       .then((cfg) => {
@@ -63,6 +45,7 @@ export class AdminGoogleStrategy extends PassportStrategy(
         self._clientID = cfg.clientID;
         self._clientSecret = cfg.clientSecret;
 
+        // Guard may provide a packed state (e.g., includes redirect). Don't override it.
         return super.authenticate(req, options);
       })
       .catch((err) => this.error(err));
@@ -72,7 +55,7 @@ export class AdminGoogleStrategy extends PassportStrategy(
     accessToken: string,
     refreshToken: string,
     profile: Profile,
-  ): OAuthAdminProfile {
+  ): OAuthProfile {
     const email = profile.emails?.[0]?.value;
 
     if (!email) {
