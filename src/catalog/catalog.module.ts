@@ -18,19 +18,24 @@ import { PriceRow } from './entities/price-row.entity';
 import { Brand } from './entities/brand.entity';
 import { ProductChannel } from './entities/product-channel.entity';
 import { ProductContextOverride } from './entities/product-context-override.entity';
+import { Collection } from './entities/collection.entity';
+import { CollectionItem } from './entities/collection-item.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import { TaxonomyController } from './controllers/taxonomy.controller';
 import { CategoryController } from './controllers/category.controller';
 import { ProductController } from './controllers/product.controller';
 import { BrandController } from './controllers/brand.controller';
+import { CollectionController } from './controllers/collection.controller';
 import { PublicProductsController } from './controllers/public/public-products.controller';
 import { PublicBrandsController } from './controllers/public/public-brands.controller';
 import { PublicCategoriesController } from './controllers/public/public-categories.controller';
 import { PublicTaxonomiesController } from './controllers/public/public-taxonomies.controller';
+import { PublicCollectionsController } from './controllers/public/public-collections.controller';
 import { TaxonomyService } from './services/taxonomy.service';
 import { CategoryService } from './services/category.service';
 import { ProductService } from './services/product.service';
 import { BrandService } from './services/brand.service';
+import { CollectionService } from './services/collection.service';
 import { CatalogSeeder } from './seeders/catalog.seeder';
 import { PriceService } from './services/price.service';
 import { CustomerTierModule } from '../customer-tier/customer-tier.module';
@@ -53,6 +58,8 @@ import { CurrencyModule } from '../currency/currency.module';
       ProductCategory,
       ProductChannel,
       ProductContextOverride,
+      Collection,
+      CollectionItem,
       Currency,
       PriceList,
       PriceRow,
@@ -67,16 +74,19 @@ import { CurrencyModule } from '../currency/currency.module';
     CategoryController,
     ProductController,
     BrandController,
+    CollectionController,
     PublicProductsController,
     PublicBrandsController,
     PublicCategoriesController,
     PublicTaxonomiesController,
+    PublicCollectionsController,
   ],
   providers: [
     TaxonomyService,
     CategoryService,
     ProductService,
     BrandService,
+    CollectionService,
     CatalogSeeder,
     PriceService,
   ],
@@ -86,6 +96,7 @@ import { CurrencyModule } from '../currency/currency.module';
     CategoryService,
     ProductService,
     BrandService,
+    CollectionService,
     CatalogSeeder,
     PriceService,
   ],
