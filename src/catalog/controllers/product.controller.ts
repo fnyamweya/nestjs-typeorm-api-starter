@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiBody,
   ApiCreatedResponse,
   ApiOkResponse,
   ApiOperation,
@@ -52,6 +53,111 @@ export class ProductController {
     permission: 'create',
   })
   @ApiOperation({ summary: 'Create product' })
+  @ApiBody({
+    description: 'Product payload (SKU-level availability/images/pricing)',
+    schema: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', example: 'iPhone 15' },
+        description: { type: 'string', example: 'Flagship smartphone' },
+        seoTitle: { type: 'string', example: 'iPhone 15 | Shop' },
+        seoDescription: {
+          type: 'string',
+          example: 'Flagship smartphone with pro-grade camera and long battery life.',
+        },
+        status: { type: 'string', example: 'draft' },
+        externalRef: { type: 'string', example: 'erp-1234' },
+        brandId: { type: 'string', format: 'uuid' },
+        categoryIds: { type: 'array', items: { type: 'string', format: 'uuid' } },
+        optionDefinitions: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              key: { type: 'string', example: 'color' },
+              label: { type: 'string', example: 'Color' },
+              allowedValues: {
+                type: 'array',
+                items: { type: 'string', example: 'black' },
+              },
+              required: { type: 'boolean', example: false },
+            },
+          },
+        },
+        skus: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', example: 'Black / 128 GB' },
+              sku: { type: 'string', example: 'IPH-15-BLK-128' },
+              externalRef: { type: 'string', example: 'shopify-sku-123' },
+              status: { type: 'string', example: 'active' },
+              isDefault: { type: 'boolean', example: true },
+              position: { type: 'number', example: 1 },
+              attributes: {
+                type: 'object',
+                example: { color: 'black', size: 'M' },
+              },
+              options: {
+                type: 'object',
+                example: { color: 'black', size: 'M' },
+              },
+              availability: {
+                type: 'object',
+                example: {
+                  channels: ['WEB', 'APP'],
+                  countries: ['KE'],
+                  locations: ['Baringo', 'Dagoretti North'],
+                  stock: { type: 'FINITE', quantity: 20 },
+                  schedule: {
+                    startAt: '2025-01-01T00:00:00Z',
+                    endAt: '2025-12-31T23:59:59Z',
+                    timezone: 'UTC',
+                  },
+                  meta: {},
+                },
+              },
+              inventory: {
+                type: 'object',
+                example: { locations: { NAIROBI: { onHand: 10, reserved: 2 } } },
+              },
+              images: {
+                type: 'array',
+                items: { type: 'string', example: 'https://cdn.example.com/1.png' },
+              },
+              requiresShipping: { type: 'boolean', example: true },
+              weight: { type: 'number', example: 0.2 },
+              length: { type: 'number', example: 10.5 },
+              width: { type: 'number', example: 5.25 },
+              height: { type: 'number', example: 2.75 },
+              dimensionUnit: { type: 'string', example: 'cm' },
+              weightUnit: { type: 'string', example: 'kg' },
+              metaJson: { type: 'object', example: { preorder: true } },
+              prices: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    priceListId: { type: 'string', format: 'uuid' },
+                    unitPrice: { type: 'number', example: 1999.99 },
+                    compareAtPrice: { type: 'number', example: 2499.99 },
+                    minQuantity: { type: 'number', example: 1 },
+                    maxQuantity: { type: 'number', example: 10 },
+                    validFrom: { type: 'string', example: '2025-01-01T00:00:00Z' },
+                    validTo: { type: 'string', example: '2025-02-01T00:00:00Z' },
+                    metaJson: { type: 'object', example: { reason: 'promo' } },
+                  },
+                },
+              },
+            },
+          },
+        },
+        metaJson: { type: 'object', example: {} },
+      },
+      required: ['title'],
+    },
+  })
   @ApiCreatedResponse({ description: 'Product created successfully' })
   async create(@Body() payload: CreateProductDto) {
     const product = await this.productService.create(payload);

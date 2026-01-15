@@ -134,6 +134,14 @@ export class CreateCategoryDto {
   icon?: string;
 
   @ApiPropertyOptional({
+    description: 'Optional avatar image URL',
+    example: 'https://cdn.example.com/cat/phones-avatar.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
     description: 'Category image URL',
     example: 'https://cdn.example.com/cat/phones.png',
   })

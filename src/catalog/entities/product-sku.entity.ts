@@ -69,6 +69,13 @@ export class ProductSku {
   imagesJson: string[];
 
   @Column({
+    name: 'availability',
+    type: 'jsonb',
+    default: () => "'{}'::jsonb",
+  })
+  availability: Record<string, unknown>;
+
+  @Column({
     name: 'weight',
     type: 'numeric',
     precision: 18,

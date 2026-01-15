@@ -15,6 +15,12 @@ export class PublicBrandDto {
 
   @ApiPropertyOptional()
   logoUrl?: string;
+  
+  @ApiPropertyOptional({ required: false, nullable: true, example: 'mdi:tag' })
+  icon?: string | null;
+  
+  @ApiPropertyOptional({ required: false, nullable: true, example: 'https://cdn.example.com/brand/avatar.png' })
+  avatarUrl?: string | null;
 
   @ApiPropertyOptional()
   websiteUrl?: string;

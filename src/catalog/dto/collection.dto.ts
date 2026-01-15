@@ -40,6 +40,22 @@ export class CreateCollectionDto {
   @IsString()
   description?: string;
 
+  @ApiPropertyOptional({
+    description: 'Optional icon',
+    example: 'ph:star',
+  })
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional avatar image URL',
+    example: 'https://cdn.example.com/collections/featured.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
   @ApiPropertyOptional({ description: 'URL slug (auto-generated from title)' })
   @IsOptional()
   @IsString()

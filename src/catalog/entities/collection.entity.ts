@@ -36,6 +36,12 @@ export class Collection {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  icon?: string;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl?: string;
+
   @Column({ type: 'text', nullable: false })
   slug: string;
 

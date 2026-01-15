@@ -1,9 +1,8 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
-  IsNotEmpty,
   IsNumber,
   IsObject,
   IsOptional,
@@ -11,12 +10,13 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { CreateProductPriceDto } from './create-product-price.dto';
+import { ProductAvailabilityDto } from './product-availability.dto';
 
 export class CreateProductSkuDto {
-  @ApiProperty({ description: 'SKU title', example: 'Black / 128 GB' })
+  @ApiPropertyOptional({ description: 'SKU title', example: 'Black / 128 GB' })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  title: string;
+  title?: string;
 
   @ApiPropertyOptional({
     description: 'Stock keeping unit',
@@ -57,6 +57,27 @@ export class CreateProductSkuDto {
   @IsOptional()
   @IsObject()
   attributes?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Availability configuration (SKU-level)',
+    type: () => ProductAvailabilityDto,
+    example: {
+      channels: ['WEB', 'APP'],
+      countries: ['KE'],
+      locations: ['Baringo', 'Dagoretti North'],
+      stock: { type: 'FINITE', quantity: 120 },
+      schedule: {
+        startAt: '2025-01-01T00:00:00Z',
+        endAt: '2026-01-01T00:00:00Z',
+        timezone: 'UTC',
+      },
+      meta: { source: 'seed' },
+    },
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => ProductAvailabilityDto)
+  availability?: ProductAvailabilityDto;
 
   @ApiPropertyOptional({
     description: 'SKU options (preferred). If both provided, options wins.',

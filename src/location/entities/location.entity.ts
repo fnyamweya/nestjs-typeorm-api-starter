@@ -4,12 +4,14 @@ import {
   Entity,
   Index,
   JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   Tree,
   TreeChildren,
   TreeParent,
   UpdateDateColumn,
 } from 'typeorm';
+import { CountryConfig } from 'src/country/entities/country-config.entity';
 
 export enum LocationType {
   COUNTRY = 'country',
@@ -23,9 +25,17 @@ export enum LocationType {
 @Entity('location')
 @Index('idx_location_type', ['type'])
 @Index('idx_location_country_code', ['countryCode'])
+@Index('idx_location_country_id', ['countryId'])
 export class Location {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column({ name: 'country_id', type: 'uuid' })
+  countryId: string;
+
+  @ManyToOne(() => CountryConfig, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'country_id' })
+  country: CountryConfig;
 
   // For Kenya (and most cases), every row will have countryCode='KE'.
   // For the COUNTRY node itself, we still set countryCode.

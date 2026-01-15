@@ -237,33 +237,16 @@ export class CatalogSeeder {
       description:
         'Flagship smartphone with pro-grade camera and long battery life.',
       status: ProductStatus.ACTIVE,
-      slug: 'nova-x-phone',
       externalRef: 'NOVA-X-001',
       brandId: payload.brands.nova.id,
       categoryIds: [payload.categories.phones.id],
-      availability,
-      images: [
-        'https://cdn.example.com/products/nova-x/main.png',
-        'https://cdn.example.com/products/nova-x/alt.png',
-      ],
-      translations: [
-        {
-          locale: 'en',
-          title: 'Nova X Phone',
-          description: 'Flagship smartphone with pro-grade camera.',
-        },
-        {
-          locale: 'sw',
-          title: 'Simu ya Nova X',
-          description: 'Simu ya kisasa yenye kamera bora.',
-        },
-      ],
       skus: [
         {
           title: 'Black / 128 GB',
           sku: 'PHONE-001',
           isDefault: true,
           attributes: { color: 'black', storage: '128GB' },
+            availability,
           images: ['https://cdn.example.com/products/nova-x/black.png'],
           prices: [
             {
@@ -278,6 +261,7 @@ export class CatalogSeeder {
           title: 'Silver / 256 GB',
           sku: 'PHONE-002',
           attributes: { color: 'silver', storage: '256GB' },
+            availability,
           images: ['https://cdn.example.com/products/nova-x/silver.png'],
           prices: [
             {
@@ -296,41 +280,28 @@ export class CatalogSeeder {
       title: 'Acme Fast Charger',
       description: 'Compact USB-C charger with fast charging support.',
       status: ProductStatus.ACTIVE,
-      slug: 'acme-fast-charger',
       externalRef: 'ACME-CHG-FAST',
       brandId: payload.brands.acme.id,
       categoryIds: [payload.categories.accessories.id],
-      availability: {
-        ...availability,
-        stock: { type: 'FINITE', quantity: 300 },
-      },
-      images: ['https://cdn.example.com/products/acme-charger/main.png'],
-      translations: [
-        {
-          locale: 'en',
-          title: 'Acme Fast Charger',
-          description: 'Compact USB-C charger.',
-        },
-        {
-          locale: 'sw',
-          title: 'Chaja ya Haraka Acme',
-          description: 'Chaja ndogo ya USB-C.',
-        },
-      ],
-      prices: [
-        {
-          priceListId: payload.priceList.id,
-          unitPrice: 3999,
-          compareAtPrice: 4999,
-          minQuantity: 1,
-        },
-      ],
       skus: [
         {
           title: 'Standard',
           sku: 'ACME-CHG-STD',
           isDefault: true,
           attributes: { color: 'white', power: '30W' },
+            availability: {
+              ...availability,
+              stock: { type: 'FINITE', quantity: 300 },
+            },
+            images: ['https://cdn.example.com/products/acme-charger/main.png'],
+            prices: [
+              {
+                priceListId: payload.priceList.id,
+                unitPrice: 3999,
+                compareAtPrice: 4999,
+                minQuantity: 1,
+              },
+            ],
         },
       ],
       metaJson: { tags: ['charger', 'accessory'] },
@@ -340,38 +311,25 @@ export class CatalogSeeder {
       title: 'Solar Lantern',
       description: 'Portable solar lantern with adjustable brightness.',
       status: ProductStatus.ACTIVE,
-      slug: 'solar-lantern',
       externalRef: 'SOL-LANTERN-01',
       brandId: payload.brands.acme.id,
       categoryIds: [payload.categories.lighting.id],
-      availability: {
-        ...availability,
-        stock: { type: 'FINITE', quantity: 80 },
-        schedule: {
-          startAt: '2025-03-01T00:00:00Z',
-          endAt: '2026-03-01T00:00:00Z',
-          timezone: 'UTC',
-        },
-      },
-      images: ['https://cdn.example.com/products/lantern/main.png'],
-      translations: [
-        {
-          locale: 'en',
-          title: 'Solar Lantern',
-          description: 'Portable lantern with long-lasting light.',
-        },
-        {
-          locale: 'sw',
-          title: 'Taa ya Jua',
-          description: 'Taa inayochajiwa kwa jua.',
-        },
-      ],
       skus: [
         {
           title: 'Rechargeable',
           sku: 'SOL-LANT-REC',
           isDefault: true,
           attributes: { power: 'solar', battery: '4000mAh' },
+            availability: {
+              ...availability,
+              stock: { type: 'FINITE', quantity: 80 },
+              schedule: {
+                startAt: '2025-03-01T00:00:00Z',
+                endAt: '2026-03-01T00:00:00Z',
+                timezone: 'UTC',
+              },
+            },
+            images: ['https://cdn.example.com/products/lantern/main.png'],
           prices: [
             {
               priceListId: payload.priceList.id,

@@ -17,7 +17,6 @@ import {
 import { randomBytes } from 'crypto';
 import { Product } from '../entities/product.entity';
 import { Brand } from '../entities/brand.entity';
-import { ProductTranslation } from '../entities/product-translation.entity';
 import { ProductSku } from '../entities/product-sku.entity';
 import { ProductCategory } from '../entities/product-category.entity';
 import { ProductChannel } from '../entities/product-channel.entity';
@@ -37,7 +36,6 @@ import {
   PublicProductCategoryRefDto,
   PublicProductDto,
   PublicProductPriceDto,
-  PublicProductTranslationDto,
   PublicProductSkuDto,
 } from '../dto/public/public-product.dto';
 import { AppCacheService } from 'src/common/cache/app-cache.service';
@@ -53,7 +51,6 @@ import { CreateProductContextOverrideDto } from '../dto/product-v2/create-produc
 import { UpdateProductContextOverrideDto } from '../dto/product-v2/update-product-context-override.dto';
 import { ProductDTO, ProductViewDTO } from '../dto/product-v2/product.dto';
 import {
-  AvailabilityDTO,
   ContextualOverrideDTO,
   LocalizedString,
 } from '../dto/product-v2/product.types';
@@ -96,8 +93,6 @@ export class ProductService {
     private readonly productRepository: Repository<Product>,
     @InjectRepository(Brand)
     private readonly brandRepository: Repository<Brand>,
-    @InjectRepository(ProductTranslation)
-    private readonly translationRepository: Repository<ProductTranslation>,
     @InjectRepository(ProductSku)
     private readonly skuRepository: Repository<ProductSku>,
     @InjectRepository(ProductCategory)
@@ -136,7 +131,6 @@ export class ProductService {
       return {
         productRepository: this.productRepository,
         brandRepository: this.brandRepository,
-        translationRepository: this.translationRepository,
         skuRepository: this.skuRepository,
         productCategoryRepository: this.productCategoryRepository,
         productChannelRepository: this.productChannelRepository,
@@ -152,7 +146,6 @@ export class ProductService {
     return {
       productRepository: manager.getRepository(Product),
       brandRepository: manager.getRepository(Brand),
-      translationRepository: manager.getRepository(ProductTranslation),
       skuRepository: manager.getRepository(ProductSku),
       productCategoryRepository: manager.getRepository(ProductCategory),
       productChannelRepository: manager.getRepository(ProductChannel),
@@ -202,48 +195,37 @@ export class ProductService {
         if (!exists) throw new NotFoundException('Brand not found');
       }
 
-      const slugBase = payload.slug?.trim() || this.slugify(payload.title);
-      if (!slugBase) throw new BadRequestException('slug/title is required');
-
-      const slug = await this.ensureUniqueSlug(slugBase, undefined, manager);
-      const availability = this.normalizeAvailability(payload.availability);
+      const slug = await this.generateUniqueProductSlug(payload.title, undefined, manager);
 
       const product = productRepository.create({
         title: payload.title,
         description: payload.description,
+        seoTitle: payload.seoTitle,
+        seoDescription: payload.seoDescription,
         status: payload.status ?? ProductStatus.DRAFT,
         slug,
         externalRef: payload.externalRef,
         brandId: payload.brandId,
-        availabilityJson: availability as any,
-        imagesJson: this.normalizeImages(payload.images),
         optionDefinitionsJson: (payload.optionDefinitions ?? []) as any,
         metaJson: payload.metaJson ?? {},
       });
 
       const saved = await productRepository.save(product);
 
-      await this.persistTranslations(
-        saved.id,
-        payload,
-        saved.title,
-        saved.description,
-        manager,
-      );
-      const { skus, inputs } = await this.persistSkus(
+      const { skus, inputs, channels } = await this.persistSkus(
         saved.id,
         saved.slug,
+        saved.title,
         payload.skus,
         payload.optionDefinitions ?? [],
         manager,
       );
-      await this.persistPrices(saved.id, payload.prices, skus, inputs, manager);
 
       if (payload.categoryIds?.length) {
         await this.attachCategories(saved.id, payload.categoryIds, manager);
       }
 
-      await this.syncChannels(saved.id, availability.channels, manager);
+      await this.syncChannels(saved.id, channels, manager);
       return saved.id;
     });
 
@@ -271,7 +253,6 @@ export class ProductService {
         const qb = this.productRepository
           .createQueryBuilder('product')
           .leftJoinAndSelect('product.brand', 'brand')
-          .leftJoinAndSelect('product.translations', 'translations')
           .leftJoinAndSelect('product.skus', 'skus')
           .leftJoinAndSelect('product.productCategories', 'productCategories')
           .leftJoinAndSelect('productCategories.category', 'category')
@@ -325,7 +306,6 @@ export class ProductService {
           where: { id },
           relations: [
             'brand',
-            'translations',
             'skus',
             'productCategories',
             'productCategories.category',
@@ -351,27 +331,19 @@ export class ProductService {
     }
 
     let slug = product.slug;
-    if (payload.slug !== undefined) {
-      const baseSlug = payload.slug?.trim() ? this.slugify(payload.slug) : '';
-      if (!baseSlug) throw new BadRequestException('slug cannot be empty');
-      slug = await this.ensureUniqueSlug(baseSlug, product.id);
+    if (payload.title && payload.title !== product.title) {
+      slug = await this.generateUniqueProductSlug(payload.title, product.id);
     }
-
-    const availability = payload.availability
-      ? this.normalizeAvailability(payload.availability)
-      : (product.availabilityJson as unknown as AvailabilityNormalized);
 
     Object.assign(product, {
       title: payload.title ?? product.title,
       description: payload.description ?? product.description,
+      seoTitle: payload.seoTitle ?? product.seoTitle,
+      seoDescription: payload.seoDescription ?? product.seoDescription,
       status: payload.status ?? product.status,
       slug,
       externalRef: payload.externalRef ?? product.externalRef,
       brandId: payload.brandId ?? product.brandId,
-      availabilityJson: availability,
-      imagesJson: payload.images
-        ? this.normalizeImages(payload.images)
-        : product.imagesJson,
       optionDefinitionsJson:
         payload.optionDefinitions !== undefined
           ? ((payload.optionDefinitions ?? []) as any)
@@ -381,32 +353,19 @@ export class ProductService {
 
     const saved = await this.productRepository.save(product);
 
-    if (payload.translations) {
-      await this.translationRepository.delete({ productId: saved.id });
-      await this.persistTranslations(
-        saved.id,
-        payload,
-        saved.title,
-        saved.description,
-      );
-    }
-
     if ((payload as any).skus) {
       await this.skuRepository.delete({ productId: saved.id });
       const optionDefs = (payload.optionDefinitions ??
         (saved.optionDefinitionsJson as any) ??
         []) as any[];
-      const { skus, inputs } = await this.persistSkus(
+      const { skus, inputs, channels } = await this.persistSkus(
         saved.id,
         saved.slug,
+        saved.title,
         (payload as any).skus,
         optionDefs,
       );
-      await this.persistPrices(saved.id, payload.prices, skus, inputs);
-    }
-
-    if (payload.prices && !(payload as any).skus) {
-      await this.persistPrices(saved.id, payload.prices, [], []);
+      await this.syncChannels(saved.id, channels);
     }
 
     if (payload.categoryIds) {
@@ -416,9 +375,6 @@ export class ProductService {
       }
     }
 
-    if (payload.availability?.channels) {
-      await this.syncChannels(saved.id, availability.channels);
-    }
 
     await this.clearProductCaches(saved.id);
     return this.findOne(saved.id);
@@ -466,7 +422,6 @@ export class ProductService {
         const qb = this.productRepository
           .createQueryBuilder('product')
           .leftJoinAndSelect('product.brand', 'brand')
-          .leftJoinAndSelect('product.translations', 'translations')
           .leftJoinAndSelect('product.skus', 'skus')
           .leftJoinAndSelect('product.productCategories', 'productCategories')
           .leftJoinAndSelect('productCategories.category', 'category')
@@ -514,14 +469,14 @@ export class ProductService {
 
         if (filters.country) {
           const country = filters.country.toUpperCase();
-          qb.andWhere("product.availability_json -> 'countries' ? :country", {
+          qb.andWhere("skus.availability -> 'countries' ? :country", {
             country,
           });
         }
 
         if (filters.location) {
-          qb.andWhere("product.availability_json -> 'locations' ? :location", {
-            location: filters.location,
+          qb.andWhere("skus.availability -> 'locations' ? :location", {
+            location: filters.location.toLowerCase(),
           });
         }
 
@@ -569,7 +524,6 @@ export class ProductService {
           where: { id, status: ProductStatus.ACTIVE },
           relations: [
             'brand',
-            'translations',
             'skus',
             'productCategories',
             'productCategories.category',
@@ -631,7 +585,6 @@ export class ProductService {
         const qb = this.productRepository
           .createQueryBuilder('product')
           .leftJoinAndSelect('product.brand', 'brand')
-          .leftJoinAndSelect('product.translations', 'translations')
           .leftJoinAndSelect('product.skus', 'skus')
           .leftJoinAndSelect('product.productCategories', 'productCategories')
           .leftJoinAndSelect('productCategories.category', 'category')
@@ -679,14 +632,14 @@ export class ProductService {
 
         if (filters.country) {
           const country = filters.country.toUpperCase();
-          qb.andWhere("product.availability_json -> 'countries' ? :country", {
+          qb.andWhere("skus.availability -> 'countries' ? :country", {
             country,
           });
         }
 
         if (filters.location) {
-          qb.andWhere("product.availability_json -> 'locations' ? :location", {
-            location: filters.location,
+          qb.andWhere("skus.availability -> 'locations' ? :location", {
+            location: filters.location.toLowerCase(),
           });
         }
 
@@ -748,7 +701,6 @@ export class ProductService {
           where: { id, status: ProductStatus.ACTIVE },
           relations: [
             'brand',
-            'translations',
             'skus',
             'productCategories',
             'productCategories.category',
@@ -859,48 +811,9 @@ export class ProductService {
   }
 
   async addProductPrice(productId: string, payload: CreateProductPriceDto) {
-    const product = await this.findOneEntityOrThrow(productId);
-    const list = await this.priceListRepository.findOne({
-      where: { id: payload.priceListId },
-    });
-    if (!list) throw new NotFoundException('Price list not found');
-
-    const currency = await this.currencyRepository.findOne({
-      where: { code: list.currency },
-    });
-    const precision = currency?.precision ?? 2;
-
-    const conditions = (payload.metaJson as any)?.conditions ?? {};
-
-    const row = this.priceRowRepository.create({
-      priceListId: list.id,
-      targetType: 'PRODUCT',
-      targetId: product.id,
-      selectorJson: conditions,
-      currencyCode: undefined,
-      unitAmount: this.toMinorUnits(payload.unitPrice, precision),
-      compareAtAmount:
-        payload.compareAtPrice !== undefined
-          ? this.toMinorUnits(payload.compareAtPrice, precision)
-          : undefined,
-      minQuantity: payload.minQuantity ?? 1,
-      maxQuantity: payload.maxQuantity,
-      validFrom: payload.validFrom ? new Date(payload.validFrom) : undefined,
-      validTo: payload.validTo ? new Date(payload.validTo) : undefined,
-      tiersJson: [],
-      metaJson: payload.metaJson ?? {},
-    });
-
-    const saved = await this.priceRowRepository.save(row);
-    await this.cache.delByPrefix('price:resolve:');
-    await this.clearProductCaches(product.id);
-    return {
-      ...saved,
-      unitPrice: this.fromMinorUnits(saved.unitAmount, precision),
-      compareAtPrice: saved.compareAtAmount
-        ? this.fromMinorUnits(saved.compareAtAmount, precision)
-        : undefined,
-    };
+    throw new BadRequestException(
+      'Product-level prices are not supported; use SKU prices instead',
+    );
   }
 
   async addSkuPrice(
@@ -958,38 +871,9 @@ export class ProductService {
   }
 
   async listProductPrices(productId: string) {
-    const product = await this.findOneEntityOrThrow(productId);
-    const rows = await this.priceRowRepository.find({
-      where: { targetType: 'PRODUCT' as any, targetId: product.id },
-      order: { createdAt: 'DESC' },
-    });
-
-    const priceListIds = Array.from(new Set(rows.map((r) => r.priceListId)));
-    const lists = priceListIds.length
-      ? await this.priceListRepository.find({ where: { id: In(priceListIds) } })
-      : [];
-    const listById = new Map(lists.map((l) => [l.id, l] as const));
-    const currencyCodes = Array.from(new Set(lists.map((l) => l.currency)));
-    const currencies = currencyCodes.length
-      ? await this.currencyRepository.find({
-          where: { code: In(currencyCodes) },
-        })
-      : [];
-    const precisionByCode = new Map(
-      currencies.map((c) => [c.code, c.precision] as const),
+    throw new BadRequestException(
+      'Product-level prices are not supported; use SKU prices instead',
     );
-
-    return rows.map((r) => {
-      const list = listById.get(r.priceListId);
-      const precision = precisionByCode.get(list?.currency ?? '') ?? 2;
-      return {
-        ...r,
-        unitPrice: this.fromMinorUnits(r.unitAmount, precision),
-        compareAtPrice: r.compareAtAmount
-          ? this.fromMinorUnits(r.compareAtAmount, precision)
-          : undefined,
-      };
-    });
   }
 
   async listSkuPrices(productId: string, skuId: string) {
@@ -1037,41 +921,10 @@ export class ProductService {
     return product;
   }
 
-  private async persistTranslations(
-    productId: string,
-    payload: CreateProductDto | UpdateProductDto,
-    fallbackTitle: string,
-    fallbackDescription?: string,
-    manager?: EntityManager,
-  ) {
-    const { translationRepository } = this.getRepos(manager);
-    const translations = payload.translations?.length
-      ? payload.translations
-      : [
-          {
-            locale: 'en',
-            title: fallbackTitle,
-            description: fallbackDescription,
-            metaJson: {},
-          },
-        ];
-
-    await translationRepository.save(
-      translations.map((t) =>
-        translationRepository.create({
-          productId,
-          locale: t.locale,
-          title: t.title,
-          description: t.description,
-          metaJson: t.metaJson ?? {},
-        }),
-      ),
-    );
-  }
-
   private async persistSkus(
     productId: string,
     slug: string,
+    productTitle: string,
     skus?: CreateProductSkuDto[],
     optionDefinitions?: Array<{
       key: string;
@@ -1079,13 +932,17 @@ export class ProductService {
       required?: boolean;
     }>,
     manager?: EntityManager,
-  ): Promise<{ skus: ProductSku[]; inputs: CreateProductSkuDto[] }> {
+  ): Promise<{
+    skus: ProductSku[];
+    inputs: CreateProductSkuDto[];
+    channels: string[];
+  }> {
     const { skuRepository } = this.getRepos(manager);
     const normalized: CreateProductSkuDto[] = skus?.length
       ? skus
       : [
           {
-            title: 'Default',
+            title: productTitle,
             isDefault: true,
           },
         ];
@@ -1137,6 +994,7 @@ export class ProductService {
     };
 
     const skuEntities: ProductSku[] = [];
+    const channelSet = new Set<string>();
     for (const [index, v] of normalized.entries()) {
       const sku =
         v.sku?.trim() || (await this.generateSku(slug, index, manager));
@@ -1144,10 +1002,15 @@ export class ProductService {
       const options = v.options ?? v.attributes ?? {};
       validateOptions(options);
 
+      const availability = this.normalizeAvailability(v.availability);
+      for (const channel of availability.channels ?? []) {
+        channelSet.add(channel);
+      }
+
       skuEntities.push(
         skuRepository.create({
           productId,
-          title: v.title,
+          title: v.title ?? productTitle,
           sku,
           externalRef: v.externalRef,
           status: v.status ?? 'active',
@@ -1155,6 +1018,7 @@ export class ProductService {
           position: v.position ?? index,
           attributesJson: options,
           imagesJson: this.normalizeImages(v.images),
+          availability: availability as any,
           inventoryJson: (v.inventory ?? {}) as any,
           requiresShipping: v.requiresShipping ?? true,
           weight: v.weight !== undefined ? v.weight.toString() : undefined,
@@ -1169,7 +1033,7 @@ export class ProductService {
     }
 
     const saved = await skuRepository.save(skuEntities);
-    return { skus: saved, inputs: normalized };
+    return { skus: saved, inputs: normalized, channels: Array.from(channelSet) };
   }
 
   private async persistPrices(
@@ -1183,8 +1047,13 @@ export class ProductService {
       this.getRepos(manager);
     const rows: PriceRow[] = [];
 
+    if (prices?.length) {
+      throw new BadRequestException(
+        'Product-level prices are not supported; provide SKU prices instead',
+      );
+    }
+
     const allPriceListIds = new Set<string>();
-    for (const p of prices ?? []) allPriceListIds.add(p.priceListId);
     for (const skuInput of skuInputs ?? [])
       for (const p of skuInput?.prices ?? [])
         allPriceListIds.add(p.priceListId);
@@ -1209,33 +1078,6 @@ export class ProductService {
       if (!list) throw new NotFoundException('Price list not found');
       return precisionByCode.get(list.currency) ?? 2;
     };
-
-    if (prices?.length) {
-      for (const p of prices) {
-        const precision = getPrecisionForList(p.priceListId);
-        const conditions = (p.metaJson as any)?.conditions ?? {};
-        rows.push(
-          priceRowRepository.create({
-            priceListId: p.priceListId,
-            targetType: 'PRODUCT',
-            targetId: productId,
-            selectorJson: conditions,
-            currencyCode: undefined,
-            unitAmount: this.toMinorUnits(p.unitPrice, precision),
-            compareAtAmount:
-              p.compareAtPrice !== undefined
-                ? this.toMinorUnits(p.compareAtPrice, precision)
-                : undefined,
-            minQuantity: p.minQuantity ?? 1,
-            maxQuantity: p.maxQuantity,
-            validFrom: p.validFrom ? new Date(p.validFrom) : undefined,
-            validTo: p.validTo ? new Date(p.validTo) : undefined,
-            tiersJson: [],
-            metaJson: p.metaJson ?? {},
-          }),
-        );
-      }
-    }
 
     for (const [index, sku] of (skus ?? []).entries()) {
       const skuInput = skuInputs?.[index];
@@ -1306,26 +1148,24 @@ export class ProductService {
     return (images ?? []).map((i) => String(i ?? '').trim()).filter(Boolean);
   }
 
-  private async ensureUniqueSlug(
-    baseSlug: string,
+  private async generateUniqueProductSlug(
+    title: string,
     excludeId?: string,
     manager?: EntityManager,
   ): Promise<string> {
     const { productRepository } = this.getRepos(manager);
-    const slugCandidate = this.slugify(baseSlug);
-    let slug = slugCandidate;
-    let suffix = 1;
+    const base = this.slugify(title);
+    if (!base) throw new BadRequestException('title is required');
 
-    while (
-      await productRepository.exist({
+    // Append 6 random characters to ensure uniqueness.
+    while (true) {
+      const suffix = randomBytes(3).toString('hex');
+      const slug = `${base}-${suffix}`;
+      const exists = await productRepository.exist({
         where: excludeId ? { slug, id: Not(excludeId) } : { slug },
-      })
-    ) {
-      suffix += 1;
-      slug = `${slugCandidate}-${suffix}`;
+      });
+      if (!exists) return slug;
     }
-
-    return slug;
   }
 
   private slugify(input?: string): string {
@@ -1419,20 +1259,6 @@ export class ProductService {
     ]);
   }
 
-  private pickTranslation(
-    translations: ProductTranslation[] | undefined,
-    locale?: string,
-  ): ProductTranslation | undefined {
-    const preferred = (locale || 'en').toLowerCase();
-    const rows = translations ?? [];
-    return (
-      rows.find((t) => t.locale?.toLowerCase() === preferred) ??
-      rows.find((t) => t.locale?.toLowerCase().startsWith(preferred)) ??
-      rows.find((t) => t.locale?.toLowerCase() === 'en') ??
-      rows[0]
-    );
-  }
-
   private categoryToPublicDto(
     category: Category,
     locale?: string,
@@ -1503,22 +1329,6 @@ export class ProductService {
     return Array.from(new Set(values));
   }
 
-  private buildLocalizedString(
-    translations: ProductTranslation[] | undefined,
-    field: 'title' | 'description',
-    fallback?: string,
-  ): LocalizedString {
-    const localized: LocalizedString = {};
-    for (const t of translations ?? []) {
-      const value = field === 'title' ? t.title : t.description;
-      if (value) localized[t.locale] = value;
-    }
-    if (!Object.keys(localized).length && fallback) {
-      localized.en = fallback;
-    }
-    return localized;
-  }
-
   private toContextualOverrideDto(
     override: ProductContextOverride,
   ): ContextualOverrideDTO {
@@ -1559,113 +1369,13 @@ export class ProductService {
     return byProduct;
   }
 
-  private categoryToPublicCategoryDto(
-    category: Category,
-    locale?: string,
-  ): PublicCategoryDto {
-    const translations = category.translations ?? [];
-    const preferred = (locale || 'en').toLowerCase();
-    const t =
-      translations.find((x) => x.locale?.toLowerCase() === preferred) ??
-      translations.find((x) => x.locale?.toLowerCase().startsWith(preferred)) ??
-      translations.find((x) => x.locale?.toLowerCase() === 'en') ??
-      translations[0];
-
-    return {
-      id: category.id,
-      taxonomyId: category.taxonomyId,
-      parentId: category.parentId,
-      key: category.key,
-      slug: category.slug,
-      name: t?.name ?? category.key,
-      description: t?.description,
-      icon: category.icon,
-      imageUrl: category.imageUrl,
-      sortOrder: category.sortOrder,
-      isLeaf: category.isLeaf,
-    };
-  }
-
-  private buildAvailabilityDto(
-    availability: Record<string, unknown> | undefined,
-  ): AvailabilityDTO {
-    const raw = availability ?? {};
-    const channels = (this.normalizeStringArray(raw.channels) ?? ['WEB']).map(
-      (c) => c.toUpperCase(),
-    );
-    const countries = this.normalizeStringArray(raw.countries)?.map((c) =>
-      c.toUpperCase(),
-    );
-    const locations = this.normalizeStringArray(raw.locations);
-
-    const stock =
-      raw.stock && typeof raw.stock === 'object'
-        ? {
-            type: String((raw.stock as any).type ?? 'FINITE'),
-            quantity: (raw.stock as any).quantity,
-          }
-        : undefined;
-
-    const scheduleInput =
-      raw.schedule && typeof raw.schedule === 'object'
-        ? (raw.schedule as any)
-        : undefined;
-    let schedule:
-      | { timezone: string; windows: Array<{ from: string; to: string }> }
-      | undefined;
-    if (scheduleInput) {
-      const windows: Array<{ from: string; to: string }> = [];
-      if (Array.isArray(scheduleInput.windows)) {
-        for (const window of scheduleInput.windows) {
-          if (!window) continue;
-          const from = String(window.from ?? '').trim();
-          const to = String(window.to ?? '').trim();
-          if (from && to) windows.push({ from, to });
-        }
-      } else if (scheduleInput.startAt || scheduleInput.endAt) {
-        const from = scheduleInput.startAt ?? scheduleInput.endAt;
-        const to = scheduleInput.endAt ?? scheduleInput.startAt;
-        if (from && to) windows.push({ from, to });
-      }
-
-      if (windows.length) {
-        schedule = {
-          timezone: String(scheduleInput.timezone ?? 'UTC'),
-          windows,
-        };
-      }
-    }
-
-    return {
-      channels,
-      countries,
-      locations,
-      stock,
-      schedule,
-      meta:
-        raw.meta && typeof raw.meta === 'object'
-          ? (raw.meta as Record<string, unknown>)
-          : undefined,
-    };
-  }
-
   private async toProductDTO(
     product: Product,
     opts?: { locale?: string; priceListId?: string; currencyCode?: string },
   ): Promise<ProductDTO> {
-    const translations = product.translations ?? [];
-    const name = this.buildLocalizedString(
-      translations,
-      'title',
-      product.title,
-    );
-    const descriptionMap = this.buildLocalizedString(
-      translations,
-      'description',
-      product.description,
-    );
-    const description = Object.keys(descriptionMap).length
-      ? descriptionMap
+    const name: LocalizedString = { en: product.title };
+    const description = product.description
+      ? ({ en: product.description } as LocalizedString)
       : undefined;
 
     const categories = (product.productCategories ?? [])
@@ -1699,41 +1409,12 @@ export class ProductService {
 
     const defaultSku =
       (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
-    const resolvedPrice = await this.resolvePriceForSku(
-      product.id,
-      defaultSku,
-      opts,
-    );
-    const basePrice = resolvedPrice?.unitPrice
-      ? Number(resolvedPrice.unitPrice)
-      : undefined;
-    const dynamicCurrency =
-      opts?.currencyCode ??
-      (await this.currencyService.getDefaultCurrencyCode());
-    const pricing = resolvedPrice
-      ? ({
-          currency: resolvedPrice.currencyCode,
-          pricingType: 'FIXED' as const,
-          basePrice,
-        } as any)
-      : ({ currency: dynamicCurrency, pricingType: 'DYNAMIC' as const } as any);
-
-    const availability = this.buildAvailabilityDto(product.availabilityJson);
-
-    const schedule = (product.availabilityJson as any)?.schedule ?? {};
-    const validFrom = schedule?.startAt;
-    const validUntil = schedule?.endAt;
 
     const skus = (product.skus ?? []).map((s) => ({
       id: s.id,
       code: s.sku ?? s.id,
-      name: { en: s.title },
+      name: { en: s.title ?? product.title },
       attributes: (s.attributesJson ?? {}) as any,
-    }));
-
-    const media = (product.imagesJson ?? []).map((url) => ({
-      type: 'IMAGE',
-      url,
     }));
 
     return {
@@ -1756,14 +1437,9 @@ export class ProductService {
         : undefined,
       name,
       description,
-      media,
       attributes: attributes as any,
       attributeSchemaRef,
-      pricing,
       status: product.status,
-      availability,
-      validFrom,
-      validUntil,
       skus,
     };
   }
@@ -1804,12 +1480,8 @@ export class ProductService {
       currencyCode?: string;
     },
   ): Promise<PublicProductDto> {
-    const translation = this.pickTranslation(
-      product.translations,
-      opts?.locale,
-    );
-    const title = translation?.title ?? product.title;
-    const description = translation?.description ?? product.description;
+    const title = product.title;
+    const description = product.description;
 
     const categories = (product.productCategories ?? [])
       .map((pc) => pc.category)
@@ -1822,9 +1494,10 @@ export class ProductService {
             const price = await this.resolvePriceForSku(product.id, s, opts);
             return {
               id: s.id,
-              title: s.title,
+              title: s.title ?? product.title,
               sku: s.sku,
               attributes: s.attributesJson,
+              availability: s.availability ?? {},
               images: s.imagesJson,
               price,
             } as PublicProductSkuDto;
@@ -1832,15 +1505,13 @@ export class ProductService {
         )
       : [];
 
-    const defaultSku =
-      (product.skus ?? []).find((s) => s.isDefault) ?? (product.skus ?? [])[0];
-    const price = await this.resolvePriceForSku(product.id, defaultSku, opts);
-
     return {
       id: product.id,
       slug: product.slug,
       title,
       description,
+      seoTitle: product.seoTitle,
+      seoDescription: product.seoDescription,
       status: product.status,
       externalRef: product.externalRef,
       brand: product.brand
@@ -1853,16 +1524,8 @@ export class ProductService {
             websiteUrl: product.brand.websiteUrl,
           }
         : undefined,
-      availability: product.availabilityJson ?? {},
-      images: product.imagesJson ?? [],
-      price,
       skus,
       categories,
-      translations: (product.translations ?? []).map((t) => ({
-        locale: t.locale,
-        title: t.title,
-        description: t.description,
-      })) as PublicProductTranslationDto[],
     };
   }
 }

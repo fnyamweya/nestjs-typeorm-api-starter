@@ -11,7 +11,6 @@ import { ProductSku } from './product-sku.entity';
 import { JoinColumn, ManyToOne, OneToMany } from 'typeorm';
 import { Brand } from './brand.entity';
 import { ProductCategory } from './product-category.entity';
-import { ProductTranslation } from './product-translation.entity';
 import { ProductChannel } from './product-channel.entity';
 
 @Entity('product')
@@ -27,6 +26,12 @@ export class Product {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ name: 'seo_title', type: 'text', nullable: true })
+  seoTitle?: string;
+
+  @Column({ name: 'seo_description', type: 'text', nullable: true })
+  seoDescription?: string;
+
   @Column({ type: 'text', default: 'draft' })
   status: string;
 
@@ -38,16 +43,6 @@ export class Product {
 
   @Column({ name: 'brand_id', type: 'uuid', nullable: true })
   brandId?: string;
-
-  @Column({
-    name: 'availability_json',
-    type: 'jsonb',
-    default: () => "'{}'::jsonb",
-  })
-  availabilityJson: Record<string, unknown>;
-
-  @Column({ name: 'images_json', type: 'jsonb', default: () => "'[]'::jsonb" })
-  imagesJson: string[];
 
   @Column({
     name: 'option_definitions_json',
@@ -76,9 +71,6 @@ export class Product {
 
   @OneToMany(() => ProductOptionDefinition, (def) => def.product)
   optionDefinitions: ProductOptionDefinition[];
-
-  @OneToMany(() => ProductTranslation, (t) => t.product)
-  translations: ProductTranslation[];
 
   @OneToMany(() => ProductSku, (sku) => sku.product)
   skus: ProductSku[];

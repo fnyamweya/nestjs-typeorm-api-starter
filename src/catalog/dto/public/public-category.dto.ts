@@ -26,6 +26,9 @@ export class PublicCategoryDto {
   icon?: string;
 
   @ApiPropertyOptional()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional()
   imageUrl?: string;
 
   @ApiProperty()

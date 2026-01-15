@@ -50,7 +50,7 @@ export class ProductAvailabilityScheduleDto {
 export class ProductAvailabilityDto {
   @ApiPropertyOptional({
     description: 'Allowed channels',
-    example: ['app', 'ussd'],
+    example: ['WEB', 'APP'],
   })
   @IsOptional()
   @IsArray()
@@ -59,7 +59,7 @@ export class ProductAvailabilityDto {
 
   @ApiPropertyOptional({
     description: 'Allowed countries',
-    example: ['KE', 'TZ'],
+    example: ['KE'],
   })
   @IsOptional()
   @IsArray()
@@ -68,7 +68,7 @@ export class ProductAvailabilityDto {
 
   @ApiPropertyOptional({
     description: 'Allowed locations',
-    example: ['Nairobi'],
+    example: ['Baringo', 'Dagoretti North'],
   })
   @IsOptional()
   @IsArray()

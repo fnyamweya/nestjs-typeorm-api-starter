@@ -1,24 +1,15 @@
 import {
   AppliedOverrideInfo,
   AttributeValue,
-  AvailabilityDTO,
   ContextualOverrideDTO,
   ID,
   LocalizedString,
   LocalizedText,
-  PricingModelDTO,
   ProductStatus,
   ProductType,
 } from './product.types';
 import { PublicBrandDto } from '../public/public-brand.dto';
 import { PublicCategoryDto } from '../public/public-category.dto';
-
-export interface ProductMedia {
-  type: 'IMAGE' | 'VIDEO' | 'DOCUMENT' | string;
-  url: string;
-  alt?: string;
-  tags?: string[];
-}
 
 export interface ProductDTO {
   // --------------------------------------------------
@@ -42,7 +33,6 @@ export interface ProductDTO {
   // --------------------------------------------------
   name: LocalizedString;
   description?: LocalizedString;
-  media?: ProductMedia[];
 
   // --------------------------------------------------
   // 4. Dynamic Attributes (Schema-Driven)
@@ -56,7 +46,6 @@ export interface ProductDTO {
   // --------------------------------------------------
   // 5. Commercial Model
   // --------------------------------------------------
-  pricing: PricingModelDTO;
   taxation?: Record<string, unknown>;
   discounts?: Array<Record<string, unknown>>;
 
@@ -64,9 +53,6 @@ export interface ProductDTO {
   // 6. Availability & Lifecycle
   // --------------------------------------------------
   status: ProductStatus;
-  availability: AvailabilityDTO;
-  validFrom?: string;
-  validUntil?: string;
 
   // --------------------------------------------------
   // 9. Contextual Overrides

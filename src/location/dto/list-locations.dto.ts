@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 
 function normalizeLocationType(value: unknown): unknown {
   if (typeof value !== 'string') return value;
@@ -10,19 +10,19 @@ function normalizeLocationType(value: unknown): unknown {
 export class ListLocationsDto {
   @ApiPropertyOptional({
     description: 'Parent location id (UUID). Omit for roots.',
+    example: '2d1a2b1f-1c9a-4d7b-b44a-9b2a8123c812',
   })
   @IsOptional()
   @IsUUID()
   parentId?: string;
 
   @ApiPropertyOptional({
-    description: 'Country ISO2 code filter',
-    example: 'KE',
+    description: 'Country UUID filter (from country_config)',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   })
   @IsOptional()
-  @IsString()
-  @Length(2, 2)
-  countryCode?: string;
+  @IsUUID()
+  countryId?: string;
 
   @ApiPropertyOptional({
     description:

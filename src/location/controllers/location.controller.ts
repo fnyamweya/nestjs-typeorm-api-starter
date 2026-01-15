@@ -52,7 +52,7 @@ export class LocationController {
   @ApiOperation({
     summary: 'Create a location node',
     description:
-      'Creates a location. The allowed `type` values and parent→child rules are country-configurable via `GET/PUT /api/v1/addresses/field-config?countryCode=...` (`schema.locationChain`).',
+      'Creates a location. The allowed `type` values and parent→child rules are country-configurable via `GET/PUT /api/v1/addresses/field-config?countryCode=...` (`schema.locationChain`). Use countryId to select the country.',
   })
   @ApiCreatedResponse({ description: 'Location created' })
   async create(@Body() payload: CreateLocationDto) {
@@ -64,19 +64,20 @@ export class LocationController {
   @ApiOperation({
     summary: 'Get allowed child types',
     description:
-      'Returns which child `type` values are allowed under a given parent, based on the configured country locationChain.',
+      'Returns which child `type` values are allowed under a given parent, based on the configured country locationChain. Requires countryId.',
   })
   @ApiQuery({
-    name: 'countryCode',
-    required: false,
-    description: 'ISO2 country code (default KE)',
-    example: 'KE',
+    name: 'countryId',
+    required: true,
+    description: 'Country UUID (from country_config)',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   })
   @ApiQuery({
     name: 'parentId',
     required: false,
     description:
       'Parent location UUID (preferred over parentType when available)',
+    example: '2d1a2b1f-1c9a-4d7b-b44a-9b2a8123c812',
   })
   @ApiQuery({
     name: 'parentType',
@@ -87,12 +88,12 @@ export class LocationController {
   })
   @ApiOkResponse({ description: 'Allowed child types retrieved' })
   async allowedChildren(
-    @Query('countryCode') countryCode: string,
+    @Query('countryId') countryId: string,
     @Query('parentId') parentId?: string,
     @Query('parentType') parentType?: string,
   ) {
     const res = await this.locationService.getAllowedChildTypes({
-      countryCode: (countryCode || 'KE').toUpperCase(),
+      countryId,
       parentId,
       parentType: parentType ? String(parentType).toLowerCase() : undefined,
     });
@@ -152,10 +153,10 @@ export class LocationController {
       'Filters locations by country/type/parent/search. `type` is dynamic per-country (from `addresses/field-config.locationChain`). For compatibility, `locationType` is accepted as an alias for `type`.',
   })
   @ApiQuery({
-    name: 'countryCode',
+    name: 'countryId',
     required: false,
-    description: 'ISO2 country code',
-    example: 'KE',
+    description: 'Country UUID (from country_config)',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   })
   @ApiQuery({
     name: 'type',
@@ -174,6 +175,7 @@ export class LocationController {
     name: 'parentId',
     required: false,
     description: 'Parent location UUID (omit for roots)',
+    example: '2d1a2b1f-1c9a-4d7b-b44a-9b2a8123c812',
   })
   @ApiQuery({
     name: 'q',
@@ -187,18 +189,16 @@ export class LocationController {
     return ResponseUtil.success(rows, 'Locations retrieved');
   }
 
-  @Get('tree/:countryCode')
+  @Get('tree/:countryId')
   @ApiOperation({ summary: 'Get location tree for a country' })
   @ApiParam({
-    name: 'countryCode',
-    description: 'ISO2 country code',
-    example: 'KE',
+    name: 'countryId',
+    description: 'Country UUID (from country_config)',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
   })
   @ApiOkResponse({ description: 'Location tree retrieved' })
-  async tree(@Param('countryCode') countryCode: string) {
-    const rows = await this.locationService.getTreeByCountryCode(
-      countryCode.toUpperCase(),
-    );
+  async tree(@Param('countryId') countryId: string) {
+    const rows = await this.locationService.getTreeByCountryId(countryId);
     return ResponseUtil.success(rows, 'Location tree retrieved');
   }
 

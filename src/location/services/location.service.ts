@@ -6,6 +6,7 @@ import {
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, ILike, IsNull, Repository } from 'typeorm';
 import { Location, LocationType } from '../entities/location.entity';
+import { CountryConfig } from 'src/country/entities/country-config.entity';
 import { CreateLocationDto } from '../dto/create-location.dto';
 import { ListLocationsDto } from '../dto/list-locations.dto';
 import { UpdateLocationDto } from '../dto/update-location.dto';
@@ -16,12 +17,16 @@ export class LocationService {
   constructor(
     @InjectRepository(Location)
     private readonly locationRepo: Repository<Location>,
+    @InjectRepository(CountryConfig)
+    private readonly countryConfigRepo: Repository<CountryConfig>,
     private readonly dataSource: DataSource,
     private readonly addressFieldConfigService: AddressFieldConfigService,
   ) {}
 
-  private normalizeCountryCode(countryCode?: string) {
-    return (countryCode || '').toUpperCase();
+  private async getCountryConfig(countryId: string): Promise<CountryConfig> {
+    const row = await this.countryConfigRepo.findOne({ where: { id: countryId } });
+    if (!row) throw new NotFoundException('Country not found');
+    return row;
   }
 
   private async getChain(countryCode: string): Promise<string[]> {
@@ -39,11 +44,13 @@ export class LocationService {
   }
 
   async getAllowedChildTypes(params: {
-    countryCode: string;
+    countryId: string;
     parentType?: string;
     parentId?: string;
   }) {
-    const countryCode = this.normalizeCountryCode(params.countryCode);
+    const country = await this.getCountryConfig(params.countryId);
+    const countryCode = country.countryCode?.toUpperCase();
+    if (!countryCode) throw new BadRequestException('countryCode is missing');
     const chain = await this.getChain(countryCode);
 
     if (params.parentId) {
@@ -51,7 +58,11 @@ export class LocationService {
         where: { id: params.parentId },
       });
       if (!parent) throw new NotFoundException('Parent location not found');
+      if (parent.countryId && parent.countryId !== country.id) {
+        throw new BadRequestException('countryId must match parent countryId');
+      }
       return {
+        countryId: country.id,
         countryCode,
         parentType: parent.type,
         allowedChildTypes: this.allowedChildTypesFromChain(chain, parent.type),
@@ -62,6 +73,7 @@ export class LocationService {
     if (!params.parentType) {
       // root creation: first item in chain
       return {
+        countryId: country.id,
         countryCode,
         parentType: null,
         allowedChildTypes: chain.length ? [chain[0]] : [LocationType.COUNTRY],
@@ -70,6 +82,7 @@ export class LocationService {
     }
 
     return {
+      countryId: country.id,
       countryCode,
       parentType: params.parentType,
       allowedChildTypes: this.allowedChildTypesFromChain(
@@ -87,14 +100,13 @@ export class LocationService {
   }
 
   async list(params: ListLocationsDto): Promise<Location[]> {
-    // Optional guardrails: if caller provides countryCode + type, ensure the type is in that country's chain.
-    if (params.countryCode && params.type) {
-      const chain = await this.getChain(
-        this.normalizeCountryCode(params.countryCode),
-      );
+    // Optional guardrails: if caller provides countryId + type, ensure the type is in that country's chain.
+    if (params.countryId && params.type) {
+      const country = await this.getCountryConfig(params.countryId);
+      const chain = await this.getChain(country.countryCode);
       if (chain.length && !chain.includes(params.type)) {
         throw new BadRequestException(
-          `Invalid type '${params.type}' for country '${params.countryCode}'. Allowed: ${chain.join(', ')}`,
+          `Invalid type '${params.type}' for country '${country.countryCode}'. Allowed: ${chain.join(', ')}`,
         );
       }
     }
@@ -103,7 +115,7 @@ export class LocationService {
     // - When no parentId is provided, default to roots (parent IS NULL)
     // - When searching with q, search across the whole tree unless parentId is explicitly provided
     const where: any = {
-      ...(params.countryCode ? { countryCode: params.countryCode } : {}),
+      ...(params.countryId ? { countryId: params.countryId } : {}),
       ...(params.type ? { type: params.type } : {}),
       ...(params.q ? { name: ILike(`%${params.q}%`) } : {}),
       ...(params.parentId
@@ -116,11 +128,11 @@ export class LocationService {
     return this.locationRepo.find({ where, order: { name: 'ASC' } });
   }
 
-  async getTreeByCountryCode(countryCode: string): Promise<Location[]> {
+  async getTreeByCountryId(countryId: string): Promise<Location[]> {
     const treeRepo = this.dataSource.getTreeRepository(Location);
     // Return root trees for a given countryCode
     const roots = await this.locationRepo.find({
-      where: { countryCode, parent: IsNull() },
+      where: { countryId, parent: IsNull() },
       order: { name: 'ASC' },
     });
 
@@ -132,14 +144,11 @@ export class LocationService {
   }
 
   async create(payload: CreateLocationDto): Promise<Location> {
-    const normalizedCountryCode = this.normalizeCountryCode(
-      payload.countryCode,
-    );
-    if (!normalizedCountryCode) {
-      throw new BadRequestException('countryCode is required');
-    }
+    const country = await this.getCountryConfig(payload.countryId);
+    const countryCode = country.countryCode?.toUpperCase();
+    if (!countryCode) throw new BadRequestException('countryCode is required');
 
-    const chain = await this.getChain(normalizedCountryCode);
+    const chain = await this.getChain(countryCode);
 
     let parent: Location | undefined;
     if (payload.parentId) {
@@ -150,10 +159,9 @@ export class LocationService {
         throw new NotFoundException('Parent location not found');
       parent = foundParent;
 
-      const parentCountry = this.normalizeCountryCode(parent.countryCode);
-      if (parentCountry && parentCountry !== normalizedCountryCode) {
+      if (parent.countryId && parent.countryId !== country.id) {
         throw new BadRequestException(
-          'countryCode must match parent countryCode',
+          'countryId must match parent countryId',
         );
       }
 
@@ -176,7 +184,8 @@ export class LocationService {
     const entity = this.locationRepo.create({
       name: payload.name,
       type: payload.type,
-      countryCode: normalizedCountryCode,
+      countryId: country.id,
+      countryCode,
       code: payload.code,
       parent,
       metaJson: payload.metaJson ?? {},
@@ -192,9 +201,10 @@ export class LocationService {
     });
     if (!existing) throw new NotFoundException('Location not found');
 
-    const countryCode = this.normalizeCountryCode(
-      payload.countryCode || existing.countryCode,
-    );
+    const countryId = payload.countryId ?? existing.countryId;
+    if (!countryId) throw new BadRequestException('countryId is required');
+    const country = await this.getCountryConfig(countryId);
+    const countryCode = country.countryCode?.toUpperCase();
     if (!countryCode) throw new BadRequestException('countryCode is required');
     const chain = await this.getChain(countryCode);
 
@@ -224,12 +234,9 @@ export class LocationService {
           );
         }
 
-        const parentCountry = this.normalizeCountryCode(
-          foundParent.countryCode,
-        );
-        if (parentCountry && parentCountry !== countryCode) {
+        if (foundParent.countryId && foundParent.countryId !== countryId) {
           throw new BadRequestException(
-            'countryCode must match parent countryCode',
+            'countryId must match parent countryId',
           );
         }
 
@@ -268,6 +275,7 @@ export class LocationService {
       }
     }
 
+    existing.countryId = countryId;
     existing.countryCode = countryCode;
     if (typeof payload.name !== 'undefined') existing.name = payload.name;
     if (typeof payload.code !== 'undefined') existing.code = payload.code;

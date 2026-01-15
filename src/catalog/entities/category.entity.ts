@@ -63,6 +63,9 @@ export class Category {
   @Column({ type: 'text', nullable: true })
   icon?: string;
 
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl?: string;
+
   @Column({ name: 'image_url', type: 'text', nullable: true })
   imageUrl?: string;
 

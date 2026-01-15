@@ -6,7 +6,6 @@ import {
   IsOptional,
   IsString,
   IsUUID,
-  Length,
 } from 'class-validator';
 
 function normalizeType(value: unknown): unknown {
@@ -15,12 +14,13 @@ function normalizeType(value: unknown): unknown {
 }
 
 export class UpdateLocationDto {
-  @ApiPropertyOptional({ description: 'Country ISO2 code', example: 'KE' })
+  @ApiPropertyOptional({
+    description: 'Country UUID (from country_config)',
+    example: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
+  })
   @IsOptional()
-  @IsString()
-  @IsNotEmpty()
-  @Length(2, 2)
-  countryCode?: string;
+  @IsUUID()
+  countryId?: string;
 
   @ApiPropertyOptional({ description: 'Location name' })
   @IsOptional()
@@ -41,6 +41,7 @@ export class UpdateLocationDto {
 
   @ApiPropertyOptional({
     description: 'Parent location id (UUID). Set null to make root.',
+    example: '2d1a2b1f-1c9a-4d7b-b44a-9b2a8123c812',
   })
   @IsOptional()
   @IsUUID()

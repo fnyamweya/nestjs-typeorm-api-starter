@@ -9,7 +9,6 @@ import { CategoryChannelSettings } from './entities/category-channel-settings.en
 import { AttributeDefinition } from './entities/attribute-definition.entity';
 import { CategoryAttribute } from './entities/category-attribute.entity';
 import { Product } from './entities/product.entity';
-import { ProductTranslation } from './entities/product-translation.entity';
 import { ProductSku } from './entities/product-sku.entity';
 import { ProductCategory } from './entities/product-category.entity';
 import { Currency } from './entities/currency.entity';
@@ -64,7 +63,6 @@ import { CustomerProductReviewsController } from './controllers/customer/custome
       AttributeDefinition,
       CategoryAttribute,
       Product,
-      ProductTranslation,
       ProductSku,
       ProductCategory,
       ProductChannel,

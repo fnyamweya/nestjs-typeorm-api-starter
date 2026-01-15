@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AddressModule } from '../address/address.module';
 import { Location } from './entities/location.entity';
+import { CountryConfig } from 'src/country/entities/country-config.entity';
 import { LocationService } from './services/location.service';
 import { LocationController } from './controllers/location.controller';
 import { LocationSeeder } from './seeders/location.seeder';
@@ -11,7 +12,7 @@ import { CountryModule } from 'src/country/country.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Location]),
+    TypeOrmModule.forFeature([Location, CountryConfig]),
     AddressModule,
     GooglePlacesModule,
     CountryModule,

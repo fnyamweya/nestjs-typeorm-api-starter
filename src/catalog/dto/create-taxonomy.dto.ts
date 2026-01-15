@@ -33,6 +33,22 @@ export class CreateTaxonomyDto {
   description?: string;
 
   @ApiPropertyOptional({
+    description: 'Optional icon',
+    example: 'ph:tag',
+  })
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional avatar image URL',
+    example: 'https://cdn.example.com/taxonomy/products.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
     description: 'Mark as default taxonomy',
     example: true,
   })

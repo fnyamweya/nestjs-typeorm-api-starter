@@ -24,6 +24,12 @@ export class Taxonomy {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  icon?: string;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl?: string;
+
   @Column({ name: 'is_default', type: 'boolean', default: false })
   isDefault: boolean;
 

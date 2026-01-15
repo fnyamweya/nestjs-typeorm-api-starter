@@ -25,6 +25,22 @@ export class CreateBrandDto {
   logoUrl?: string;
 
   @ApiPropertyOptional({
+    description: 'Optional icon',
+    example: 'ph:apple-logo',
+  })
+  @IsOptional()
+  @IsString()
+  icon?: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional avatar image URL',
+    example: 'https://cdn.example.com/brands/apple.png',
+  })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({
     description: 'Website URL',
     example: 'https://example.com',
   })

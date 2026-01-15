@@ -28,6 +28,12 @@ export class Brand {
   @Column({ name: 'logo_url', type: 'text', nullable: true })
   logoUrl?: string;
 
+  @Column({ type: 'text', nullable: true })
+  icon?: string;
+
+  @Column({ name: 'avatar_url', type: 'text', nullable: true })
+  avatarUrl?: string;
+
   @Column({ name: 'website_url', type: 'text', nullable: true })
   websiteUrl?: string;
 

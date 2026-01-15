@@ -13,6 +13,12 @@ export class PublicTaxonomyDto {
   @ApiPropertyOptional()
   description?: string;
 
+  @ApiPropertyOptional({ required: false, nullable: true, example: 'mdi:tag-outline' })
+  icon?: string | null;
+
+  @ApiPropertyOptional({ required: false, nullable: true, example: 'https://cdn.example.com/taxonomy/avatar.png' })
+  avatarUrl?: string | null;
+
   @ApiProperty()
   isDefault: boolean;
 }

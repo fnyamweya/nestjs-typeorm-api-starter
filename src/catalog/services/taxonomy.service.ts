@@ -59,6 +59,8 @@ export class TaxonomyService {
           code: t.code,
           name: t.name,
           description: t.description,
+          icon: t.icon,
+          avatarUrl: t.avatarUrl,
           isDefault: t.isDefault,
         }));
       },
@@ -80,6 +82,8 @@ export class TaxonomyService {
       code: taxonomy.code,
       name: taxonomy.name,
       description: taxonomy.description,
+      icon: taxonomy.icon,
+      avatarUrl: taxonomy.avatarUrl,
       isDefault: taxonomy.isDefault,
     };
   }
