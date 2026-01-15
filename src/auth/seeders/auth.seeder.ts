@@ -20,6 +20,7 @@ import {
   CacheKeyService,
   CacheKeyStatus,
 } from '../entities/cache-key.entity';
+import { CustomerProfile } from 'src/user/entities/customer-profile.entity';
 
 interface RoleConfig {
   name: string;
@@ -41,6 +42,8 @@ export class AuthSeeder {
     private rolePermissionRepository: Repository<RolePermission>,
     @InjectRepository(User)
     private userRepository: Repository<User>,
+    @InjectRepository(CustomerProfile)
+    private customerProfileRepository: Repository<CustomerProfile>,
     @InjectRepository(CacheKey)
     private cacheKeyRepository: Repository<CacheKey>,
     private configService: ConfigService,
@@ -130,9 +133,88 @@ export class AuthSeeder {
     // Super Admin user
     const superAdminRole = createdRoles.find((r) => r.name === 'Super Admin');
     const adminRole = createdRoles.find((r) => r.name === 'Admin');
+    const customerRole = createdRoles.find(
+      (r) => r.name?.toLowerCase?.() === 'customer',
+    );
     await this.createSuperAdmin(superAdminRole!);
     if (adminRole) {
       await this.createAdmin(adminRole);
+    }
+
+    // Seed a default customer account for local/dev use.
+    if (customerRole) {
+      await this.upsertSeedCustomer({
+        email: 'felixombura+cs@gmail.com',
+        phone: '0707033066',
+        password: 'customer',
+        roleId: customerRole.id,
+      });
+    }
+  }
+
+  private async upsertSeedCustomer(input: {
+    email: string;
+    phone: string;
+    password: string;
+    roleId: string;
+  }): Promise<void> {
+    const existing = await this.userRepository.findOne({
+      where: [{ email: input.email } as any, { phone: input.phone } as any],
+    });
+
+    const baseProps = {
+      email: input.email,
+      phone: input.phone,
+      roleId: input.roleId,
+      authProvider: AuthProviderType.LOCAL,
+      isActive: true,
+      status: UserStatus.ACTIVE,
+      mfaChannel: MfaChannel.EMAIL,
+      twoFactorEnabled: false,
+    };
+
+    let userId: string;
+
+    if (!existing) {
+      const created = await this.userRepository.save(
+        this.userRepository.create({
+          ...baseProps,
+          passwordHash: input.password,
+        }),
+      );
+      userId = created.id;
+    } else {
+      // Avoid surprising identity changes: only fill in missing values.
+      const shouldUpdateEmail = !existing.email;
+      const shouldUpdatePhone = !existing.phone;
+
+      if (shouldUpdateEmail) {
+        existing.email = input.email;
+      }
+      if (shouldUpdatePhone) {
+        existing.phone = input.phone;
+      }
+
+      existing.roleId = existing.roleId || input.roleId;
+      existing.isActive = true;
+      existing.status = UserStatus.ACTIVE;
+      existing.authProvider = AuthProviderType.LOCAL;
+      existing.mfaChannel = existing.mfaChannel || MfaChannel.EMAIL;
+
+      // Always reset password to the seeded value (dev convenience).
+      existing.passwordHash = input.password;
+
+      const saved = await this.userRepository.save(existing);
+      userId = saved.id;
+    }
+
+    const profileExists = await this.customerProfileRepository.findOne({
+      where: { userId } as any,
+    });
+    if (!profileExists) {
+      await this.customerProfileRepository.save(
+        this.customerProfileRepository.create({ userId }),
+      );
     }
   }
 
