@@ -21,18 +21,22 @@ import { ProductContextOverride } from './entities/product-context-override.enti
 import { Collection } from './entities/collection.entity';
 import { CollectionItem } from './entities/collection-item.entity';
 import { CustomerProductView } from './entities/customer-product-view.entity';
+import { ProductReview } from './entities/product-review.entity';
+import { ProductRatingSummary } from './entities/product-rating-summary.entity';
 import { Channel } from '../channels/entities/channel.entity';
 import { TaxonomyController } from './controllers/taxonomy.controller';
 import { CategoryController } from './controllers/category.controller';
 import { ProductController } from './controllers/product.controller';
 import { BrandController } from './controllers/brand.controller';
 import { CollectionController } from './controllers/collection.controller';
+import { ProductReviewsController } from './controllers/product-reviews.controller';
 import { PublicProductsController } from './controllers/public/public-products.controller';
 import { PublicBrandsController } from './controllers/public/public-brands.controller';
 import { PublicCategoriesController } from './controllers/public/public-categories.controller';
 import { PublicTaxonomiesController } from './controllers/public/public-taxonomies.controller';
 import { PublicCollectionsController } from './controllers/public/public-collections.controller';
 import { PublicPersonalizationController } from './controllers/public/public-personalization.controller';
+import { PublicProductReviewsController } from './controllers/public/public-product-reviews.controller';
 import { TaxonomyService } from './services/taxonomy.service';
 import { CategoryService } from './services/category.service';
 import { ProductService } from './services/product.service';
@@ -40,11 +44,13 @@ import { BrandService } from './services/brand.service';
 import { CollectionService } from './services/collection.service';
 import { CustomerProductViewService } from './services/customer-product-view.service';
 import { RecommendationsService } from './services/recommendations.service';
+import { ProductReviewService } from './services/product-review.service';
 import { CatalogSeeder } from './seeders/catalog.seeder';
 import { CollectionSeeder } from './seeders/collection.seeder';
 import { PriceService } from './services/price.service';
 import { CustomerTierModule } from '../customer-tier/customer-tier.module';
 import { CurrencyModule } from '../currency/currency.module';
+import { CustomerProductReviewsController } from './controllers/customer/customer-product-reviews.controller';
 
 @Module({
   imports: [
@@ -66,6 +72,8 @@ import { CurrencyModule } from '../currency/currency.module';
       Collection,
       CollectionItem,
       CustomerProductView,
+      ProductReview,
+      ProductRatingSummary,
       Currency,
       PriceList,
       PriceRow,
@@ -81,12 +89,15 @@ import { CurrencyModule } from '../currency/currency.module';
     ProductController,
     BrandController,
     CollectionController,
+    ProductReviewsController,
     PublicProductsController,
     PublicBrandsController,
     PublicCategoriesController,
     PublicTaxonomiesController,
     PublicCollectionsController,
     PublicPersonalizationController,
+    PublicProductReviewsController,
+    CustomerProductReviewsController,
   ],
   providers: [
     TaxonomyService,
@@ -96,6 +107,7 @@ import { CurrencyModule } from '../currency/currency.module';
     CollectionService,
     CustomerProductViewService,
     RecommendationsService,
+    ProductReviewService,
     CatalogSeeder,
     CollectionSeeder,
     PriceService,
@@ -109,6 +121,7 @@ import { CurrencyModule } from '../currency/currency.module';
     CollectionService,
     CustomerProductViewService,
     RecommendationsService,
+    ProductReviewService,
     CatalogSeeder,
     CollectionSeeder,
     PriceService,
