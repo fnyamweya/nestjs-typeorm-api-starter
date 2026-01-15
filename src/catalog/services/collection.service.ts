@@ -22,6 +22,7 @@ import { AppCacheService } from 'src/common/cache/app-cache.service';
 import { ProductStatus } from '../dto/create-product.dto';
 
 const DEFAULT_COLLECTION_LIMIT = 12;
+const DEFAULT_COLLECTIONS_TAKE = 20;
 
 export type ResolvedCollectionItem = {
   product: Product;
@@ -220,6 +221,60 @@ export class CollectionService {
 
     for (const slug of unique) {
       results.push(await this.getPublicCollection(slug, limit));
+    }
+
+    return results;
+  }
+
+  async listPublicCollections(input?: {
+    type?: string;
+    isActive?: boolean;
+    take?: number;
+    itemsLimit?: number;
+  }) {
+    await this.cleanupExpiredItems();
+
+    const take = input?.take ?? DEFAULT_COLLECTIONS_TAKE;
+    const itemsLimit = input?.itemsLimit ?? DEFAULT_COLLECTION_LIMIT;
+    const now = new Date();
+
+    const qb = this.collectionRepository
+      .createQueryBuilder('collection')
+      .orderBy('collection.priority', 'DESC')
+      .addOrderBy('collection.createdAt', 'DESC')
+      .take(take);
+
+    if (input?.type) {
+      qb.andWhere('collection.type = :type', { type: input.type });
+    }
+
+    // Default to only active collections for public listing.
+    qb.andWhere('collection.isActive = :isActive', {
+      isActive: input?.isActive ?? true,
+    });
+
+    // Only collections within validity window (or no window).
+    qb.andWhere('(collection.validFrom IS NULL OR collection.validFrom <= :now)', {
+      now,
+    });
+    qb.andWhere('(collection.validTo IS NULL OR collection.validTo >= :now)', { now });
+
+    const rows = await qb.getMany();
+    const results: any[] = [];
+
+    for (const collection of rows) {
+      const items = await this.resolveItems(collection, itemsLimit);
+      results.push({
+        id: collection.id,
+        slug: collection.slug,
+        title: collection.title,
+        description: collection.description,
+        type: collection.type,
+        priority: collection.priority,
+        validFrom: collection.validFrom,
+        validTo: collection.validTo,
+        items,
+      });
     }
 
     return results;

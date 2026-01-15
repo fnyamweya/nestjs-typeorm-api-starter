@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
   IsArray,
   IsBoolean,
@@ -137,6 +138,27 @@ export class PublicCollectionsQueryDto {
   @IsOptional()
   @IsString()
   slugs?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by collection type' })
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @ApiPropertyOptional({ description: 'Filter by active state', default: true })
+  @IsOptional()
+  @Transform(({ value }) => value === 'true' || value === true)
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiPropertyOptional({
+    description: 'How many collections to return when listing',
+    default: 20,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  take?: number;
 
   @ApiPropertyOptional({ description: 'Max items to return per collection', default: 12 })
   @IsOptional()

@@ -4,7 +4,7 @@ import { ResponseUtil } from 'src/common/utils/response.util';
 import { PublicCollectionsQueryDto } from '../../dto/collection.dto';
 import { CollectionService } from '../../services/collection.service';
 
-@Controller('public/catalog/collections')
+@Controller(['public/catalog/collections', 'catalog/public/collections'])
 @ApiTags('Public Catalog: Collections')
 @UsePipes(
   new ValidationPipe({
@@ -17,7 +17,10 @@ export class PublicCollectionsController {
   constructor(private readonly collectionService: CollectionService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Get multiple collections by slug' })
+  @ApiOperation({
+    summary:
+      'List public collections (optionally by slug) with resolved items',
+  })
   @ApiOkResponse({ description: 'Collections retrieved successfully' })
   async list(@Query() query: PublicCollectionsQueryDto) {
     const slugs = query.slugs
@@ -25,8 +28,18 @@ export class PublicCollectionsController {
       .map((slug) => slug.trim())
       .filter(Boolean);
 
+    // If no slugs provided, return an ordered list of collections.
     if (!slugs?.length) {
-      return ResponseUtil.success([], 'No collection slugs provided');
+      const collections = await this.collectionService.listPublicCollections({
+        type: query.type,
+        isActive: query.isActive,
+        take: query.take,
+        itemsLimit: query.limit,
+      });
+      return ResponseUtil.success(
+        collections,
+        'Collections retrieved successfully',
+      );
     }
 
     const collections = await this.collectionService.getPublicCollections(
